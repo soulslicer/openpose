@@ -116,6 +116,10 @@ elseif (${GPU_MODE} MATCHES "CPU_ONLY")
   # OpenPose flag for Caffe
   add_definitions(-DCPU_ONLY)
   message("Building CPU Only")
+elseif (${GPU_MODE} MATCHES "OPENCL")
+  # OpenPose flag for Caffe
+  add_definitions(-DUSE_OPENCL)
+  message("Building with OpenCL")
 endif ()
 
 # Intel branch with MKL Support
@@ -326,7 +330,10 @@ if (UNIX AND NOT APPLE)
         endif ()
         set(CAFFE_CPU_ONLY ON)
         set(USE_CUDNN OFF)
-      endif ()
+    elseif (${GPU_MODE} MATCHES "OPENCL")
+        execute_process(COMMAND git checkout opencl WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/caffe)
+        set(USE_CUDNN OFF)
+    endif ()
 
       # Build Caffe
       message(STATUS "Caffe will be built from source now.")
@@ -352,7 +359,8 @@ if (UNIX AND NOT APPLE)
           SOURCE_DIR ${CAFFE_URL}
           PREFIX ${CAFFE_PREFIX}
           CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-          -DUSE_CUDNN=${USE_CUDNN}
+          -DUSE_GREENTEA=ON
+	  -DUSE_CUDNN=${USE_CUDNN}
           -DBUILD_python=OFF
           -DCPU_ONLY=${CAFFE_CPU_ONLY}
           -DCMAKE_BUILD_TYPE=Release

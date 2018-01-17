@@ -10,6 +10,8 @@
 #include <openpose/utilities/standard.hpp>
 #include <openpose/core/netCaffe.hpp>
 
+#include <caffe/common.hpp>
+
 namespace op
 {
     std::mutex sMutexNetCaffe;
@@ -113,11 +115,20 @@ namespace op
                 #ifdef USE_CUDA
                     caffe::Caffe::set_mode(caffe::Caffe::GPU);
                     caffe::Caffe::SetDevice(upImpl->mGpuId);
+                #elseif USE_OPENCL
+                    caffe::Caffe::set_mode(caffe::Caffe::GPU);
+                    caffe::Caffe::SetDevice(upImpl->mGpuId);
                 #else
                     caffe::Caffe::set_mode(caffe::Caffe::CPU);
                 #endif
-                upImpl->upCaffeNet.reset(new caffe::Net<float>{upImpl->mCaffeProto, caffe::TEST});
-                upImpl->upCaffeNet->CopyTrainedLayersFrom(upImpl->mCaffeTrainedModel);
+                    caffe::Caffe::set_mode(caffe::Caffe::GPU);
+                #ifdef USE_OPENCL
+                    upImpl->upCaffeNet.reset(new caffe::Net<float>{upImpl->mCaffeProto, caffe::TEST, caffe::Caffe::GetDefaultDevice()});
+                    upImpl->upCaffeNet->CopyTrainedLayersFrom(upImpl->mCaffeTrainedModel);
+                #else
+                    upImpl->upCaffeNet.reset(new caffe::Net<float>{upImpl->mCaffeProto, caffe::TEST});
+                    upImpl->upCaffeNet->CopyTrainedLayersFrom(upImpl->mCaffeTrainedModel);
+                #endif
                 #ifdef USE_CUDA
                     cudaCheck(__LINE__, __FUNCTION__, __FILE__);
                 #endif
