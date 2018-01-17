@@ -3,14 +3,13 @@
     #include <atomic>
     #include <mutex>
     #include <caffe/net.hpp>
+    #include <caffe/common.hpp>
     #include <glog/logging.h> // google::InitGoogleLogging
 #endif
 #include <openpose/utilities/cuda.hpp>
 #include <openpose/utilities/fileSystem.hpp>
 #include <openpose/utilities/standard.hpp>
 #include <openpose/core/netCaffe.hpp>
-
-#include <caffe/common.hpp>
 
 namespace op
 {
@@ -123,7 +122,7 @@ namespace op
                 #endif
                     caffe::Caffe::set_mode(caffe::Caffe::GPU);
                 #ifdef USE_OPENCL
-                    upImpl->upCaffeNet.reset(new caffe::Net<float>{upImpl->mCaffeProto, caffe::TEST, caffe::Caffe::GetDefaultDevice()});
+                    upImpl->upCaffeNet.reset(new caffe::Net<float>{upImpl->mCaffeProto, caffe::TEST, caffe::Caffe::GetDevice(2,0)});
                     upImpl->upCaffeNet->CopyTrainedLayersFrom(upImpl->mCaffeTrainedModel);
                 #else
                     upImpl->upCaffeNet.reset(new caffe::Net<float>{upImpl->mCaffeProto, caffe::TEST});
@@ -176,7 +175,9 @@ namespace op
                 #endif
 
                 // Perform deep network forward pass
+                    log("a");
                 upImpl->upCaffeNet->ForwardFrom(0);
+                log("a");
 
                 // Cuda checks
                 #ifdef USE_CUDA
