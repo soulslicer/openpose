@@ -107,8 +107,8 @@ endif (WIN32)
 
 # Set the acceleration library
 set(GPU_MODE CUDA CACHE STRING "Select the acceleration GPU library or CPU otherwise.")
-set_property(CACHE GPU_MODE PROPERTY STRINGS CUDA CPU_ONLY)
-# set_property(CACHE GPU_MODE PROPERTY STRINGS CUDA OPENCL CPU_ONLY)
+# set_property(CACHE GPU_MODE PROPERTY STRINGS CUDA CPU_ONLY)
+set_property(CACHE GPU_MODE PROPERTY STRINGS CUDA OPENCL CPU_ONLY)
 if (${GPU_MODE} MATCHES "CUDA")
   # OpenPose flags
   add_definitions(-DUSE_CUDA)
@@ -117,6 +117,10 @@ elseif (${GPU_MODE} MATCHES "CPU_ONLY")
   # OpenPose flag for Caffe
   add_definitions(-DCPU_ONLY)
   message(STATUS "Building CPU Only")
+elseif (${GPU_MODE} MATCHES "OPENCL")
+  # OpenPose flag for Caffe
+  add_definitions(-DUSE_OPENCL)
+  message("Building with OpenCL")
 endif ()
 
 # Intel branch with MKL Support
@@ -333,6 +337,9 @@ if (UNIX AND NOT APPLE)
         endif ()
         set(CAFFE_CPU_ONLY ON)
         set(USE_CUDNN OFF)
+      elseif (${GPU_MODE} MATCHES "OPENCL")
+        execute_process(COMMAND git checkout opencl WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/caffe)
+        set(USE_CUDNN OFF)
       endif ()
 
       # Build Caffe
@@ -394,6 +401,11 @@ if (UNIX AND NOT APPLE)
 
 endif (UNIX AND NOT APPLE)
 
+### OPENPOSE FLAGS
+# Set/disable profiler
+if (PROFILER_ENABLED)
+  add_definitions(-DPROFILER_ENABLED)
+endif (PROFILER_ENABLED)
 
 ### PROJECT INCLUDES
 # Specify the include directories
@@ -498,10 +510,3 @@ if (UNIX AND NOT APPLE)
   add_custom_target(uninstall
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif (UNIX AND NOT APPLE)
-
-
-### OPENPOSE FLAGS
-# Set/disable profiler
-if (PROFILER_ENABLED)
-  add_definitions(-DPROFILER_ENABLED)
-endif (PROFILER_ENABLED)

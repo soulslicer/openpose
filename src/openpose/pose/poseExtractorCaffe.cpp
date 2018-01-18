@@ -13,6 +13,10 @@
 #include <openpose/utilities/standard.hpp>
 #include <openpose/pose/poseExtractorCaffe.hpp>
 
+#include <iostream>
+#include <chrono>
+using namespace std;
+
 namespace op
 {
     struct PoseExtractorCaffe::ImplPoseExtractorCaffe
@@ -245,6 +249,7 @@ namespace op
                 }
 
                 // 2. Resize heat maps + merge different scales
+                const auto resizeKey = op::Profiler::timerInit(__LINE__, __FUNCTION__, __FILE__);
                 const auto caffeNetOutputBlobs = caffeNetSharedToPtr(upImpl->spCaffeNetOutputBlobs);
                 const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
                 upImpl->spResizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
@@ -253,8 +258,12 @@ namespace op
                 #else
                     upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, {upImpl->spHeatMapsBlob.get()}); // ~20ms
                 #endif
+                Profiler::timerEnd(resizeKey);
+                //log("Resize:");
+                //Profiler::printAveragedTimeMsEveryXIterations(resizeKey, __LINE__, __FUNCTION__, __FILE__, 1);
 
                 // 3. Get peaks by Non-Maximum Suppression
+                const auto nmsKey = op::Profiler::timerInit(__LINE__, __FUNCTION__, __FILE__);
                 upImpl->spNmsCaffe->setThreshold((float)get(PoseProperty::NMSThreshold));
                 #ifdef USE_CUDA
                     upImpl->spNmsCaffe->Forward_gpu({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()});// ~2ms
@@ -262,6 +271,9 @@ namespace op
                 #else
                     upImpl->spNmsCaffe->Forward_cpu({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()}); // ~ 7ms
                 #endif
+                Profiler::timerEnd(nmsKey);
+                //log("NMS:");
+                //Profiler::printAveragedTimeMsEveryXIterations(nmsKey, __LINE__, __FUNCTION__, __FILE__, 1);
 
                 // Get scale net to output (i.e. image input)
                 // Note: In order to resize to input size, (un)comment the following lines
