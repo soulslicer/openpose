@@ -23,7 +23,7 @@ else()
 endif ()
 
 # Ubuntu
-if(UNIX AND NOT APPLE)
+if(UNIX OR APPLE)
   target_link_libraries(openpose ${OpenCV_LIBS} ${Caffe_LIBS}
       ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} ${MKL_LIBS} ${GLUT_LIBRARY} ${SPINNAKER_LIB})
   if (CMAKE_COMPILER_IS_GNUCXX)
@@ -59,9 +59,9 @@ elseif (WIN32)
   set_property(TARGET openpose PROPERTY RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/$(Platform)/$(Configuration))
   set_property(TARGET openpose PROPERTY RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_BINARY_DIR}/$(Platform)/$(Configuration))
 
-endif (UNIX AND NOT APPLE)
+endif (UNIX OR APPLE)
 
-if (UNIX AND NOT APPLE)
+if (UNIX OR APPLE)
   add_library(caffe SHARED IMPORTED)
   set_property(TARGET caffe PROPERTY IMPORTED_LOCATION ${Caffe_LIBS})
   target_link_libraries(openpose caffe)
@@ -77,4 +77,4 @@ if (UNIX AND NOT APPLE)
       RUNTIME DESTINATION bin
       LIBRARY DESTINATION lib
       ARCHIVE DESTINATION lib/openpose)
-endif (UNIX AND NOT APPLE)
+endif (UNIX OR APPLE)

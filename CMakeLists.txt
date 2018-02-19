@@ -19,8 +19,6 @@ cmake_minimum_required(VERSION 2.8.7 FATAL_ERROR) # min. cmake version recommend
 if (WIN32) # OS is Windows
   message(STATUS "Windows OS support currently is experimental.")
   message(STATUS "Feel free to send us any suggestion or bug you encounter.")
-elseif (APPLE) # OS is Apple
-  message(FATAL_ERROR "Apple OS is not currently supported.")
 endif ()
 
 
@@ -212,7 +210,7 @@ if (WITH_FLIR_CAMERA)
   add_definitions(-DWITH_FLIR_CAMERA)
 endif (WITH_FLIR_CAMERA)
 
-if (UNIX AND NOT APPLE)
+if (UNIX OR APPLE)
   if (${GPU_MODE} MATCHES "CUDA")
     include(cmake/Cuda.cmake)
     find_package(CuDNN)
@@ -287,7 +285,7 @@ if (UNIX AND NOT APPLE)
       sudo apt-get install libopencv-dev")
   endif (NOT OpenCV_FOUND)
 
-endif (UNIX AND NOT APPLE)
+endif (UNIX OR APPLE)
 
 include(cmake/Utils.cmake)
 
@@ -375,7 +373,7 @@ endif (WIN32)
 
 
 ### CAFFE
-if (UNIX AND NOT APPLE)
+if (UNIX OR APPLE)
 
   if (${DL_FRAMEWORK} MATCHES "CAFFE")
 
@@ -500,7 +498,7 @@ if (UNIX AND NOT APPLE)
 
   endif (${DL_FRAMEWORK} MATCHES "CAFFE")
 
-endif (UNIX AND NOT APPLE)
+endif (UNIX OR APPLE)
 
 add_definitions(-DOPENPOSE_BINARY_DIR="${CMAKE_BINARY_DIR}")
 add_definitions(-DOPENPOSE_INSTALL_DIR="${CMAKE_INSTALL_PREFIX}")
@@ -576,7 +574,7 @@ message(STATUS "Models Downloaded.")
 
 
 ### GENERATE DOCUMENTATION
-if (UNIX AND NOT APPLE)
+if (UNIX OR APPLE)
 
   if (BUILD_DOCS)
     find_package(Doxygen)
@@ -595,11 +593,11 @@ if (UNIX AND NOT APPLE)
     endif (DOXYGEN_FOUND)
   endif (BUILD_DOCS)
 
-endif (UNIX AND NOT APPLE)
+endif (UNIX OR APPLE)
 
 
 ### INSTALL
-if (UNIX AND NOT APPLE)
+if (UNIX OR APPLE)
   if (Caffe_FOUND)
     # Install the headers
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/openpose DESTINATION include)
@@ -626,4 +624,4 @@ if (UNIX AND NOT APPLE)
     add_custom_target(uninstall
         COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
   endif (Caffe_FOUND)
-endif (UNIX AND NOT APPLE)
+endif (UNIX OR APPLE)
