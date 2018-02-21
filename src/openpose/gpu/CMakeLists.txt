@@ -15,7 +15,7 @@ if (UNIX OR APPLE)
     add_library(openpose_gpu ${SOURCES_OP_GPU})
   endif ()
 
-  # target_link_libraries(openpose_gpu openpose_core)
+  target_link_libraries(openpose_gpu openpose_core)
 
   install(TARGETS openpose_gpu
       EXPORT OpenPose

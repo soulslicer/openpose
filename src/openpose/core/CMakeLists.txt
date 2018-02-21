@@ -48,7 +48,8 @@ if (UNIX OR APPLE)
 
   add_library(caffe SHARED IMPORTED)
   set_property(TARGET caffe PROPERTY IMPORTED_LOCATION ${Caffe_LIBS}) 
-  target_link_libraries(openpose_core caffe ${MKL_LIBS})
+  target_link_libraries(openpose_core openpose caffe  ${OpenCV_LIBS} ${Caffe_LIBS} ${GLUT_LIBRARY} ${SPINNAKER_LIB} ${OpenCL_LIBRARIES}
+      ${GLOG_LIBRARY} ${OpenCV_LIBS} ${Caffe_LIBS} ${GFLAGS_LIBRARY} ${GLOG_LIBRARY} ${MKL_LIBS} ${GLUT_LIBRARY} ${SPINNAKER_LIB})
 
   if (BUILD_CAFFE)
     add_dependencies(openpose_core openpose_caffe)

@@ -20,6 +20,8 @@ if (UNIX OR APPLE)
   else()
     add_library(openpose_hand ${SOURCES_OP_HAND})
   endif ()
+
+  target_link_libraries(openpose_hand openpose_core)
   
   if (BUILD_CAFFE)
     add_dependencies(openpose_hand openpose_caffe)

@@ -17,6 +17,8 @@ set(SOURCES_OPENPOSE ${SOURCES_OPENPOSE} ${SOURCES_OP_FILESTREAM_WITH_CP} PARENT
 if (UNIX OR APPLE)
   add_library(openpose_filestream ${SOURCES_OP_FILESTREAM})
 
+  target_link_libraries(openpose_filestream openpose_core)
+
   install(TARGETS openpose_filestream
       EXPORT OpenPose
       RUNTIME DESTINATION bin

@@ -24,6 +24,8 @@ if (UNIX OR APPLE)
   else()
     add_library(openpose_pose ${SOURCES_OP_POSE})
   endif ()
+
+  target_link_libraries(openpose_pose openpose_core)
   
   if (BUILD_CAFFE)
     add_dependencies(openpose_pose openpose_caffe)

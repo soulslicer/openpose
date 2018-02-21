@@ -29,5 +29,6 @@ namespace op
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
             return Array<float>{};
         }
+        return Array<float>{};
     }
 }

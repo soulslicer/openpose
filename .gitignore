@@ -115,6 +115,7 @@ build*
 *cmake_build
 distribute/*
 python/caffe/proto/
+._.DS_Store
 
 ######################### Generated Documentation #########################
 _site

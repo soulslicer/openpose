@@ -3,6 +3,7 @@ set(OpenPose_VERSION_MAJOR 1)
 set(OpenPose_VERSION_MINOR 2)
 set(OpenPose_VERSION_PATCH 1)
 set(OpenPose_VERSION ${OpenPose_VERSION_MAJOR}.${OpenPose_VERSION_MINOR}.${OpenPose_VERSION_PATCH})
+set(CMAKE_MACOSX_RPATH 1)
 
 
 ### CMAKE HEADERS
@@ -49,11 +50,18 @@ if (WIN32)
   string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
   string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
   string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-elseif (UNIX AND NOT APPLE)
+elseif (UNIX)
   # Turn on C++11
   add_definitions(-std=c++11)
   set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-endif (WIN32)
+elseif (APPLE)
+  # Turn on C++11
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else ()
+  message(FATAL_ERROR "Platform not recognized")
+endif ()
+
 
 # C++ additional flags
 if (CMAKE_COMPILER_IS_GNUCXX)
@@ -512,7 +520,12 @@ include_directories(
   ${GLOG_INCLUDE_DIR}
   ${OpenCV_INCLUDE_DIRS})
 
-if(USE_MKL)
+if (APPLE)
+  include_directories(
+    "/usr/local/opt/openblas/include")
+endif ()
+
+if (USE_MKL)
  include_directories(
      "${MKL_PATH}/include/")
 endif (USE_MKL)
