@@ -203,6 +203,14 @@ else ()
   set(CMAKE_THREAD_LIBS_INIT "")
 endif ()
 
+# OpenCL Caffe seems to need boost system - also in Win32
+if (${GPU_MODE} MATCHES "OPENCL")
+  unset(Boost_SYSTEM_LIBRARY CACHE)
+  find_package(Boost COMPONENTS system REQUIRED)
+else ()
+  set(Boost_SYSTEM_LIBRARY "")
+endif ()
+
 ### FIND REQUIRED PACKAGES
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 

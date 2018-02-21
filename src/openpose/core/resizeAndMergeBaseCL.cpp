@@ -2,7 +2,6 @@
 #include <openpose/core/resizeAndMergeBase.hpp>
 
 #ifdef USE_OPENCL
-    #define CL_HPP_ENABLE_EXCEPTIONS
     #include <openpose/gpu/opencl.hpp>
     #include <openpose/gpu/cl2.hpp>
 #endif
@@ -326,7 +325,7 @@ namespace op
                   " functionality.", __LINE__, __FUNCTION__, __FILE__);
             #endif
         }
-        #ifdef USE_OPENCL
+        #if defined(USE_OPENCL) && !defined(__APPLE__)
         catch (const cl::Error& e)
         {
             error(std::string(e.what()) + " : " + op::OpenCL::clErrorToString(e.err()) + " ID: " +

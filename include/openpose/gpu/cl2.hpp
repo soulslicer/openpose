@@ -720,7 +720,7 @@ namespace cl {
          *                handling of the exception has concluded.  If set, it
          *                will be returned by what().
          */
-        Error(cl_int err, const char * errStr = NULL) : err_(err), errStr_(errStr)
+        Error(int err, const char * errStr = NULL) : err_(err), errStr_(errStr)
         {}
 
         ~Error() throw() {}

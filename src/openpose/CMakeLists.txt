@@ -64,7 +64,7 @@ endif (UNIX OR APPLE)
 if (UNIX OR APPLE)
   add_library(caffe SHARED IMPORTED)
   set_property(TARGET caffe PROPERTY IMPORTED_LOCATION ${Caffe_LIBS})
-  target_link_libraries(openpose caffe)
+  target_link_libraries(openpose caffe ${Boost_SYSTEM_LIBRARY} ${OpenCL_LIBRARIES})
 
   if (BUILD_CAFFE)
     add_dependencies(openpose openpose_caffe)

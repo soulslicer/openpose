@@ -164,9 +164,15 @@ namespace op
                         }
                     }
                 }
-                catch (cl::Error e)
+                #if defined(USE_OPENCL) && !defined(__APPLE__)
+                catch (cl::Error& e)
                 {
                     op::log("Error: " + std::string(e.what()));
+                }
+                #endif
+                catch (const std::exception& e)
+                {
+                    error(e.what(), __LINE__, __FUNCTION__, __FILE__);
                 }
             }
         #else
@@ -259,12 +265,19 @@ namespace op
                 replaceAll(src, "Type", type);
                 program = cl::Program(context, src, true);
             }
+            #if defined(USE_OPENCL) && !defined(__APPLE__)
             catch (cl::BuildError e)
             {
                 auto buildInfo = e.getBuildLog();
                 for (auto &pair : buildInfo)
                     std::cerr << "Device: " << pair.first.getInfo<CL_DEVICE_NAME>() << std::endl <<
                                  pair.second << std::endl;
+                exit(-1);
+            }
+            #endif
+            catch (const std::exception& e)
+            {
+                error(e.what(), __LINE__, __FUNCTION__, __FILE__);
                 exit(-1);
             }
             return true;
@@ -445,9 +458,15 @@ namespace op
                 else
                     return -1;
             }
+            #if defined(USE_OPENCL) && !defined(__APPLE__)
             catch (cl::Error& e)
             {
                 op::log("Error: " + std::string(e.what()));
+            }
+            #endif
+            catch (const std::exception& e)
+            {
+                error(e.what(), __LINE__, __FUNCTION__, __FILE__);
             }
         #else
             error("OpenPose must be compiled with the `USE_OPENCL` macro definition in order to use this"
