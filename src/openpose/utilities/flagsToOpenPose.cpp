@@ -24,8 +24,14 @@ namespace op
                 return PoseModel::BODY_18;
             else if (poseModeString == "BODY_19")
                 return PoseModel::BODY_19;
+            else if (poseModeString == "BODY_19b")
+                return PoseModel::BODY_19b;
+            else if (poseModeString == "BODY_19N")
+                return PoseModel::BODY_19N;
             else if (poseModeString == "BODY_19_X2")
                 return PoseModel::BODY_19_X2;
+            else if (poseModeString == "BODY_21")
+                return PoseModel::BODY_21;
             else if (poseModeString == "BODY_23")
                 return PoseModel::BODY_23;
             else if (poseModeString == "BODY_59")
@@ -136,7 +142,7 @@ namespace op
 
     std::shared_ptr<Producer> flagsToProducer(const std::string& imageDirectory, const std::string& videoPath,
                                               const std::string& ipCameraPath, const int webcamIndex,
-                                              const bool flirCamera, const std::string& webcamResolution,
+                                              const bool flirCamera, const std::string& cameraResolution,
                                               const double webcamFps, const std::string& cameraParameterPath,
                                               const unsigned int imageDirectoryStereo)
     {
@@ -149,19 +155,27 @@ namespace op
                 return std::make_shared<ImageDirectoryReader>(imageDirectory, imageDirectoryStereo,
                                                               cameraParameterPath);
             else if (type == ProducerType::Video)
-                return std::make_shared<VideoReader>(videoPath);
+                return std::make_shared<VideoReader>(videoPath, imageDirectoryStereo, cameraParameterPath);
             else if (type == ProducerType::IPCamera)
                 return std::make_shared<IpCameraReader>(ipCameraPath);
-            else if (type == ProducerType::FlirCamera)
-                return std::make_shared<FlirReader>(cameraParameterPath);
-            else if (type == ProducerType::Webcam)
+            // Flir camera
+            if (type == ProducerType::FlirCamera)
             {
                 // cameraFrameSize
-                const auto webcamFrameSize = op::flagsToPoint(webcamResolution, "1280x720");
+                const auto cameraFrameSize = flagsToPoint(cameraResolution, "-1x-1");
+                return std::make_shared<FlirReader>(cameraParameterPath, cameraFrameSize);
+            }
+            // Webcam
+            if (type == ProducerType::Webcam)
+            {
+                // cameraFrameSize
+                auto cameraFrameSize = flagsToPoint(cameraResolution, "1280x720");
+                if (cameraFrameSize.x < 0 || cameraFrameSize.y < 0)
+                    cameraFrameSize = Point<int>{1280,720};
                 if (webcamIndex >= 0)
                 {
                     const auto throwExceptionIfNoOpened = true;
-                    return std::make_shared<WebcamReader>(webcamIndex, webcamFrameSize, webcamFps,
+                    return std::make_shared<WebcamReader>(webcamIndex, cameraFrameSize, webcamFps,
                                                           throwExceptionIfNoOpened);
                 }
                 else
@@ -170,7 +184,7 @@ namespace op
                     std::shared_ptr<WebcamReader> webcamReader;
                     for (auto index = 0 ; index < 10 ; index++)
                     {
-                        webcamReader = std::make_shared<WebcamReader>(index, webcamFrameSize, webcamFps,
+                        webcamReader = std::make_shared<WebcamReader>(index, cameraFrameSize, webcamFps,
                                                                       throwExceptionIfNoOpened);
                         if (webcamReader->isOpened())
                         {
@@ -214,7 +228,7 @@ namespace op
         }
     }
 
-    RenderMode flagsToRenderMode(const int renderFlag, const int renderPoseFlag)
+    RenderMode flagsToRenderMode(const int renderFlag, const bool gpuBuggy, const int renderPoseFlag)
     {
         try
         {
@@ -222,14 +236,14 @@ namespace op
             if (renderFlag == -1 && renderPoseFlag == -2)
             {
                 #ifdef USE_CUDA
-                    return RenderMode::Gpu;
+                    return (gpuBuggy ? RenderMode::Cpu : RenderMode::Gpu);
                 #else
                     return RenderMode::Cpu;
                 #endif
             }
             // Face and hand: to pick same than body
             else if (renderFlag == -1 && renderPoseFlag != -2)
-                return flagsToRenderMode(renderPoseFlag, -2);
+                return flagsToRenderMode(renderPoseFlag, gpuBuggy, -2);
             // No render
             else if (renderFlag == 0)
                 return RenderMode::None;

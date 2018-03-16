@@ -28,8 +28,9 @@
 
 
 ## Latest Features
-- Sep 2017: **CMake** installer and **IP camera** support!
-- Jul 2017: [**Windows portable demo**](doc/installation.md#installation---demo)!
+- Mar 2017: Improved [**3-D keypoint reconstruction module**](doc/3d_reconstruction_demo.md) (from multiple camera views)!
+- Sep 2017: [**CMake**](doc/installation.md) installer and **IP camera** support!
+- Jul 2017: [**Windows portable binaries and demo**](https://github.com/CMU-Perceptual-Computing-Lab/openpose/releases)!
 - Jul 2017: **Hands** released!
 - Jun 2017: **Face** released!
 For further details, check [all released features](doc/released_features.md) and [release notes](doc/release_notes.md).
@@ -51,6 +52,11 @@ For further details, check [all released features](doc/released_features.md) and
 
 
 ## Results
+### 3-D Reconstruction Module
+<p align="center">
+    <img src="doc/media/openpose3d.png", width="360">
+</p>
+
 ### Body Estimation
 <p align="center">
     <img src="doc/media/dance.gif", width="360">
@@ -90,7 +96,7 @@ bin\OpenPoseDemo.exe --video examples\media\video.avi
 
 - **OpenPose C++ API**: See [doc/library_introduction.md](doc/library_introduction.md).
 
-- **Adding an extra module**: Check [doc/library_add_new_module.md](./library_add_new_module.md).
+- **Adding an extra module**: Check [doc/library_add_new_module.md](./doc/library_add_new_module.md).
 
 - **Standalone face or hand detector**:
     - **Face** keypoint detection **without body** keypoint detection: If you want to speed it up (but also reduce amount of detected faces), check the OpenCV-face-detector approach in [doc/standalone_face_or_hand_keypoint_detector.md](doc/standalone_face_or_hand_keypoint_detector.md).

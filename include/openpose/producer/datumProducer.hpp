@@ -89,15 +89,15 @@ namespace op
                 if (spVideoSeek != nullptr)
                 {
                     // Fake pause vs. normal mode
-                    const auto increment = spVideoSeek->second  + (spVideoSeek->first ? 1 : 0);
+                    const auto increment = spVideoSeek->second - (spVideoSeek->first ? 1 : 0);
                     // Normal mode
                     if (increment != 0)
-                    {
                         spProducer->set(CV_CAP_PROP_POS_FRAMES, spProducer->get(CV_CAP_PROP_POS_FRAMES) + increment);
-                        spVideoSeek->second = 0;
-                    }
+                    // It must be always reset or bug in fake pause
+                    spVideoSeek->second = 0;
                 }
                 auto nextFrameName = spProducer->getNextFrameName();
+                auto nextFrameNumber = (unsigned long long)spProducer->get(CV_CAP_PROP_POS_FRAMES);
                 auto cvMats = spProducer->getFrames();
                 auto cameraMatrices = spProducer->getCameraMatrices();
                 // Check frames are not empty
@@ -109,6 +109,7 @@ namespace op
                     auto& datum = (*datums)[0];
                     // Filling first element
                     std::swap(datum.name, nextFrameName);
+                    datum.frameNumber = nextFrameNumber;
                     datum.cvInputData = cvMats[0];
                     if (!cameraMatrices.empty())
                         datum.cameraMatrix = cameraMatrices[0];
@@ -134,6 +135,7 @@ namespace op
                         {
                             auto& datumI = (*datums)[i];
                             datumI.name = datum.name;
+                            datumI.frameNumber = datum.frameNumber;
                             datumI.cvInputData = cvMats[i];
                             datumI.cvOutputData = datumI.cvInputData;
                             if (cameraMatrices.size() > i)

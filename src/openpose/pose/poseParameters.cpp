@@ -43,28 +43,6 @@ namespace op
         {17, "LEar"},
         {18, "Background"}
     };
-    // Windows map copy error if `POSE_BODY_18_BODY_PARTS = POSE_COCO_BODY_PARTS`
-    const std::map<unsigned int, std::string> POSE_BODY_18_BODY_PARTS {
-        {0,  "Nose"},
-        {1,  "Neck"},
-        {2,  "RShoulder"},
-        {3,  "RElbow"},
-        {4,  "RWrist"},
-        {5,  "LShoulder"},
-        {6,  "LElbow"},
-        {7,  "LWrist"},
-        {8,  "RHip"},
-        {9,  "RKnee"},
-        {10, "RAnkle"},
-        {11, "LHip"},
-        {12, "LKnee"},
-        {13, "LAnkle"},
-        {14, "REye"},
-        {15, "LEye"},
-        {16, "REar"},
-        {17, "LEar"},
-        {18, "Background"}
-    };
     const std::map<unsigned int, std::string> POSE_BODY_19_BODY_PARTS {
         {0,  "Nose"},
         {1,  "Neck"},
@@ -87,8 +65,7 @@ namespace op
         {18, "LEar"},
         {19, "Background"}
     };
-    // Windows map copy error if `POSE_BODY_19_BODY_PARTS = POSE_BODY_19_X2_BODY_PARTS`
-    const std::map<unsigned int, std::string> POSE_BODY_19_X2_BODY_PARTS {
+    const std::map<unsigned int, std::string> POSE_BODY_21_BODY_PARTS {
         {0,  "Nose"},
         {1,  "Neck"},
         {2,  "RShoulder"},
@@ -108,7 +85,9 @@ namespace op
         {16, "LEye"},
         {17, "REar"},
         {18, "LEar"},
-        {19, "Background"}
+        {19, "RealNeck"},
+        {20, "Top"},
+        {21, "Background"}
     };
     const std::map<unsigned int, std::string> POSE_BODY_23_BODY_PARTS {
         {0,  "Neck"},
@@ -220,11 +199,24 @@ namespace op
             140,141, 142,143, 144,145, 146,147, 148,149, 150,151, 152,153, 154,155, 156,157, 158,159,
             160,161, 162,163, 164,165, 166,167, 168,169, 170,171, 172,173, 174,175, 176,177, 178,179 // Right hand
         },
+        // BODY_19N
+        std::vector<unsigned int>{
+            20,21, 34,35, 42,43, 36,37, 38,39, 44,45, 46,47, 26,27, 22,23, 24,25, 28,29, 30,31, 32,33, 50,51, 52,53, 56,57, 54,55, 58,59, 40,41, 48,49
+        },
+        // BODY_19b
+        std::vector<unsigned int>{
+            20,21, 34,35, 42,43, 36,37, 38,39, 44,45, 46,47, 26,27, 22,23, 24,25, 28,29, 30,31, 32,33, 50,51, 52,53, 56,57, 54,55, 58,59, 40,41, 48,49, 60,61, 62,63
+        },
+        // BODY_21
+        std::vector<unsigned int>{
+            22,23, 36,37, 44,45, 38,39, 40,41, 46,47, 48,49, 28,29, 24,25, 26,27, 30,31, 32,33, 34,35, 52,53, 54,55, 58,59, 56,57, 60,61, 42,43, 50,51, 62,63, 64,65
+        },
     };
     // POSE_BODY_PART_MAPPING on HPP crashes on Windows at dynamic initialization if it's on hpp
     const std::array<std::map<unsigned int, std::string>, (int)PoseModel::Size>   POSE_BODY_PART_MAPPING{
-        POSE_COCO_BODY_PARTS,   POSE_MPI_BODY_PARTS,    POSE_MPI_BODY_PARTS,    POSE_BODY_18_BODY_PARTS,
-        POSE_BODY_19_BODY_PARTS,POSE_BODY_19_X2_BODY_PARTS,POSE_BODY_23_BODY_PARTS,POSE_BODY_59_BODY_PARTS
+        POSE_COCO_BODY_PARTS,   POSE_MPI_BODY_PARTS,    POSE_MPI_BODY_PARTS,    POSE_COCO_BODY_PARTS,
+        POSE_BODY_19_BODY_PARTS,POSE_BODY_19_BODY_PARTS,POSE_BODY_23_BODY_PARTS,POSE_BODY_59_BODY_PARTS,
+        POSE_BODY_19_BODY_PARTS,POSE_BODY_19_BODY_PARTS,POSE_BODY_21_BODY_PARTS
     };
 
     const std::array<std::string, (int)PoseModel::Size> POSE_PROTOTXT{
@@ -236,6 +228,9 @@ namespace op
         "pose/body_19_x2/pose_deploy.prototxt",
         "pose/body_23/pose_deploy.prototxt",
         "pose/body_59/pose_deploy.prototxt",
+        "pose/body_19n/pose_deploy.prototxt",
+        "pose/body_19b/pose_deploy.prototxt",
+        "pose/body_21/pose_deploy.prototxt",
     };
     const std::array<std::string, (int)PoseModel::Size> POSE_TRAINED_MODEL{
         "pose/coco/pose_iter_440000.caffemodel",
@@ -246,12 +241,15 @@ namespace op
         "pose/body_19_x2/pose_iter_XXXXXX.caffemodel",
         "pose/body_23/pose_iter_XXXXXX.caffemodel",
         "pose/body_59/pose_iter_XXXXXX.caffemodel",
+        "pose/body_19n/pose_iter_XXXXXX.caffemodel",
+        "pose/body_19b/pose_iter_XXXXXX.caffemodel",
+        "pose/body_21/pose_iter_XXXXXX.caffemodel",
     };
 
     // Constant Array Parameters
     // POSE_NUMBER_BODY_PARTS equivalent to size of std::map POSE_BODY_XX_BODY_PARTS - 1 (removing background)
     const std::array<unsigned int, (int)PoseModel::Size> POSE_NUMBER_BODY_PARTS{
-        18, 15, 15, 18, 19, 19, 23, 59
+        18, 15, 15, 18, 19, 19, 23, 59, 19, 19, 21
     };
     const std::array<std::vector<unsigned int>, (int)PoseModel::Size> POSE_BODY_PART_PAIRS{
         // COCO
@@ -284,6 +282,18 @@ namespace op
             7,19, 19,20, 20,21, 21,22, 7,23, 23,24, 24,25, 25,26, 7,27, 27,28, 28,29, 29,30, 7,31, 31,32, 32,33, 33,34, 7,35, 35,36, 36,37, 37,38,      // Left hand
             4,39, 39,40, 40,41, 41,42, 4,43, 43,44, 44,45, 45,46, 4,47, 47,48, 48,49, 49,50, 4,51, 51,52, 52,53, 53,54, 4,55, 55,56, 56,57, 57,58       // Right hand
         },
+        // BODY_19N
+        std::vector<unsigned int>{
+            1,8,   1,2,   1,5,   2,3,   3,4,   5,6,   6,7,   8,9,   9,10,  10,11, 8,12,  12,13, 13,14,  1,0,   0,15, 15,17,  0,16, 16,18,   2,17,  5,18
+        },
+        // BODY_19b
+        std::vector<unsigned int>{
+            1,8,   1,2,   1,5,   2,3,   3,4,   5,6,   6,7,   8,9,   9,10,  10,11, 8,12,  12,13, 13,14,  1,0,   0,15, 15,17,  0,16, 16,18,   2,17,  5,18, 2,9, 5,12
+        },
+        // BODY_21
+        std::vector<unsigned int>{
+            1,8,   1,2,   1,5,   2,3,   3,4,   5,6,   6,7,   8,9,   9,10,  10,11, 8,12,  12,13, 13,14,  1,0,   0,15, 15,17,  0,16, 16,18,   2,17,  5,18, 1,19, 19,20
+        },
     };
     const std::array<unsigned int, (int)PoseModel::Size> POSE_MAX_PEAKS{
         POSE_MAX_PEOPLE,    // COCO
@@ -294,6 +304,9 @@ namespace op
         POSE_MAX_PEOPLE,    // BODY_19_X2
         POSE_MAX_PEOPLE,    // BODY_23
         POSE_MAX_PEOPLE,    // BODY_59
+        POSE_MAX_PEOPLE,    // BODY_19N
+        POSE_MAX_PEOPLE,    // BODY_19b
+        POSE_MAX_PEOPLE,    // BODY_21
     };
     const std::array<float, (int)PoseModel::Size> POSE_CCN_DECREASE_FACTOR{
         8.f,    // COCO
@@ -304,25 +317,28 @@ namespace op
         4.f,    // BODY_19_X2
         8.f,    // BODY_23
         8.f,    // BODY_59
+        8.f,    // BODY_19N
+        8.f,    // BODY_19b
+        8.f,    // BODY_21
     };
 
     // Default Model Parameters
     // They might be modified on running time
     const std::array<float, (int)PoseModel::Size>           POSE_DEFAULT_NMS_THRESHOLD{
-        0.05f,      0.6f,       0.3f,       0.05f,      0.05f,      0.05f,      0.05f,      0.05f
+        0.05f,      0.6f,       0.3f,       0.05f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f
     };
     const std::array<float, (int)PoseModel::Size>    POSE_DEFAULT_CONNECT_INTER_MIN_ABOVE_THRESHOLD{
-        0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f
+        0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f,      0.95f
         // 0.85f,      0.85f,      0.85f,      0.85f,      0.85f,      0.85f // Matlab version
     };
     const std::array<float, (int)PoseModel::Size>           POSE_DEFAULT_CONNECT_INTER_THRESHOLD{
-        0.05f,      0.01f,      0.01f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f
+        0.05f,      0.01f,      0.01f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f,      0.05f
     };
     const std::array<unsigned int, (int)PoseModel::Size>    POSE_DEFAULT_CONNECT_MIN_SUBSET_CNT{
-        3,          3,          3,          3,          3,          3,          3,          3
+        3,          3,          3,          3,          3,          3,          3,          3,          3,          3,          3
     };
     const std::array<float, (int)PoseModel::Size>           POSE_DEFAULT_CONNECT_MIN_SUBSET_SCORE{
-        0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f
+        0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f
         // 0.2f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f // Matlab version
     };
 

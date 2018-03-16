@@ -1,8 +1,8 @@
 #ifdef USE_CAFFE
     #include <caffe/blob.hpp>
 #endif
-#include <openpose/core/nmsBase.hpp>
-#include <openpose/core/nmsCaffe.hpp>
+#include <openpose/net/nmsBase.hpp>
+#include <openpose/net/nmsCaffe.hpp>
 
 namespace op
 {
@@ -95,7 +95,7 @@ namespace op
                     // GPU ID
                     mGpuID = gpuID;
                 #else
-                    UNUSED(mGpuID);
+                    UNUSED(gpuID);
                 #endif
                 // Array sizes
                 upImpl->mTopSize = std::array<int, 4>{topBlob->shape(0), topBlob->shape(1),

@@ -469,14 +469,14 @@ namespace op
             // GPU --> user picks (<= #GPUs)
             else
             {
+                // Get total number GPUs
+                const auto totalGpuNumber = getGpuNumber();
                 // If number GPU < 0 --> set it to all the available GPUs
                 if (numberThreads < 0)
                 {
-                    // Get total number GPUs
-                    const auto totalGpuNumber = getGpuNumber();
                     if (totalGpuNumber <= gpuNumberStart)
-                        error("Number of initial GPUs (`--number_gpu_start`) must be lower than the total number of used"
-                              " GPUs (`--number_gpu`)", __LINE__, __FUNCTION__, __FILE__);
+                        error("Number of initial GPU (`--number_gpu_start`) must be lower than the total number of"
+                              " used GPUs (`--number_gpu`)", __LINE__, __FUNCTION__, __FILE__);
                     numberThreads = totalGpuNumber - gpuNumberStart;
                     // Reset initial GPU to 0 (we want them all)
                     // Logging message
@@ -484,6 +484,14 @@ namespace op
                         + " GPU(s), using " + std::to_string(numberThreads) + " of them starting at GPU "
                         + std::to_string(gpuNumberStart) + ".", Priority::High);
                 }
+                // Security check
+                if (gpuNumberStart + numberThreads > totalGpuNumber)
+                    error("Initial GPU selected (`--number_gpu_start`) + number GPUs to use (`--number_gpu`) must"
+                          " be lower or equal than the total number of GPUs in your machine ("
+                          + std::to_string(gpuNumberStart) + " + "
+                          + std::to_string(numberThreads) + " vs. "
+                          + std::to_string(totalGpuNumber) + ").",
+                          __LINE__, __FUNCTION__, __FILE__);
             }
 
             // Proper format
@@ -539,7 +547,7 @@ namespace op
                 spWScaleAndSizeExtractor = std::make_shared<WScaleAndSizeExtractor<TDatumsPtr>>(scaleAndSizeExtractor);
 
                 // Input cvMat to OpenPose input & output format
-                const auto cvMatToOpInput = std::make_shared<CvMatToOpInput>();
+                const auto cvMatToOpInput = std::make_shared<CvMatToOpInput>(wrapperStructPose.poseModel);
                 spWCvMatToOpInput = std::make_shared<WCvMatToOpInput<TDatumsPtr>>(cvMatToOpInput);
                 if (renderOutput)
                 {
@@ -790,8 +798,9 @@ namespace op
                 // 3-D reconstruction
                 if (wrapperStructPose.reconstruct3d)
                 {
+                    const auto poseTriangulation = std::make_shared<PoseTriangulation>(wrapperStructPose.minViews3d);
                     mPostProcessingWs.emplace_back(
-                        std::make_shared<WPoseTriangulation<TDatumsPtr>>()
+                        std::make_shared<WPoseTriangulation<TDatumsPtr>>(poseTriangulation)
                     );
                 }
                 // Frames processor (OpenPose format -> cv::Mat format)
@@ -858,8 +867,9 @@ namespace op
                 if (finalOutputSize.x <= 0 || finalOutputSize.y <= 0)
                     error("Video can only be recorded if outputSize is fixed (e.g. video, webcam, IP camera),"
                           "but not for a image directory.", __LINE__, __FUNCTION__, __FILE__);
-                const auto originalVideoFps = (wrapperStructInput.producerSharedPtr->get(CV_CAP_PROP_FPS) > 0.
-                                               ? wrapperStructInput.producerSharedPtr->get(CV_CAP_PROP_FPS) : 30.);
+                const auto originalVideoFps = (wrapperStructOutput.writeVideoFps > 0 ?
+                                                wrapperStructOutput.writeVideoFps
+                                                : wrapperStructInput.producerSharedPtr->get(CV_CAP_PROP_FPS));
                 const auto videoSaver = std::make_shared<VideoSaver>(
                     wrapperStructOutput.writeVideo, CV_FOURCC('M','J','P','G'), originalVideoFps, finalOutputSize
                 );

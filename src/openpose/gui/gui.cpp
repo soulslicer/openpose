@@ -31,7 +31,7 @@ namespace op
                        std::vector<std::shared_ptr<PoseExtractor>>& poseExtractors,
                        std::vector<std::shared_ptr<Renderer>>& renderers,
                        std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
-                       std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& spVideoSeek)
+                       std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& videoSeekSharedPtr)
     {
         try
         {
@@ -63,20 +63,20 @@ namespace op
                 // Fake pause
                 else if (castedKey=='m')
                 {
-                    if (spVideoSeek != nullptr)
-                        spVideoSeek->first = !spVideoSeek->first;
+                    if (videoSeekSharedPtr != nullptr)
+                        videoSeekSharedPtr->first = !videoSeekSharedPtr->first;
                 }
                 // Seeking in video
                 else if (castedKey=='l' || castedKey=='k')
                 {
-                    if (spVideoSeek != nullptr)
+                    if (videoSeekSharedPtr != nullptr)
                     {
                         // Normal case, +-30 frames
-                        if (!spVideoSeek->first)
-                            spVideoSeek->second += 30 * (castedKey=='l' ? -2 : 1);
+                        if (!videoSeekSharedPtr->first)
+                            videoSeekSharedPtr->second += 30 * (castedKey=='k' ? -2 : 1);
                         // Frame by frame (if forced paused)
                         else
-                            spVideoSeek->second += (castedKey=='l' ? -1 : 1);
+                            videoSeekSharedPtr->second += (castedKey=='k' ? -1 : 1);
                     }
                 }
                 // Enable/disable blending
@@ -136,17 +136,17 @@ namespace op
     void handleUserInput(FrameDisplayer& frameDisplayer, std::vector<std::shared_ptr<PoseExtractor>>& poseExtractors,
                          std::vector<std::shared_ptr<Renderer>>& renderers,
                          std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
-                         std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& spVideoSeek)
+                         std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& videoSeekSharedPtr)
     {
         try
         {
             // The handleUserInput must be always performed, even if no tDatum is detected
             bool guiPaused = false;
-            handleWaitKey(guiPaused, frameDisplayer, poseExtractors, renderers, isRunningSharedPtr, spVideoSeek);
+            handleWaitKey(guiPaused, frameDisplayer, poseExtractors, renderers, isRunningSharedPtr, videoSeekSharedPtr);
             while (guiPaused)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                handleWaitKey(guiPaused, frameDisplayer, poseExtractors, renderers, isRunningSharedPtr, spVideoSeek);
+                handleWaitKey(guiPaused, frameDisplayer, poseExtractors, renderers, isRunningSharedPtr, videoSeekSharedPtr);
             }
         }
         catch (const std::exception& e)
@@ -177,12 +177,7 @@ namespace op
     {
         try
         {
-            // Check tDatum integrity
-            const bool returnedIsValidFrame = ((spIsRunning == nullptr || *spIsRunning) && !cvMatOutput.empty());
-
-            // Display
-            if (returnedIsValidFrame)
-                mFrameDisplayer.displayFrame(cvMatOutput, -1);
+            setImage(std::vector<cv::Mat>{cvMatOutput});
         }
         catch (const std::exception& e)
         {
@@ -194,36 +189,20 @@ namespace op
     {
         try
         {
-            // 0 image
-            if (cvMatOutputs.empty())
-                setImage(cvMatOutputs[0]);
-            // 1 image
-            else if (cvMatOutputs.size() == 1)
-                setImage(cvMatOutputs[0]);
-            // > 1 image
-            else
+            // Check tDatum integrity
+            bool returnedIsValidFrame = ((spIsRunning == nullptr || *spIsRunning) && !cvMatOutputs.empty());
+            for (const auto& cvMatOutput : cvMatOutputs)
             {
-                // Check tDatum integrity
-                bool returnedIsValidFrame = ((spIsRunning == nullptr || *spIsRunning) && !cvMatOutputs.empty());
-                if (returnedIsValidFrame)
+                if (cvMatOutput.empty())
                 {
-                    // Security checks
-                    for (const auto& cvMatOutput : cvMatOutputs)
-                        if (cvMatOutput.empty())
-                            returnedIsValidFrame = false;
-                    // Prepare final cvMat
-                    if (returnedIsValidFrame)
-                    {
-                        // Concat (0)
-                        cv::Mat cvMat = cvMatOutputs[0].clone();
-                        // Concat (1,size()-1)
-                        for (auto i = 1u; i < cvMatOutputs.size(); i++)
-                            cv::hconcat(cvMat, cvMatOutputs[i], cvMat);
-                        // Display
-                        mFrameDisplayer.displayFrame(cvMat, -1);
-                    }
+                    returnedIsValidFrame = false;
+                    break;
                 }
             }
+
+            // Display
+            if (returnedIsValidFrame)
+                mFrameDisplayer.displayFrame(cvMatOutputs, -1);
         }
         catch (const std::exception& e)
         {
