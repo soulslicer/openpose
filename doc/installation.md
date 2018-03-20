@@ -13,12 +13,13 @@ OpenPose - Installation
 9. [Optional Settings](#optional-settings)
     1. [MPI Model](#mpi-model)
     2. [CPU Version](#cpu-version)
-    3. [3D Reconstruction Module](#3d-reconstruction-module)
-    4. [Compiling without cuDNN](#compiling-without-cudnn)
-    5. [Custom Caffe (Ubuntu Only)](#custom-caffe-ubuntu-only)
-    6. [Custom OpenCV (Ubuntu Only)](#custom-opencv-ubuntu-only)
-    7. [Doxygen Documentation Autogeneration (Ubuntu Only)](#doxygen-documentation-autogeneration-ubuntu-only)
-    8. [CMake Command Line Configuration (Ubuntu Only)](#cmake-command-line-configuration-ubuntu-only)
+    3. [OpenCL Version](#opencl-version)
+    4. [3D Reconstruction Module](#3d-reconstruction-module)
+    5. [Compiling without cuDNN](#compiling-without-cudnn)
+    6. [Custom Caffe (Ubuntu Only)](#custom-caffe-ubuntu-only)
+    7. [Custom OpenCV (Ubuntu Only)](#custom-opencv-ubuntu-only)
+    8. [Doxygen Documentation Autogeneration (Ubuntu Only)](#doxygen-documentation-autogeneration-ubuntu-only)
+    9. [CMake Command Line Configuration (Ubuntu Only)](#cmake-command-line-configuration-ubuntu-only)
 
 
 
@@ -38,11 +39,15 @@ This installation section is only intended if you plan to modify the OpenPose co
 
 
 ## Requirements
-- NVIDIA graphics card with at least 1.6 GB available (the `nvidia-smi` command checks the available GPU memory in Ubuntu).
-- At least 2 GB of free RAM memory.
-- Highly recommended: cuDNN and a CPU with at least 8 cores.
+Requirements for the default configuration (you might need more resources with a greater `--net_resolution` and/or `scale_number` or less resources by reducing the net resolution and/or using the MPI and MPI_4 models):
 
-Note: These requirements assume the default configuration (i.e. `--net_resolution "656x368"` and `scale_number 1`). You might need more (with a greater net resolution and/or number of scales) or less resources (with smaller net resolution and/or using the MPI and MPI_4 models).
+- Nvidia GPU version:
+    - NVIDIA graphics card with at least 1.6 GB available (the `nvidia-smi` command checks the available GPU memory in Ubuntu).
+    - At least 2 GB of free RAM memory.
+    - Highly recommended: cuDNN.
+- CPU version:
+    - Around 8GB of free RAM memory.
+- Highly recommended: a CPU with at least 8 cores.
 
 
 
@@ -88,24 +93,26 @@ The instructions in this section describe the steps to build OpenPose using CMak
 1. Download and install CMake GUI:
     - Ubuntu: run the command `sudo apt-get install cmake-qt-gui`. Note: If you prefer to use CMake through the command line, see [Cmake Command Line Build](#cmake-command-line-build-ubuntu-only).
     - Windows: download and install the latest CMake win64-x64 msi installer from the [CMake website](https://cmake.org/download/), called `cmake-X.X.X-win64-x64.msi`.
-2. [**CUDA 8**](https://developer.nvidia.com/cuda-80-ga2-download-archive):
-    - Ubuntu: Run `sudo ubuntu/install_cuda.sh` or alternatively download and install it from their website.
-    - Windows: Install CUDA 8.0 after Visual Studio 2015 is installed to assure that the CUDA installation will generate all necessary files for VS. If CUDA was already installed, re-install CUDA after installing VS!
-    - **IMPORTANT**: As of a recent Windows update, you have to download the Nvidia [drivers](http://www.nvidia.com/Download/index.aspx) drivers first, and then install CUDA without the Graphics Driver flag or else your system might hang.
-3. [**cuDNN 5.1**](https://developer.nvidia.com/cudnn):
-    - Ubuntu: Run `sudo ubuntu/install_cudnn.sh` or alternatively download and install it from their website.
-    - Windows (and Ubuntu if manual installation): In order to manually install it, just unzip it and copy (merge) the contents on the CUDA folder, usually `/usr/local/cuda/` in Ubuntu and `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0` in Windows.
-4. [**AMD - Driver**](https://support.amd.com/en-us/download):
-    - Ubuntu and Windows:  Download and install driver from website
-5. [**AMD - OpenCL**](https://support.amd.com/en-us/kb-articles/Pages/OpenCL2-Driver.aspx):
-    - Ubuntu and Windows: Download and install driver from website
-6. Ubuntu - Other prerequisites:
-    - Caffe prerequisites: By default, OpenPose uses Caffe under the hood. If you have not used Caffe previously, install its dependencies by running `bash ./ubuntu/install_cmake.sh`.
+2. Nvidia GPU version prerequisites:
+    1. [**CUDA 8**](https://developer.nvidia.com/cuda-80-ga2-download-archive):
+        - Ubuntu: Run `sudo ubuntu/install_cuda.sh` or alternatively download and install it from their website.
+        - Windows: Install CUDA 8.0 after Visual Studio 2015 is installed to assure that the CUDA installation will generate all necessary files for VS. If CUDA was already installed, re-install CUDA after installing VS!
+        - **IMPORTANT**: As of a recent Windows update, you have to download the Nvidia [drivers](http://www.nvidia.com/Download/index.aspx) drivers first, and then install CUDA without the Graphics Driver flag or else your system might hang.
+    2. [**cuDNN 5.1**](https://developer.nvidia.com/cudnn):
+        - Ubuntu: Run `sudo ubuntu/install_cudnn.sh` or alternatively download and install it from their website.
+        - Windows (and Ubuntu if manual installation): In order to manually install it, just unzip it and copy (merge) the contents on the CUDA folder, usually `/usr/local/cuda/` in Ubuntu and `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0` in Windows.
+3. AMD GPU version prerequisites:
+    1. [**AMD - Driver**](https://support.amd.com/en-us/download):
+        - Ubuntu and Windows:  Download and install AMD driver from website.
+    2. [**AMD - OpenCL**](https://support.amd.com/en-us/kb-articles/Pages/OpenCL2-Driver.aspx):
+        - Ubuntu and Windows: Download and install AMD OpenCL driver software from website.
+4. Ubuntu - Other prerequisites:
+    - Caffe prerequisites: By default, OpenPose uses Caffe under the hood. If you have not used Caffe previously, install its dependencies by running `sudo bash ./ubuntu/install_cmake.sh`.
     - OpenCV must be already installed on your machine. It can be installed with `apt-get install libopencv-dev`. You can also use your own compiled OpenCV version.
 5. Windows - **Microsoft Visual Studio (VS) 2015 Enterprise Update 3**:
     - If **Visual Studio 2017 Community** is desired, we do not officially support it, but it might be compiled by firstly [enabling CUDA 8.0 in VS2017](https://stackoverflow.com/questions/43745099/using-cuda-with-visual-studio-2017?answertab=active#tab-top) or use **VS2017 with CUDA 9** by checking the `.vcxproj` file and changing the necessary paths from CUDA 8 to 9.
     - VS 2015 Enterprise Update 1 will give some compiler errors and VS 2015 Community has not been tested.
-5. Windows - **Caffe, OpenCV, and Caffe prerequisites**:
+6. Windows - **Caffe, OpenCV, and Caffe prerequisites**:
     - CMake automatically downloads all the Windows DLLs. Alternatively, you might prefer to download them manually:
         - Models:
             - [COCO model](http://posefs1.perception.cs.cmu.edu/OpenPose/models/pose/coco/pose_iter_440000.caffemodel): download in `models/pose/coco/`.
@@ -218,8 +225,9 @@ In order to uninstall OpenPose:
 By default, the body MPI model is not downloaded. You can download it by turning on the `DOWNLOAD_MPI_MODEL`. It's slightly faster but less accurate and has less keypoints than the COCO body model.
 
 
+
 #### CPU Version
-OpenPose will automatically use CPU mode if no Nvidia GPU is found in your system. To manually select the CPU Version, open CMake GUI mentioned above, and set the `GPU_MODE` flag to `CPU_ONLY`.
+To manually select the CPU Version, open CMake GUI mentioned above, and set the `GPU_MODE` flag to `CPU_ONLY`. **NOTE: Accuracy of the CPU version is ~1% higher than CUDA version, so the results will vary.**
 
 - On Ubuntu, OpenPose will link against the Intel MKL version (Math Kernel Library) of Caffe. Alternatively, the user can choose his own Caffe version, by unselecting `USE_MKL` and selecting his own Caffe path. 
 - On Windows, it will use the default version of Caffe or one provided by the user on the CPU.
