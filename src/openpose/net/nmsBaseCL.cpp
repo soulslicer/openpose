@@ -47,15 +47,6 @@ namespace op
                 *fy = yAcc / scoreAcc;
                 *fscore = sourcePtr[peakLocY*width + peakLocX];
             }
-
-            union DS {
-              struct {
-                short x;
-                short y;
-                float score;
-              } ds;
-              double dbl;
-            };
         );
 
         typedef cl::KernelFunctor<cl::Buffer, cl::Buffer, int, int, float, int> NMSRegisterKernelFunctor;

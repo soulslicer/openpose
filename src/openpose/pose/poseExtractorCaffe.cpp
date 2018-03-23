@@ -251,27 +251,30 @@ namespace op
                 const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
                 upImpl->spResizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
 
+                // Force to float
+                std::vector<caffe::Blob<float>*> heatMapsBlobs{upImpl->spHeatMapsBlob.get()};
+                std::vector<caffe::Blob<float>*> peaksBlobs{upImpl->spPeaksBlob.get()};
                 #ifdef USE_CUDA
-                    //upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, {upImpl->spHeatMapsBlob.get()}); // ~20ms
-                    upImpl->spResizeAndMergeCaffe->Forward_gpu(caffeNetOutputBlobs, {upImpl->spHeatMapsBlob.get()}); // ~5ms
+                    //upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~20ms
+                    upImpl->spResizeAndMergeCaffe->Forward_gpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
                 #elif USE_OPENCL
-                    //upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, {upImpl->spHeatMapsBlob.get()}); // ~20ms
-                    upImpl->spResizeAndMergeCaffe->Forward_ocl(caffeNetOutputBlobs, {upImpl->spHeatMapsBlob.get()});
+                    //upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~20ms
+                    upImpl->spResizeAndMergeCaffe->Forward_ocl(caffeNetOutputBlobs, heatMapsBlobs);
                 #else
-                    upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, {upImpl->spHeatMapsBlob.get()}); // ~20ms
+                    upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~20ms
                 #endif
 
                 // 3. Get peaks by Non-Maximum Suppression
                 upImpl->spNmsCaffe->setThreshold((float)get(PoseProperty::NMSThreshold));
                 #ifdef USE_CUDA
-                    //upImpl->spNmsCaffe->Forward_cpu({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()}); // ~ 7ms
-                    upImpl->spNmsCaffe->Forward_gpu({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()});// ~2ms
+                    //upImpl->spNmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs); // ~ 7ms
+                    upImpl->spNmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
                     cudaCheck(__LINE__, __FUNCTION__, __FILE__);
                 #elif USE_OPENCL
-                    //upImpl->spNmsCaffe->Forward_cpu({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()}); // ~ 7ms
-                    upImpl->spNmsCaffe->Forward_ocl({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()});
+                    //upImpl->spNmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs); // ~ 7ms
+                    upImpl->spNmsCaffe->Forward_ocl(heatMapsBlobs, peaksBlobs);
                 #else
-                    upImpl->spNmsCaffe->Forward_cpu({upImpl->spHeatMapsBlob.get()}, {upImpl->spPeaksBlob.get()}); // ~ 7ms
+                    upImpl->spNmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs); // ~ 7ms
                 #endif
 
                 // Get scale net to output (i.e. image input)
