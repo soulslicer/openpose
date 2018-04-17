@@ -45,6 +45,7 @@ public:
     std::shared_ptr<caffe::Blob<float>> peaksBlob;
     op::Array<float> mPoseKeypoints;
     op::Array<float> mPoseScores;
+    op::PoseModel poseModel;
 
     OpenPose(int FLAGS_logging_level = default_logging_level,
              std::string FLAGS_output_resolution = default_output_resolution,
@@ -74,7 +75,7 @@ public:
         // netInputSize
         const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "-1x368");
         // poseModel
-        const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
+        poseModel = op::flagsToPoseModel(FLAGS_model_pose);
         // Check no contradictory flags enabled
         if (FLAGS_alpha_pose < 0. || FLAGS_alpha_pose > 1.)
             op::error("Alpha value for blending must be in the range [0,1].", __LINE__, __FUNCTION__, __FILE__);
@@ -98,6 +99,7 @@ public:
         bodyPartConnectorCaffe = std::unique_ptr<op::BodyPartConnectorCaffe<float>>(new op::BodyPartConnectorCaffe<float>{});
         heatMapsBlob = {std::make_shared<caffe::Blob<float>>(1,1,1,1)};
         peaksBlob = {std::make_shared<caffe::Blob<float>>(1,1,1,1)};
+        bodyPartConnectorCaffe->setPoseModel(poseModel);
 
         // Step 4 - Initialize resources on desired thread (in this case single thread, i.e. we init resources here)
         poseExtractorCaffe->initializationOnThread();
@@ -149,11 +151,10 @@ public:
             poseRenderer->renderPose(outputArray, poseKeypoints, scaleInputToOutput);
             // Step 6 - OpenPose output format to cv::Mat
             displayImage = opOutputToCvMat.formatToCvMat(outputArray);
-
         }
     }
 
-    void poseFromHeatmap(const cv::Mat& inputImage, const boost::shared_ptr<caffe::Blob<float>>& caffeHmPtr, op::PoseModel poseModel, cv::Mat& displayImage){
+    void poseFromHeatmap(const cv::Mat& inputImage, const boost::shared_ptr<caffe::Blob<float>>& caffeHmPtr, cv::Mat& displayImage){
         // Get Scale
         const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
@@ -197,8 +198,10 @@ public:
         nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
         op::cudaCheck(__LINE__, __FUNCTION__, __FILE__);
 
+        //std::cout << heatMapsBlob->shape()[0] << " " << heatMapsBlob->shape()[1] << " " << heatMapsBlob->shape()[2] << " " << heatMapsBlob->shape()[3] << " " << std::endl;
+        //std::cout << peaksBlob->shape()[0] << " " << peaksBlob->shape()[1] << " " << peaksBlob->shape()[2] << " " << peaksBlob->shape()[3] << " " << std::endl;
+
         float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
-        std::cout << mScaleNetToOutput << std::endl;
         bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
         bodyPartConnectorCaffe->setInterMinAboveThreshold(
             (float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterMinAboveThreshold)
@@ -266,7 +269,7 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     boost::shared_ptr<caffe::Blob<float>> caffeHmPtr(new caffe::Blob<float>());
     caffeHmPtr->Reshape(size[0],size[1],size[2],size[3]);
     memcpy(caffeHmPtr->mutable_cpu_data(), hm, sizeof(float)*size[0]*size[1]*size[2]*size[3]);
-    openPose->poseFromHeatmap(image, caffeHmPtr, op::PoseModel::BODY_21, displayImage);
+    openPose->poseFromHeatmap(image, caffeHmPtr, displayImage);
     memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
 }
 
