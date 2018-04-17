@@ -22,6 +22,13 @@ class OpenPose(object):
         ct.c_void_p, np.ctypeslib.ndpointer(dtype=np.float32)]
     _libop.getOutputs.restype = None
 
+    _libop.poseFromHeatmap.argtypes = [
+        ct.c_void_p, np.ctypeslib.ndpointer(dtype=np.uint8),
+        ct.c_size_t, ct.c_size_t,
+        np.ctypeslib.ndpointer(dtype=np.uint8),
+        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32)]
+    _libop.poseFromHeatmap.restype = None
+
     def __init__(self, params):
         self.op = self._libop.newOP(params["logging_level"],
                                     params["output_resolution"],
@@ -48,6 +55,17 @@ class OpenPose(object):
         if display:
             return array, displayImage
         return array
+
+    def poseFromHM(self, image, hm):
+        shape = image.shape
+        displayImage = np.zeros(shape=(image.shape),dtype=np.uint8)
+        size = np.zeros(shape=(4),dtype=np.int32)
+        size[0] = hm.shape[0]
+        size[1] = hm.shape[1]
+        size[2] = hm.shape[2]
+        size[3] = hm.shape[3]
+        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size)
+        return displayImage
 
 if __name__ == "__main__":
     params = dict()
