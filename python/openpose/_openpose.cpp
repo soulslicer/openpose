@@ -198,9 +198,6 @@ public:
         nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
         op::cudaCheck(__LINE__, __FUNCTION__, __FILE__);
 
-        //std::cout << heatMapsBlob->shape()[0] << " " << heatMapsBlob->shape()[1] << " " << heatMapsBlob->shape()[2] << " " << heatMapsBlob->shape()[3] << " " << std::endl;
-        //std::cout << peaksBlob->shape()[0] << " " << peaksBlob->shape()[1] << " " << peaksBlob->shape()[2] << " " << peaksBlob->shape()[3] << " " << std::endl;
-
         float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
         bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
         bodyPartConnectorCaffe->setInterMinAboveThreshold(
