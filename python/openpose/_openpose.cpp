@@ -124,7 +124,6 @@ public:
         }
     }
 
-
     void forward(const cv::Mat& inputImage, op::Array<float>& poseKeypoints, cv::Mat& displayImage, bool display = false){
         op::OpOutputToCvMat opOutputToCvMat;
         op::CvMatToOpInput cvMatToOpInput;
@@ -249,12 +248,17 @@ void forward(c_OP op, unsigned char* img, size_t rows, size_t cols, int* size, u
     cv::Mat image(rows, cols, CV_8UC3, img);
     cv::Mat displayImage(rows, cols, CV_8UC3, displayImg);
     openPose->forward(image, output, displayImage, display);
-    size[0] = output.getSize()[0];
-    size[1] = output.getSize()[1];
-    size[2] = output.getSize()[2];
+    if(output.getSize().size()){
+        size[0] = output.getSize()[0];
+        size[1] = output.getSize()[1];
+        size[2] = output.getSize()[2];
+    }else{
+        size[0] = 0; size[1] = 0; size[2] = 0;
+    }
     if(display) memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
 }
 void getOutputs(c_OP op, float* array){
+    if(output.getSize().size())
     memcpy(array, output.getPtr(), output.getSize()[0]*output.getSize()[1]*output.getSize()[2]*sizeof(float));
 }
 
@@ -262,7 +266,6 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     OpenPose* openPose = (OpenPose*)op;
     cv::Mat image(rows, cols, CV_8UC3, img);
     cv::Mat displayImage(rows, cols, CV_8UC3, displayImg);
-    std::cout << size[0] << " " << size[1] << " " << size[2] << " " << size[3] << std::endl;
     boost::shared_ptr<caffe::Blob<float>> caffeHmPtr(new caffe::Blob<float>());
     caffeHmPtr->Reshape(size[0],size[1],size[2],size[3]);
     memcpy(caffeHmPtr->mutable_cpu_data(), hm, sizeof(float)*size[0]*size[1]*size[2]*size[3]);

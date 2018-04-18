@@ -16,9 +16,9 @@ params["scale_number"] = 1
 params["render_threshold"] = 0.05
 params["num_gpu_start"] = 0
 params["disable_blending"] = False
-params["default_model_folder"] = dir_path + "/../../models/"
+params["default_model_folder"] = dir_path + "/../../../models/"
 openpose = OpenPose(params)
-img = cv2.imread(dir_path + "/../../examples/media/COCO_val2014_000000000192.jpg")
+img = cv2.imread(dir_path + "/../../../examples/media/COCO_val2014_000000000192.jpg")
 arr, output_image = openpose.forward(img, True)
 print arr
 
