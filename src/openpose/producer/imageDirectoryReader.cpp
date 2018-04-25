@@ -2,6 +2,7 @@
 #include <openpose/utilities/fastMath.hpp>
 #include <openpose/utilities/fileSystem.hpp>
 #include <openpose/producer/imageDirectoryReader.hpp>
+#include <fstream>
 
 namespace op
 {
@@ -30,6 +31,12 @@ namespace op
         }
     }
 
+    bool is_file_exist(const char *fileName)
+    {
+        std::ifstream infile(fileName);
+        return infile.good();
+    }
+
     ImageDirectoryReader::ImageDirectoryReader(const std::string& imageDirectoryPath,
                                                const unsigned int imageDirectoryStereo,
                                                const std::string& cameraParameterPath) :
@@ -41,22 +48,29 @@ namespace op
     {
         try
         {
-            // Read camera parameters from SN
-            auto serialNumbers = getFilesOnDirectory(cameraParameterPath, ".xml");
-            // Security check
-            if (serialNumbers.size() != mImageDirectoryStereo && mImageDirectoryStereo > 1)
-                error("Found different number of camera parameter files than the number indicated by"
-                      " `--3d_views` ("
-                      + std::to_string(serialNumbers.size()) + " vs. "
-                      + std::to_string(mImageDirectoryStereo) + "). Make them equal or add"
-                      + " `--3d_views 1`",
-                      __LINE__, __FUNCTION__, __FILE__);
-            // Get serial numbers
-            for (auto& serialNumber : serialNumbers)
-                serialNumber = getFileNameNoExtension(serialNumber);
-            // Get camera paremeters
-            if (mImageDirectoryStereo > 1)
-                mCameraParameterReader.readParameters(cameraParameterPath, serialNumbers);
+            if(is_file_exist(cameraParameterPath.c_str()))
+            {
+                // Read camera parameters from SN
+                auto serialNumbers = getFilesOnDirectory(cameraParameterPath, ".xml");
+                // Security check
+                if (serialNumbers.size() != mImageDirectoryStereo && mImageDirectoryStereo > 1)
+                    error("Found different number of camera parameter files than the number indicated by"
+                          " `--3d_views` ("
+                          + std::to_string(serialNumbers.size()) + " vs. "
+                          + std::to_string(mImageDirectoryStereo) + "). Make them equal or add"
+                          + " `--3d_views 1`",
+                          __LINE__, __FUNCTION__, __FILE__);
+                // Get serial numbers
+                for (auto& serialNumber : serialNumbers)
+                    serialNumber = getFileNameNoExtension(serialNumber);
+                // Get camera paremeters
+                if (mImageDirectoryStereo > 1)
+                    mCameraParameterReader.readParameters(cameraParameterPath, serialNumbers);
+            }
+            else
+            {
+                op::log("Warning: Camera path does not exist");
+            }
         }
         catch (const std::exception& e)
         {
