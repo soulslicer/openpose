@@ -593,6 +593,11 @@ download_model("hand" ${DOWNLOAD_HAND_MODEL} hand/pose_iter_102000.caffemodel
 message(STATUS "Models Downloaded.")
 
 
+### PYTHON
+if (UNIX AND NOT APPLE)
+  add_subdirectory(python)
+endif ()
+
 ### GENERATE DOCUMENTATION
 if (UNIX AND NOT APPLE)
 
