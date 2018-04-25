@@ -595,7 +595,9 @@ message(STATUS "Models Downloaded.")
 
 ### PYTHON
 if (UNIX AND NOT APPLE)
-  add_subdirectory(python)
+  if (Caffe_FOUND)
+    add_subdirectory(python)
+  endif()
 endif ()
 
 ### GENERATE DOCUMENTATION
