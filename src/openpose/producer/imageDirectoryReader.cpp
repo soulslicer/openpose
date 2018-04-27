@@ -31,12 +31,6 @@ namespace op
         }
     }
 
-    bool is_file_exist(const char *fileName)
-    {
-        std::ifstream infile(fileName);
-        return infile.good();
-    }
-
     ImageDirectoryReader::ImageDirectoryReader(const std::string& imageDirectoryPath,
                                                const unsigned int imageDirectoryStereo,
                                                const std::string& cameraParameterPath) :
@@ -48,7 +42,8 @@ namespace op
     {
         try
         {
-            if(is_file_exist(cameraParameterPath.c_str()))
+            // If stereo setting --> load camera parameters
+            if (imageDirectoryStereo > 1)
             {
                 // Read camera parameters from SN
                 auto serialNumbers = getFilesOnDirectory(cameraParameterPath, ".xml");
@@ -64,12 +59,7 @@ namespace op
                 for (auto& serialNumber : serialNumbers)
                     serialNumber = getFileNameNoExtension(serialNumber);
                 // Get camera paremeters
-                if (mImageDirectoryStereo > 1)
-                    mCameraParameterReader.readParameters(cameraParameterPath, serialNumbers);
-            }
-            else
-            {
-                op::log("Warning: Camera path does not exist");
+                mCameraParameterReader.readParameters(cameraParameterPath, serialNumbers);
             }
         }
         catch (const std::exception& e)
@@ -83,6 +73,32 @@ namespace op
         try
         {
             return mCameraParameterReader.getCameraMatrices();
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return {};
+        }
+    }
+
+    std::vector<cv::Mat> ImageDirectoryReader::getCameraExtrinsics()
+    {
+        try
+        {
+            return mCameraParameterReader.getCameraExtrinsics();
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return {};
+        }
+    }
+
+    std::vector<cv::Mat> ImageDirectoryReader::getCameraIntrinsics()
+    {
+        try
+        {
+            return mCameraParameterReader.getCameraIntrinsics();
         }
         catch (const std::exception& e)
         {

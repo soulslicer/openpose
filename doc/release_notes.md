@@ -168,7 +168,7 @@ OpenPose Library - Release Notes
 
 
 
-## Current version (future OpenPose 1.3.0)
+## OpenPose 1.3.0 (Mar 24, 2018)
 1. Main improvements:
     1. Output of `--write_json` uses less hard disk space (enters and tabs removed).
     2. Removed Boost dependencies.
@@ -196,6 +196,7 @@ OpenPose Library - Release Notes
     24. OpenPose GUI: 'l' and 'k' functionality swapped.
     25. 3-D reconstruction module: Added flag `--3d_min_views` to select minimum number of cameras required for 3-D reconstruction.
     26. Flag `--camera_fps` also applies to recorded video (`--write_video`).
+    27. Flir camera producer `n` times faster for `n` cameras (multi-threaded). If the number of cameras is greater than the number of the computer threads, the speed up might not be exactly `n` times.
 2. Functions or parameters renamed:
     1. Flag `no_display` renamed as `display`, able to select between `NoDisplay`, `Display2D`, `Display3D`, and `DisplayAll`.
     2. 3-D reconstruction demo is now inside the OpenPose demo binary.
@@ -207,6 +208,20 @@ OpenPose Library - Release Notes
     2. Fixed core-dumped in PoseRenderer with GUI when changed element to be rendered to something else than skeleton.
     3. 3-D visualizer does not crash on exit anymore.
     4. Fake pause ('m' key pressed) works again.
+
+
+
+## Current version - future OpenPose 1.3.1
+1. Main improvements:
+    1. Flir cameras: Added software trigger and a dedicated thread to keep reading images to remove latency (analogously to webcamReader).
+    2. 3-D reconstruction: Added non-linear minimization to further improve 3-D triangulation accuracy by ~5% (Ubuntu only).
+    3. CMake: All libraries as single variable (simpler to add/remove libraries).
+    4. Datum includes extrinsic and intrinsic camera parameters.
+2. Functions or parameters renamed:
+    1. Removed scale parameter from hand and face rectangle extractor (causing wrong results if custom `--output_resolution`).
+3. Main bugs fixed:
+    1. Fixed hand and face extraction and rendering scaling issues when `--output_resolution` is not the default one.
+    2. Part candidates (`--part_candidates`) are saved with the same scale than the final keypoints itself.
 
 
 

@@ -264,8 +264,18 @@ namespace op
                     upImpl->spResizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~20ms
                 #endif
 
+                // Get scale net to output (i.e. image input)
+                // Note: In order to resize to input size, (un)comment the following lines
+                const auto scaleProducerToNetInput = resizeGetScaleFactor(inputDataSize, mNetOutputSize);
+                const Point<int> netSize{intRound(scaleProducerToNetInput*inputDataSize.x),
+                                         intRound(scaleProducerToNetInput*inputDataSize.y)};
+                mScaleNetToOutput = {(float)resizeGetScaleFactor(netSize, inputDataSize)};
+                // mScaleNetToOutput = 1.f;
+
                 // 3. Get peaks by Non-Maximum Suppression
                 upImpl->spNmsCaffe->setThreshold((float)get(PoseProperty::NMSThreshold));
+                const auto nmsOffset = float(0.5/double(mScaleNetToOutput));
+                upImpl->spNmsCaffe->setOffset(Point<float>{nmsOffset, nmsOffset});
                 #ifdef USE_CUDA
                     //upImpl->spNmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs); // ~ 7ms
                     upImpl->spNmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
@@ -276,14 +286,6 @@ namespace op
                 #else
                     upImpl->spNmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs); // ~ 7ms
                 #endif
-
-                // Get scale net to output (i.e. image input)
-                // Note: In order to resize to input size, (un)comment the following lines
-                const auto scaleProducerToNetInput = resizeGetScaleFactor(inputDataSize, mNetOutputSize);
-                const Point<int> netSize{intRound(scaleProducerToNetInput*inputDataSize.x),
-                                         intRound(scaleProducerToNetInput*inputDataSize.y)};
-                mScaleNetToOutput = {(float)resizeGetScaleFactor(netSize, inputDataSize)};
-                // mScaleNetToOutput = 1.f;
 
                 // 4. Connecting body parts
                 // Get scale net to output (i.e. image input)

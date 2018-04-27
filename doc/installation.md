@@ -11,15 +11,16 @@ OpenPose - Installation
 7. [Reinstallation](#reinstallation)
 8. [Uninstallation](#uninstallation)
 9. [Optional Settings](#optional-settings)
-    1. [MPI Model](#mpi-model)
-    2. [CPU Version](#cpu-version)
-    3. [OpenCL Version](#opencl-version)
-    4. [3D Reconstruction Module](#3d-reconstruction-module)
-    5. [Compiling without cuDNN](#compiling-without-cudnn)
-    6. [Custom Caffe (Ubuntu Only)](#custom-caffe-ubuntu-only)
-    7. [Custom OpenCV (Ubuntu Only)](#custom-opencv-ubuntu-only)
-    8. [Doxygen Documentation Autogeneration (Ubuntu Only)](#doxygen-documentation-autogeneration-ubuntu-only)
-    9. [CMake Command Line Configuration (Ubuntu Only)](#cmake-command-line-configuration-ubuntu-only)
+    1. [Profiling Speed](#profiling-speed)
+    2. [MPI Model](#mpi-model)
+    3. [CPU Version](#cpu-version)
+    4. [OpenCL Version](#opencl-version)
+    5. [3D Reconstruction Module](#3d-reconstruction-module)
+    6. [Compiling without cuDNN](#compiling-without-cudnn)
+    7. [Custom Caffe (Ubuntu Only)](#custom-caffe-ubuntu-only)
+    8. [Custom OpenCV (Ubuntu Only)](#custom-opencv-ubuntu-only)
+    9. [Doxygen Documentation Autogeneration (Ubuntu Only)](#doxygen-documentation-autogeneration-ubuntu-only)
+    10. [CMake Command Line Configuration (Ubuntu Only)](#cmake-command-line-configuration-ubuntu-only)
 
 
 
@@ -221,6 +222,14 @@ In order to uninstall OpenPose:
 
 
 ### Optional Settings
+#### Profiling Speed
+OpenPose displays the FPS in the basic GUI. However, more complex speed metrics can be obtained from the command line while running OpenPose. In order to obtain those, compile OpenPose with the `PROFILER_ENABLED` flag. OpenPose will automatically display time measurements for each subthread after processing `F` frames (by default `F = 1000`, but it can be modified with the `--profile_speed` flag).
+
+- Time measurement for 1 graphic card: The FPS will be the slowest time displayed in your terminal command line (as OpenPose is multi-threaded). Times are in milliseconds, so `FPS = 1000/millisecond_measurement`.
+- Time measurement for >1 graphic cards: Assuming `n` graphic cards, you will have to wait up to `n` x `F` frames to visualize each graphic card speed (as the frames are splitted among them). In addition, the FPS would be: `FPS = minFPS(speed_per_GPU/n, worst_time_measurement_other_than_GPUs)`. For < 4 GPUs, this is usually `FPS = speed_per_GPU/n`.
+
+
+
 #### MPI Model
 By default, the body MPI model is not downloaded. You can download it by turning on the `DOWNLOAD_MPI_MODEL`. It's slightly faster but less accurate and has less keypoints than the COCO body model.
 
@@ -274,6 +283,7 @@ You can include the 3D reconstruction module by:
                 - Copy `{freeglutParentDirectory}\freeglut\include\` as `{OpenPoseDirectory}\3rdparty\windows\freeglut\include\`.
                 - Copy `{freeglutParentDirectory}\freeglut\lib\x64\` as `{OpenPoseDirectory}\3rdparty\windows\freeglut\lib\`.
 3. Follow the CMake installation steps. In addition, set the `WITH_FLIR_CAMERA` (only if Spinnaker was installed) and `WITH_3D_RENDERER` options.
+4. Increased accuracy with Ceres solver (Ubuntu only): For extra 3-D reconstruction accuracy, run `sudo apt-get install libeigen3-dev`, install [Ceres solver](http://ceres-solver.org/installation.html), and enable `WITH_CERES` in CMake when installing OpenPose. Ceres is harder to install in Windows, so we have not tested it so far in there. Feel free to make a pull request if you do.
 
 After installation, check the [doc/3d_reconstruction_demo.md](./3d_reconstruction_demo.md) instructions.
 
