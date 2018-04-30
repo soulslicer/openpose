@@ -3,7 +3,6 @@
 #include <opencv2/imgproc/imgproc.hpp> // cv::pyrDown
 #include <openpose/experimental/tracking/pyramidalLK.hpp>
 #include <opencv2/opencv.hpp>
-#include <chrono>
 
 #if defined ( __SSE4_1__)
 #include <emmintrin.h>

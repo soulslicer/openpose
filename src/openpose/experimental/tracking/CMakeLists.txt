@@ -1,4 +1,3 @@
-
 set(SOURCES_OP_TRACKING
     defineTemplates.cpp
     personIdExtractor.cpp
