@@ -60,7 +60,8 @@ namespace op
 
     void updateLK(std::unordered_map<int,PersonEntry>& personEntries, std::vector<cv::Mat>& pyramidImagesPrevious,
                   std::vector<cv::Mat>& pyramidImagesCurrent, const cv::Mat& imagePrevious,
-                  const cv::Mat& imageCurrent, const int numberFramesToDeletePerson)
+                  const cv::Mat& imageCurrent, const int numberFramesToDeletePerson,
+                  const int levels, const int patchSize, const bool trackVelocity)
     {
         try
         {
@@ -76,10 +77,11 @@ namespace op
                 auto& element = personEntries[key];
 
                 // Remove keypoint
-                if (element.counterLastDetection++ > numberFramesToDeletePerson)
+                if (element.counterLastDetection++ > numberFramesToDeletePerson){
+                    //std::cout << "Erasing: " << key << std::endl;
                     personEntries.erase(key);
                 // Update all keypoints for that entry
-                else
+                }else
                 {
                     PersonEntry personEntry;
                     personEntry.counterLastDetection = element.counterLastDetection;
@@ -89,10 +91,18 @@ namespace op
                         pyramidalLKGpu(element.keypoints, personEntry.keypoints, element.status,
                                        imagePrevious, imageCurrent, 3, 21);
                     #else
-                        pyramidalLKCpu(element.keypoints, personEntry.keypoints, pyramidImagesPrevious,
-                                       pyramidImagesCurrent, element.status, imagePrevious, imageCurrent, 3, 21);
+                        if(trackVelocity)
+                        {
+                            personEntry.keypoints = element.getPredicted();
+                            pyramidalLKOcv(element.keypoints, personEntry.keypoints, pyramidImagesPrevious,
+                                           pyramidImagesCurrent, element.status, imagePrevious, imageCurrent, levels, patchSize, true);
+                        }
+                        else
+                            pyramidalLKOcv(element.keypoints, personEntry.keypoints, pyramidImagesPrevious,
+                                           pyramidImagesCurrent, element.status, imagePrevious, imageCurrent, levels, patchSize);
                     #endif
                     personEntry.status = element.status;
+                    personEntry.lastKeypoints = element.keypoints;
                     element = personEntry;
                 }
             }
@@ -210,7 +220,34 @@ namespace op
                     else
                         poseId = nextPersonId++;
 
-                    pendingQueue[poseId] = openposePersonEntry;
+                    // Pass last positions
+                    auto personEntryCopy = openposePersonEntry;
+                    if(bestMatch != -1){
+                        personEntryCopy.lastKeypoints = personEntries[bestMatch].lastKeypoints;
+
+                        // Keep last point
+                        for(size_t x=0; x<personEntryCopy.keypoints.size(); x++){
+                            const cv::Point& ik = personEntryCopy.keypoints[x];
+                            const cv::Point& jk = personEntries[bestMatch].keypoints[x];
+                            float distance = sqrt(pow(ik.x-jk.x,2)+pow(ik.y-jk.y,2));
+                            if(distance < 5){
+                                personEntryCopy.keypoints[x] = jk;
+                            }else if(distance < 10){
+                                personEntryCopy.keypoints[x] = cv::Point((jk.x+ik.x)/2.,(jk.y+ik.y)/2.);
+                            }
+                        }
+
+                        // See if lost
+                        for(size_t x=0; x<personEntries[bestMatch].keypoints.size(); x++){
+                            if((int)personEntryCopy.status[x]){
+                                personEntryCopy.keypoints[x] = personEntries[bestMatch].keypoints[x];
+                            }
+                        }
+
+                        personEntryCopy.lastKeypoints = personEntryCopy.keypoints;
+                    }
+
+                    pendingQueue[poseId] = personEntryCopy;
                 }
             }
 
@@ -227,18 +264,71 @@ namespace op
         }
     }
 
-    PersonIdExtractor::PersonIdExtractor(const float confidenceThreshold, const float inlierRatioThreshold,
-                                         const float distanceThreshold, const int numberFramesToDeletePerson) :
+    op::Array<float> op::PersonIdExtractor::personEntriesAsOPArray()
+    {
+        op::Array<float> opArray;
+        if(!mPersonEntries.size()) return opArray;
+        int dims[] = { (int)mPersonEntries.size(), (int)mPersonEntries.begin()->second.keypoints.size(), 3 };
+        cv::Mat opArrayMat(3,dims,CV_32FC1);
+        int i=0;
+        for (auto& kv : mPersonEntries) {
+            const PersonEntry& pe = kv.second;
+            for(int j=0; j<dims[1]; j++){
+                opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 0) = pe.keypoints[j].x;
+                opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 1) = pe.keypoints[j].y;
+                opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 2) = !(int)pe.status[j];
+                if(pe.keypoints[j].x == 0 && pe.keypoints[j].y == 0)
+                    opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 2) = 0;
+            }
+            i++;
+        }
+        opArray.setFrom(opArrayMat);
+        return opArray;
+    }
+
+    void op::PersonIdExtractor::update(const cv::Mat &cvMatInput)
+    {
+        try
+        {
+            if (mImagePrevious.empty())
+            {
+                throw std::runtime_error("Call extractIds first");
+            }
+            else
+            {
+                cv::Mat imageCurrent;
+                std::vector<cv::Mat> pyramidImagesCurrent;
+                cvMatInput.convertTo(imageCurrent, CV_32F);
+                updateLK(mPersonEntries, mPyramidImagesPrevious, pyramidImagesCurrent, mImagePrevious, imageCurrent,
+                         mNumberFramesToDeletePerson, mLevels, mPatchSize, mTrackVelocity);
+                mImagePrevious = imageCurrent;
+                mPyramidImagesPrevious = pyramidImagesCurrent;
+
+                vizPersonEntries();
+            }
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    op::PersonIdExtractor::PersonIdExtractor(const float confidenceThreshold, const float inlierRatioThreshold,
+                                             const float distanceThreshold, const int numberFramesToDeletePerson,
+                                             const int levels, const int patchSize, const bool trackVelocity) :
         mConfidenceThreshold{confidenceThreshold},
         mInlierRatioThreshold{inlierRatioThreshold},
         mDistanceThreshold{distanceThreshold},
         mNumberFramesToDeletePerson{numberFramesToDeletePerson},
+        mLevels{levels},
+        mPatchSize{patchSize},
+        mTrackVelocity{trackVelocity},
         mNextPersonId{0ll}
     {
         try
         {
-            error("PersonIdExtractor (`identification` flag) buggy and not working yet, but we are working on it!"
-                  " Coming soon!", __LINE__, __FUNCTION__, __FILE__);
+            //error("PersonIdExtractor (`identification` flag) buggy and not working yet, but we are working on it!"
+            //      " Coming soon!", __LINE__, __FUNCTION__, __FILE__);
         }
         catch (const std::exception& e)
         {
@@ -256,7 +346,7 @@ namespace op
         {
             Array<long long> poseIds;
             const auto openposePersonEntries = captureKeypoints(poseKeypoints, mConfidenceThreshold);
-// log(mPersonEntries.size());
+            // log(mPersonEntries.size());
 
             // First frame
             if (mImagePrevious.empty())
@@ -273,7 +363,7 @@ namespace op
                 std::vector<cv::Mat> pyramidImagesCurrent;
                 cvMatInput.convertTo(imageCurrent, CV_32F);
                 updateLK(mPersonEntries, mPyramidImagesPrevious, pyramidImagesCurrent, mImagePrevious, imageCurrent,
-                         mNumberFramesToDeletePerson);
+                                         mNumberFramesToDeletePerson, mLevels, mPatchSize, mTrackVelocity);
                 mImagePrevious = imageCurrent;
                 mPyramidImagesPrevious = pyramidImagesCurrent;
             }
@@ -281,6 +371,8 @@ namespace op
             // Get poseIds and update LKset according to OpenPose set
             poseIds = matchLKAndOP(mPersonEntries, mNextPersonId, openposePersonEntries, mImagePrevious,
                                    mInlierRatioThreshold, mDistanceThreshold);
+
+            vizPersonEntries();
 
             return poseIds;
         }
@@ -290,4 +382,48 @@ namespace op
             return Array<long long>{};
         }
     }
+
+    // Debug Functions
+
+    void op::PersonIdExtractor::drawIDs(cv::Mat& img)
+    {
+        for (auto& kv : mPersonEntries) {
+            const PersonEntry& pe = kv.second;
+            cv::Point avg(0,0);
+            int i=-1;
+            int count = 0;
+            for(cv::Point p : pe.keypoints){
+                i++;
+                if((p.x == 0 && p.y == 0) || (int)pe.status[i]) continue;
+                avg.x += p.x;
+                avg.y += p.y;
+                count++;
+            }
+            if(!count) continue;
+            avg.x /= count;
+            avg.y /= count;
+            cv::putText(img, std::to_string(kv.first), avg, cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(255,255,255),1);
+        }
+    }
+
+    void op::PersonIdExtractor::vizPersonEntries(){
+        for ( auto& kv : mPersonEntries) {
+            PersonEntry& pe = kv.second;
+            std::vector<cv::Point2f> predictedKeypoints = pe.getPredicted();
+            for(size_t i=0; i<pe.keypoints.size(); i++){
+                cv::circle(debugImage, pe.keypoints[i], 3, cv::Scalar(255,0,0),CV_FILLED);
+                cv::putText(debugImage, std::to_string(!(int)pe.status[i]), pe.keypoints[i], cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(0,0,255),1);
+
+                if(pe.lastKeypoints.size()){
+                    cv::line(debugImage, pe.keypoints[i], pe.lastKeypoints[i],cv::Scalar(255,0,0));
+                    cv::circle(debugImage, pe.lastKeypoints[i], 3, cv::Scalar(255,255,0),CV_FILLED);
+                }
+                if(predictedKeypoints.size() && mTrackVelocity){
+                    cv::line(debugImage, pe.keypoints[i], predictedKeypoints[i],cv::Scalar(255,0,0));
+                    cv::circle(debugImage, predictedKeypoints[i], 3, cv::Scalar(255,0,255),CV_FILLED);
+                }
+            }
+        }
+    }
+
 }

@@ -2,7 +2,8 @@ set(SOURCES_OP_TRACKING
     defineTemplates.cpp
     personIdExtractor.cpp
     pyramidalLK.cpp
-    pyramidalLK.cu)
+    pyramidalLK.cu
+    mosse.cpp)
 
 include(${CMAKE_SOURCE_DIR}/cmake/Utils.cmake)
 prepend(SOURCES_OP_TRACKING_WITH_CP ${CMAKE_CURRENT_SOURCE_DIR} ${SOURCES_OP_TRACKING})

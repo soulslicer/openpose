@@ -4,7 +4,8 @@ set(EXAMPLE_FILES
     3_user_synchronous_output.cpp
     4_user_synchronous_all.cpp
     5_user_asynchronous.cpp
-    6_user_asynchronous_output.cpp)
+    6_user_asynchronous_output.cpp
+    7_tracking.cpp)
 
 include(${CMAKE_SOURCE_DIR}/cmake/Utils.cmake)
 
