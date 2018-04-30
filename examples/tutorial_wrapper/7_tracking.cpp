@@ -231,14 +231,8 @@ DEFINE_bool(tracking_use_velocity,                  false,             "");
 class WUserPostProcessing : public op::Worker<std::shared_ptr<std::vector<op::Datum>>>
 {
 public:
-    // Tracker
-    std::unique_ptr<op::PersonIdExtractor> personTracker;
-    std::unique_ptr<op::PoseCpuRenderer> poseRenderer;
-    op::CvMatToOpOutput cvMatToOpOutput;
-    op::OpOutputToCvMat opOutputToCvMat;
-    int fCounter = FLAGS_tracking_frames_lk_only+1;
-
-    WUserPostProcessing()
+    WUserPostProcessing() :
+        fCounter{std::numeric_limits<int>::max()}
     {
         // User's constructor here
         const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
@@ -256,74 +250,61 @@ public:
 
     void initializationOnThread() {}
 
-    void work(std::shared_ptr<std::vector<op::Datum>>& datumsPtr)
+    void work(std::shared_ptr<std::vector<op::Datum>>& tDatums)
     {
         // User's post-processing (after OpenPose processing & before OpenPose outputs) here
             // datum.cvOutputData: rendered frame with pose or heatmaps
             // datum.poseKeypoints: Array<float> with the estimated pose
         try
         {
-            if (datumsPtr == nullptr || datumsPtr->empty()) return;
-            if(datumsPtr->size() != 1) throw std::runtime_error("Error. Look Here");
-            op::Datum& datum = datumsPtr->at(0);
-
-            if(fCounter > FLAGS_tracking_frames_lk_only)
+            if (op::checkNoNullNorEmpty(tDatums))
             {
-                personTracker->extractIds(datum.poseKeypoints, datum.cvInputData);
-                fCounter = 0;
-            }
-            else
-            {
-                personTracker->update(datum.cvInputData);
-            }
+if (tDatums->size() > 1)
+    op::log("Only implemnted for 1 element!!!!!!!!! Undefined behavior!!!!");
+// op::log(fCounter);
+// op::log(FLAGS_tracking_frames_lk_only);
+                // OP + tracking
+                if (fCounter > FLAGS_tracking_frames_lk_only)
+                {
+                    for (auto& tDatum : *tDatums)
+                        personTracker->extractIds(tDatum.poseKeypoints, tDatum.cvInputData);
+                    fCounter = 0;
+                }
+                // Only tracking
+                else
+                {
+                    for (auto& tDatum : *tDatums)
+                        personTracker->update(tDatum.cvInputData);
+                    fCounter++;
+                }
+                for (auto& tDatum : *tDatums)
+                    tDatum.poseKeypoints = personTracker->personEntriesAsOPArray();
 
-            // Very hacky, need to convert to op format before converting back for rendering
-            datum.poseKeypoints = personTracker->personEntriesAsOPArray();
-            auto outputArray = cvMatToOpOutput.createArray(datum.cvInputData, datum.scaleInputToOutput, op::Point<int>(datum.cvInputData.size().width,datum.cvInputData.size().height));
-            poseRenderer->renderPose(outputArray, datum.poseKeypoints, datum.scaleInputToOutput);
-            datum.cvOutputData = opOutputToCvMat.formatToCvMat(outputArray);
-
-            fCounter++;
-        }
-        catch (const std::exception& e)
-        {
-            op::log("Some kind of unexpected error happened.");
-            this->stop();
-            op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-        }
-    }
-};
-
-// This worker will just read and return all the jpg files in a directory
-class WUserOutput : public op::WorkerConsumer<std::shared_ptr<std::vector<op::Datum>>>
-{
-public:
-    void initializationOnThread() {}
-
-    void workConsumer(const std::shared_ptr<std::vector<op::Datum>>& datumsPtr)
-    {
-        try
-        {
-            // User's displaying/saving/other processing here
-                // datum.cvOutputData: rendered frame with pose or heatmaps
-                // datum.poseKeypoints: Array<float> with the estimated pose
-            if (datumsPtr != nullptr && !datumsPtr->empty())
-            {
-                // Display rendered output image
-                cv::imshow("User worker GUI", datumsPtr->at(0).cvOutputData);
-                // Display image and sleeps at least 1 ms (it usually sleeps ~5-10 msec to display the image)
-                const char key = (char)cv::waitKey(1);
-                if (key == 27)
-                    this->stop();
+// GINES: add in GuiInfoAdder
+                for (auto& tDatum : *tDatums)
+                {
+                    // Rendering
+                    // Very hacky, need to convert to op format before converting back for rendering
+                    auto outputArray = cvMatToOpOutput.createArray(tDatum.cvInputData, tDatum.scaleInputToOutput, op::Point<int>(tDatum.cvInputData.size().width,tDatum.cvInputData.size().height));
+                    poseRenderer->renderPose(outputArray, tDatum.poseKeypoints, tDatum.scaleInputToOutput);
+                    tDatum.cvOutputData = opOutputToCvMat.formatToCvMat(outputArray);
+                }
             }
         }
         catch (const std::exception& e)
         {
-            op::log("Some kind of unexpected error happened.");
             this->stop();
             op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
         }
     }
+
+private:
+    // Tracker
+    std::unique_ptr<op::PersonIdExtractor> personTracker;
+    std::unique_ptr<op::PoseCpuRenderer> poseRenderer;
+    op::CvMatToOpOutput cvMatToOpOutput;
+    op::OpOutputToCvMat opOutputToCvMat;
+    int fCounter;
 };
 
 int openPoseDemo()
@@ -383,15 +364,10 @@ int openPoseDemo()
     // Initializing the user custom classes
     // Processing
     auto wUserPostProcessing = std::make_shared<WUserPostProcessing>();
-    // GUI (Display)
-    auto wUserOutput = std::make_shared<WUserOutput>();
 
     // Add custom processing
     const auto workerProcessingOnNewThread = false;
     opWrapper.setWorkerPostProcessing(wUserPostProcessing, workerProcessingOnNewThread);
-    // Add custom output
-    const auto workerOutputOnNewThread = true;
-    opWrapper.setWorkerOutput(wUserOutput, workerOutputOnNewThread);
 
     // Pose configuration (use WrapperStructPose{} for default and recommended configuration)
     const op::WrapperStructPose wrapperStructPose{!FLAGS_body_disable, netInputSize, outputSize, keypointScale,
