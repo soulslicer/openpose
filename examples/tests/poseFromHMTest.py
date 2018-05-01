@@ -125,32 +125,9 @@ def func(frame):
     heatmaps = net.blobs['net_output'].data[:,:,:,:]
     print heatmaps.shape
 
-#    global currIndex
-#    netDecreaseFactor = float(imageForNet.shape[1]) / float(heatmaps.shape[2]) # 8
-#    resized_heatmaps = np.zeros(shape=(heatmaps.shape[0], heatmaps.shape[1], rframe.shape[0], rframe.shape[1]))
-#    num_maps = heatmaps.shape[1]
-#    for i in range(0, num_maps):
-#        heatmap = net.blobs['net_output'].data[0,i,:,:]
-#        resizedHeatmap = cv2.resize(heatmap, (0,0), fx=netDecreaseFactor, fy=netDecreaseFactor)
-#        resizedHeatmap = unpad_image(resizedHeatmap, padding)
-
-#        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(resizedHeatmap)
-
-#        if i==currIndex:
-#            resizedHeatmap = np.abs(resizedHeatmap)
-#            resizedHeatmap = (resizedHeatmap*255.).astype(dtype='uint8')
-#            #resizedHeatmap = power_law(resizedHeatmap, 1.5)
-#            im_color = cv2.applyColorMap(resizedHeatmap, cv2.COLORMAP_JET)
-#            resizedHeatmap = cv2.addWeighted(rframe, 1, im_color, 0.3, 0)
-#            cv2.circle(resizedHeatmap, (int(maxLoc[0]),int(maxLoc[1])), 5, (255,0,0), -1)
-#            key = show_image(resizedHeatmap)
-#            if key == 83:
-#                currIndex = currIndex + 1
-#            elif key == 81:
-#                currIndex = currIndex - 1
-
     # Pose from HM Test
-    frame = openpose.poseFromHM(frame, heatmaps)
+    array, frame = openpose.poseFromHM(frame, heatmaps)
+    print array
     show_image(frame)
 
     return frame

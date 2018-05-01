@@ -153,7 +153,7 @@ public:
         }
     }
 
-    void poseFromHeatmap(const cv::Mat& inputImage, const boost::shared_ptr<caffe::Blob<float>>& caffeHmPtr, cv::Mat& displayImage){
+    void poseFromHeatmap(const cv::Mat& inputImage, const boost::shared_ptr<caffe::Blob<float>>& caffeHmPtr, op::Array<float>& poseKeypoints, cv::Mat& displayImage){
         // Get Scale
         const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
@@ -209,6 +209,7 @@ public:
         bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
                                              peaksBlob.get()},
                                              mPoseKeypoints, mPoseScores);
+        poseKeypoints = mPoseKeypoints;
 
         auto outputArray = cvMatToOpOutput.createArray(inputImage, scaleInputToOutput, outputResolution);
         // Step 5 - Render poseKeypoints
@@ -269,8 +270,16 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     boost::shared_ptr<caffe::Blob<float>> caffeHmPtr(new caffe::Blob<float>());
     caffeHmPtr->Reshape(size[0],size[1],size[2],size[3]);
     memcpy(caffeHmPtr->mutable_cpu_data(), hm, sizeof(float)*size[0]*size[1]*size[2]*size[3]);
-    openPose->poseFromHeatmap(image, caffeHmPtr, displayImage);
+    openPose->poseFromHeatmap(image, caffeHmPtr, output, displayImage);
     memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
+    // Copy back kp size
+    if(output.getSize().size()){
+        size[0] = output.getSize()[0];
+        size[1] = output.getSize()[1];
+        size[2] = output.getSize()[2];
+    }else{
+        size[0] = 0; size[1] = 0; size[2] = 0;
+    }
 }
 
 #ifdef __cplusplus
