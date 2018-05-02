@@ -77,11 +77,10 @@ namespace op
                 auto& element = personEntries[key];
 
                 // Remove keypoint
-                if (element.counterLastDetection++ > numberFramesToDeletePerson){
-                    //std::cout << "Erasing: " << key << std::endl;
+                if (element.counterLastDetection++ > numberFramesToDeletePerson)
                     personEntries.erase(key);
                 // Update all keypoints for that entry
-                }else
+                else
                 {
                     PersonEntry personEntry;
                     personEntry.counterLastDetection = element.counterLastDetection;
@@ -91,7 +90,7 @@ namespace op
                         pyramidalLKGpu(element.keypoints, personEntry.keypoints, element.status,
                                        imagePrevious, imageCurrent, 3, 21);
                     #else
-                        if(trackVelocity)
+                        if (trackVelocity)
                         {
                             personEntry.keypoints = element.getPredicted();
                             pyramidalLKOcv(element.keypoints, personEntry.keypoints, pyramidImagesPrevious,
@@ -222,27 +221,26 @@ namespace op
 
                     // Pass last positions
                     auto personEntryCopy = openposePersonEntry;
-                    if(bestMatch != -1){
+                    if (bestMatch != -1)
+                    {
                         personEntryCopy.lastKeypoints = personEntries[bestMatch].lastKeypoints;
 
                         // Keep last point
-                        for(size_t x=0; x<personEntryCopy.keypoints.size(); x++){
+                        for (size_t x=0; x<personEntryCopy.keypoints.size(); x++)
+                        {
                             const cv::Point& ik = personEntryCopy.keypoints[x];
                             const cv::Point& jk = personEntries[bestMatch].keypoints[x];
                             float distance = sqrt(pow(ik.x-jk.x,2)+pow(ik.y-jk.y,2));
-                            if(distance < 5){
+                            if (distance < 5)
                                 personEntryCopy.keypoints[x] = jk;
-                            }else if(distance < 10){
+                            else if (distance < 10)
                                 personEntryCopy.keypoints[x] = cv::Point((jk.x+ik.x)/2.,(jk.y+ik.y)/2.);
-                            }
                         }
 
                         // See if lost
-                        for(size_t x=0; x<personEntries[bestMatch].keypoints.size(); x++){
-                            if((int)personEntryCopy.status[x]){
+                        for (size_t x=0; x<personEntries[bestMatch].keypoints.size(); x++)
+                            if ((int)personEntryCopy.status[x])
                                 personEntryCopy.keypoints[x] = personEntries[bestMatch].keypoints[x];
-                            }
-                        }
 
                         personEntryCopy.lastKeypoints = personEntryCopy.keypoints;
                     }
@@ -267,17 +265,20 @@ namespace op
     op::Array<float> op::PersonIdExtractor::personEntriesAsOPArray()
     {
         op::Array<float> opArray;
-        if(!mPersonEntries.size()) return opArray;
+        if (!mPersonEntries.size())
+            return opArray;
         int dims[] = { (int)mPersonEntries.size(), (int)mPersonEntries.begin()->second.keypoints.size(), 3 };
         cv::Mat opArrayMat(3,dims,CV_32FC1);
         int i=0;
-        for (auto& kv : mPersonEntries) {
+        for (auto& kv : mPersonEntries) 
+        {
             const PersonEntry& pe = kv.second;
-            for(int j=0; j<dims[1]; j++){
+            for (int j=0; j<dims[1]; j++)
+            {
                 opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 0) = pe.keypoints[j].x;
                 opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 1) = pe.keypoints[j].y;
                 opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 2) = !(int)pe.status[j];
-                if(pe.keypoints[j].x == 0 && pe.keypoints[j].y == 0)
+                if (pe.keypoints[j].x == 0 && pe.keypoints[j].y == 0)
                     opArrayMat.at<float>(i*dims[1]*dims[2] + j*dims[2] + 2) = 0;
             }
             i++;
@@ -291,9 +292,7 @@ namespace op
         try
         {
             if (mImagePrevious.empty())
-            {
-                throw std::runtime_error("Call extractIds first");
-            }
+                error("Call extractIds first.", __LINE__, __FUNCTION__, __FILE__);
             else
             {
                 cv::Mat imageCurrent;
@@ -387,43 +386,52 @@ namespace op
 
     void op::PersonIdExtractor::drawIDs(cv::Mat& img)
     {
-        for (auto& kv : mPersonEntries) {
+        for (auto& kv : mPersonEntries)
+        {
             const PersonEntry& pe = kv.second;
             cv::Point avg(0,0);
             int i=-1;
             int count = 0;
-            for(cv::Point p : pe.keypoints){
+            for (cv::Point p : pe.keypoints)
+            {
                 i++;
-                if((p.x == 0 && p.y == 0) || (int)pe.status[i]) continue;
+                if ((p.x == 0 && p.y == 0) || (int)pe.status[i])
+                    continue;
                 avg.x += p.x;
                 avg.y += p.y;
                 count++;
             }
-            if(!count) continue;
+            if (!count)
+                continue;
             avg.x /= count;
             avg.y /= count;
             cv::putText(img, std::to_string(kv.first), avg, cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(255,255,255),1);
         }
     }
 
-    void op::PersonIdExtractor::vizPersonEntries(){
-        for ( auto& kv : mPersonEntries) {
+    void op::PersonIdExtractor::vizPersonEntries()
+    {
+        for ( auto& kv : mPersonEntries)
+        {
             PersonEntry& pe = kv.second;
             std::vector<cv::Point2f> predictedKeypoints = pe.getPredicted();
-            for(size_t i=0; i<pe.keypoints.size(); i++){
+            for (size_t i=0; i<pe.keypoints.size(); i++)
+            {
                 cv::circle(debugImage, pe.keypoints[i], 3, cv::Scalar(255,0,0),CV_FILLED);
-                cv::putText(debugImage, std::to_string(!(int)pe.status[i]), pe.keypoints[i], cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(0,0,255),1);
+                cv::putText(debugImage, std::to_string(!(int)pe.status[i]), pe.keypoints[i],
+                            cv::FONT_HERSHEY_DUPLEX, 0.4, cv::Scalar(0,0,255),1);
 
-                if(pe.lastKeypoints.size()){
+                if (pe.lastKeypoints.size())
+                {
                     cv::line(debugImage, pe.keypoints[i], pe.lastKeypoints[i],cv::Scalar(255,0,0));
                     cv::circle(debugImage, pe.lastKeypoints[i], 3, cv::Scalar(255,255,0),CV_FILLED);
                 }
-                if(predictedKeypoints.size() && mTrackVelocity){
+                if (predictedKeypoints.size() && mTrackVelocity)
+                {
                     cv::line(debugImage, pe.keypoints[i], predictedKeypoints[i],cv::Scalar(255,0,0));
                     cv::circle(debugImage, predictedKeypoints[i], 3, cv::Scalar(255,0,255),CV_FILLED);
                 }
             }
         }
     }
-
 }
