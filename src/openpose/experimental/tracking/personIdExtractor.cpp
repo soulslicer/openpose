@@ -60,6 +60,51 @@ namespace op
 
     void updateLK(std::unordered_map<int,PersonEntry>& personEntries, std::vector<cv::Mat>& pyramidImagesPrevious,
                   std::vector<cv::Mat>& pyramidImagesCurrent, const cv::Mat& imagePrevious,
+                  const cv::Mat& imageCurrent, const int numberFramesToDeletePerson)
+    {
+        try
+        {
+            // Get all key values
+            // Otherwise, `erase` provokes core dumped when removing elements
+            std::vector<int> keyValues;
+            keyValues.reserve(personEntries.size());
+            for (const auto& entry : personEntries)
+                keyValues.emplace_back(entry.first);
+            // Update or remove elements
+            for (auto& key : keyValues)
+            {
+                auto& element = personEntries[key];
+
+                // Remove keypoint
+                if (element.counterLastDetection++ > numberFramesToDeletePerson)
+                    personEntries.erase(key);
+                // Update all keypoints for that entry
+                else
+                {
+                    PersonEntry personEntry;
+                    personEntry.counterLastDetection = element.counterLastDetection;
+                    #ifdef LK_CUDA
+                        UNUSED(pyramidImagesPrevious);
+                        UNUSED(pyramidImagesCurrent);
+                        pyramidalLKGpu(element.keypoints, personEntry.keypoints, element.status,
+                                       imagePrevious, imageCurrent, 3, 21);
+                    #else
+                        pyramidalLKCpu(element.keypoints, personEntry.keypoints, pyramidImagesPrevious,
+                                       pyramidImagesCurrent, element.status, imagePrevious, imageCurrent, 3, 21);
+                    #endif
+                    personEntry.status = element.status;
+                    element = personEntry;
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    void updateLK(std::unordered_map<int,PersonEntry>& personEntries, std::vector<cv::Mat>& pyramidImagesPrevious,
+                  std::vector<cv::Mat>& pyramidImagesCurrent, const cv::Mat& imagePrevious,
                   const cv::Mat& imageCurrent, const int numberFramesToDeletePerson,
                   const int levels, const int patchSize, const bool trackVelocity)
     {
@@ -262,9 +307,9 @@ namespace op
         }
     }
 
-    op::Array<float> op::PersonIdExtractor::personEntriesAsOPArray()
+    Array<float> PersonIdExtractor::personEntriesAsOPArray()
     {
-        op::Array<float> opArray;
+        Array<float> opArray;
         if (!mPersonEntries.size())
             return opArray;
         int dims[] = { (int)mPersonEntries.size(), (int)mPersonEntries.begin()->second.keypoints.size(), 3 };
@@ -287,7 +332,7 @@ namespace op
         return opArray;
     }
 
-    void op::PersonIdExtractor::update(const cv::Mat &cvMatInput)
+    void PersonIdExtractor::update(const cv::Mat &cvMatInput)
     {
         try
         {
@@ -312,7 +357,7 @@ namespace op
         }
     }
 
-    op::PersonIdExtractor::PersonIdExtractor(const float confidenceThreshold, const float inlierRatioThreshold,
+    PersonIdExtractor::PersonIdExtractor(const float confidenceThreshold, const float inlierRatioThreshold,
                                              const float distanceThreshold, const int numberFramesToDeletePerson,
                                              const int levels, const int patchSize, const bool trackVelocity) :
         mConfidenceThreshold{confidenceThreshold},
@@ -384,7 +429,7 @@ namespace op
 
     // Debug Functions
 
-    void op::PersonIdExtractor::drawIDs(cv::Mat& img)
+    void PersonIdExtractor::drawIDs(cv::Mat& img)
     {
         for (auto& kv : mPersonEntries)
         {
@@ -409,7 +454,7 @@ namespace op
         }
     }
 
-    void op::PersonIdExtractor::vizPersonEntries()
+    void PersonIdExtractor::vizPersonEntries()
     {
         for ( auto& kv : mPersonEntries)
         {
