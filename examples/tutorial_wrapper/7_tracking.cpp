@@ -225,99 +225,105 @@ DEFINE_int32(tracking_num_frames_del_person,        10,             "Number of f
 DEFINE_int32(tracking_frames_lk_only,               0,              "Number of frames after which only LK should run and not OP");
 DEFINE_int32(tracking_lk_levels,                    3,              "");
 DEFINE_int32(tracking_patch_size,                   21,             "");
-DEFINE_bool(tracking_use_velocity,                  false,             "");
+DEFINE_bool(tracking_use_velocity,                  false,          "");
 
 // This worker will just invert the image
-class WUserPostProcessing : public op::Worker<std::shared_ptr<std::vector<op::Datum>>>
+namespace op
 {
-public:
-    WUserPostProcessing(float tracking_confidence_threshold,
-                        float tracking_inlier_threshold,
-                        int tracking_distance_threshold,
-                        int tracking_num_frames_del_person,
-                        int tracking_frames_lk_only,
-                        int tracking_lk_levels,
-                        int tracking_patch_size,
-                        bool tracking_use_velocity,
-                        std::string model_pose,
-                        float render_threshold,
-                        bool disable_blending,
-                        float alpha_pose) :
-        fCounter{std::numeric_limits<int>::max()},
-        trackingFramesLKOnly{tracking_frames_lk_only}
+
+    class WUserPostProcessing : public Worker<std::shared_ptr<std::vector<Datum>>>
     {
-        // Checks
-        if(tracking_frames_lk_only >= tracking_num_frames_del_person)
-            op::error("tracking_frames_lk_only "+std::to_string(tracking_frames_lk_only)+
-                      " must be less than equal to tracking_num_frames_del_person "+std::to_string(tracking_num_frames_del_person)+"",
-                      __LINE__, __FUNCTION__, __FILE__);
-
-        // User's constructor here
-        const auto poseModel = op::flagsToPoseModel(model_pose);
-        personTracker = std::unique_ptr<op::PersonIdExtractor>(new op::PersonIdExtractor(tracking_confidence_threshold,
-                                                                                         tracking_inlier_threshold,
-                                                                                         tracking_distance_threshold,
-                                                                                         tracking_num_frames_del_person,
-                                                                                         tracking_lk_levels,
-                                                                                         tracking_patch_size,
-                                                                                         tracking_use_velocity));
-        poseRenderer = std::unique_ptr<op::PoseCpuRenderer>(new op::PoseCpuRenderer(poseModel, (float)render_threshold,
-                                                                                    !disable_blending,
-                                                                                    (float)alpha_pose));
-    }
-
-    void initializationOnThread() {}
-
-    void work(std::shared_ptr<std::vector<op::Datum>>& tDatums)
-    {
-        try
+    public:
+        WUserPostProcessing(const float tracking_confidence_threshold,
+                            const float tracking_inlier_threshold,
+                            const int tracking_distance_threshold,
+                            const int tracking_num_frames_del_person,
+                            const int tracking_frames_lk_only,
+                            const int tracking_lk_levels,
+                            const int tracking_patch_size,
+                            const bool tracking_use_velocity,
+                            const std::string& model_pose,
+                            const float render_threshold,
+                            const bool disable_blending,
+                            const float alpha_pose) :
+            fCounter{std::numeric_limits<int>::max()},
+            trackingFramesLKOnly{tracking_frames_lk_only}
         {
-            if (op::checkNoNullNorEmpty(tDatums))
-            {
-                // OP + tracking
-                if (fCounter > FLAGS_tracking_frames_lk_only)
-                {
-                    for (auto& tDatum : *tDatums)
-                        personTracker->extractIds(tDatum.poseKeypoints, tDatum.cvInputData);
-                    fCounter = 0;
-                }
-                // Only tracking
-                else
-                {
-                    for (auto& tDatum : *tDatums)
-                        personTracker->update(tDatum.cvInputData);
-                    fCounter++;
-                }
-                for (auto& tDatum : *tDatums)
-                    tDatum.poseKeypoints = personTracker->personEntriesAsOPArray();
+            // Checks
+            if (tracking_frames_lk_only >= tracking_num_frames_del_person)
+                error("tracking_frames_lk_only "+std::to_string(tracking_frames_lk_only)+
+                          " must be less than equal to tracking_num_frames_del_person "+std::to_string(tracking_num_frames_del_person)+"",
+                          __LINE__, __FUNCTION__, __FILE__);
 
-                // GINES: add in GuiInfoAdder
-                for (auto& tDatum : *tDatums)
+            // User's constructor here
+            const auto poseModel = flagsToPoseModel(model_pose);
+            personTracker = std::unique_ptr<PersonIdExtractor>(new PersonIdExtractor(tracking_confidence_threshold,
+                                                                                             tracking_inlier_threshold,
+                                                                                             tracking_distance_threshold,
+                                                                                             tracking_num_frames_del_person,
+                                                                                             tracking_lk_levels,
+                                                                                             tracking_patch_size,
+                                                                                             tracking_use_velocity));
+            poseRenderer = std::unique_ptr<PoseCpuRenderer>(new PoseCpuRenderer(poseModel, (float)render_threshold,
+                                                                                        !disable_blending,
+                                                                                        (float)alpha_pose));
+        }
+
+        void initializationOnThread() {}
+
+        void work(std::shared_ptr<std::vector<Datum>>& tDatums)
+        {
+            try
+            {
+                if (checkNoNullNorEmpty(tDatums))
                 {
-                    // Rendering
-                    // Very hacky, need to convert to op format before converting back for rendering
-                    auto outputArray = cvMatToOpOutput.createArray(tDatum.cvInputData, tDatum.scaleInputToOutput, op::Point<int>(tDatum.cvInputData.size().width,tDatum.cvInputData.size().height));
-                    poseRenderer->renderPose(outputArray, tDatum.poseKeypoints, tDatum.scaleInputToOutput);
-                    tDatum.cvOutputData = opOutputToCvMat.formatToCvMat(outputArray);
+                    // OP + tracking
+                    if (fCounter > FLAGS_tracking_frames_lk_only)
+                    {
+                        for (auto& tDatum : *tDatums)
+                            personTracker->extractIds(tDatum.poseKeypoints, tDatum.cvInputData);
+                        fCounter = 0;
+                    }
+                    // Only tracking
+                    else
+                    {
+                        for (auto& tDatum : *tDatums)
+                            personTracker->update(tDatum.cvInputData);
+                        fCounter++;
+                    }
+                    for (auto& tDatum : *tDatums)
+                        tDatum.poseKeypoints = personTracker->personEntriesAsOPArray();
+
+                    // GINES: add in GuiInfoAdder
+                    for (auto& tDatum : *tDatums)
+                    {
+                        // Rendering
+                        // Very hacky, need to convert to op format before converting back for rendering
+                        auto outputArray = cvMatToOpOutput.createArray(
+                            tDatum.cvInputData, tDatum.scaleInputToOutput,
+                            Point<int>(tDatum.cvInputData.size().width,tDatum.cvInputData.size().height));
+                        poseRenderer->renderPose(outputArray, tDatum.poseKeypoints, tDatum.scaleInputToOutput);
+                        tDatum.cvOutputData = opOutputToCvMat.formatToCvMat(outputArray);
+                    }
                 }
             }
+            catch (const std::exception& e)
+            {
+                this->stop();
+                error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            }
         }
-        catch (const std::exception& e)
-        {
-            this->stop();
-            op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-        }
-    }
 
-private:
-    // Tracker
-    std::unique_ptr<op::PersonIdExtractor> personTracker;
-    std::unique_ptr<op::PoseCpuRenderer> poseRenderer;
-    op::CvMatToOpOutput cvMatToOpOutput;
-    op::OpOutputToCvMat opOutputToCvMat;
-    int fCounter;
-    int trackingFramesLKOnly;
-};
+    private:
+        // Tracker
+        std::unique_ptr<PersonIdExtractor> personTracker;
+        std::unique_ptr<PoseCpuRenderer> poseRenderer;
+        CvMatToOpOutput cvMatToOpOutput;
+        OpOutputToCvMat opOutputToCvMat;
+        int fCounter;
+        int trackingFramesLKOnly;
+    };
+}
 
 int openPoseDemo()
 {
@@ -375,18 +381,18 @@ int openPoseDemo()
 
     // Initializing the user custom classes
     // Processing
-    auto wUserPostProcessing = std::make_shared<WUserPostProcessing>(FLAGS_tracking_confidence_threshold,
-                                                                     FLAGS_tracking_inlier_threshold,
-                                                                     FLAGS_tracking_distance_threshold,
-                                                                     FLAGS_tracking_num_frames_del_person,
-                                                                     FLAGS_tracking_frames_lk_only,
-                                                                     FLAGS_tracking_lk_levels,
-                                                                     FLAGS_tracking_patch_size,
-                                                                     FLAGS_tracking_use_velocity,
-                                                                     FLAGS_model_pose,
-                                                                     FLAGS_render_threshold,
-                                                                     FLAGS_disable_blending,
-                                                                     FLAGS_alpha_pose);
+    auto wUserPostProcessing = std::make_shared<op::WUserPostProcessing>((float)FLAGS_tracking_confidence_threshold,
+                                                                         (float)FLAGS_tracking_inlier_threshold,
+                                                                         FLAGS_tracking_distance_threshold,
+                                                                         FLAGS_tracking_num_frames_del_person,
+                                                                         FLAGS_tracking_frames_lk_only,
+                                                                         FLAGS_tracking_lk_levels,
+                                                                         FLAGS_tracking_patch_size,
+                                                                         FLAGS_tracking_use_velocity,
+                                                                         FLAGS_model_pose,
+                                                                         (float)FLAGS_render_threshold,
+                                                                         FLAGS_disable_blending,
+                                                                         (float)FLAGS_alpha_pose);
 
     // Add custom processing
     const auto workerProcessingOnNewThread = false;
