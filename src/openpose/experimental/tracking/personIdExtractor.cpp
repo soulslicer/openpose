@@ -358,8 +358,8 @@ namespace op
     }
 
     PersonIdExtractor::PersonIdExtractor(const float confidenceThreshold, const float inlierRatioThreshold,
-                                             const float distanceThreshold, const int numberFramesToDeletePerson,
-                                             const int levels, const int patchSize, const bool trackVelocity) :
+                                         const float distanceThreshold, const int numberFramesToDeletePerson,
+                                         const int levels, const int patchSize, const bool trackVelocity) :
         mConfidenceThreshold{confidenceThreshold},
         mInlierRatioThreshold{inlierRatioThreshold},
         mDistanceThreshold{distanceThreshold},
@@ -371,7 +371,7 @@ namespace op
     {
         try
         {
-            //error("PersonIdExtractor (`identification` flag) buggy and not working yet, but we are working on it!"
+            // error("PersonIdExtractor (`identification` flag) buggy and not working yet, but we are working on it!"
             //      " Coming soon!", __LINE__, __FUNCTION__, __FILE__);
         }
         catch (const std::exception& e)
@@ -390,7 +390,7 @@ namespace op
         {
             Array<long long> poseIds;
             const auto openposePersonEntries = captureKeypoints(poseKeypoints, mConfidenceThreshold);
-            // log(mPersonEntries.size());
+// log(mPersonEntries.size());
 
             // First frame
             if (mImagePrevious.empty())
@@ -407,7 +407,7 @@ namespace op
                 std::vector<cv::Mat> pyramidImagesCurrent;
                 cvMatInput.convertTo(imageCurrent, CV_32F);
                 updateLK(mPersonEntries, mPyramidImagesPrevious, pyramidImagesCurrent, mImagePrevious, imageCurrent,
-                                         mNumberFramesToDeletePerson, mLevels, mPatchSize, mTrackVelocity);
+                         mNumberFramesToDeletePerson, mLevels, mPatchSize, mTrackVelocity);
                 mImagePrevious = imageCurrent;
                 mPyramidImagesPrevious = pyramidImagesCurrent;
             }
