@@ -449,9 +449,7 @@ if (UNIX AND NOT APPLE)
           set(MKL_LIBS
             "${CMAKE_BINARY_DIR}/caffe/libiomp5.so"
             "${CMAKE_BINARY_DIR}/caffe/libmklml_intel.so"
-            "${CMAKE_BINARY_DIR}/caffe/lib/libmkldnn.so.0"
             "${CMAKE_BINARY_DIR}/caffe/lib/libmkldnn.so"
-            "${CMAKE_BINARY_DIR}/caffe/lib/libmkldnn.so.0.12.0"
             )
         else ()
           execute_process(COMMAND git checkout master WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/3rdparty/caffe)
