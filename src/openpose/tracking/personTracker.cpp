@@ -1,17 +1,17 @@
 #include <iostream>
 #include <thread>
-#include <opencv2/opencv.hpp>
-#include <openpose/experimental/tracking/personTracker.hpp>
-#include <openpose/experimental/tracking/pyramidalLK.hpp>
+#include <opencv2/imgproc/imgproc.hpp> // cv::resize
+#include <openpose/tracking/personTracker.hpp>
+#include <openpose/tracking/pyramidalLK.hpp>
 
 namespace op
 {
-    int roundUp(int numToRound, int multiple)
+    int roundUp(const int numToRound, const int multiple)
     {
         if (multiple == 0)
             return numToRound;
 
-        int remainder = numToRound % multiple;
+        const int remainder = numToRound % multiple;
         if (remainder == 0)
             return numToRound;
 
@@ -21,37 +21,47 @@ namespace op
     float computePersonScale(const PersonTrackerEntry& personEntry, const cv::Mat& imageCurrent)
     {
         int layerCount = 0;
-        if( personEntry.status[0] || personEntry.status[14] ||
+        if (personEntry.status[0] || personEntry.status[14] ||
             personEntry.status[15] || personEntry.status[16] || personEntry.status[17])
             layerCount++;
-        if( personEntry.status[2] || personEntry.status[3] || personEntry.status[4] ||
+        if (personEntry.status[2] || personEntry.status[3] || personEntry.status[4] ||
             personEntry.status[5] || personEntry.status[6] || personEntry.status[7])
             layerCount++;
-        if( personEntry.status[8] || personEntry.status[11])
+        if (personEntry.status[8] || personEntry.status[11])
             layerCount++;
-        if( personEntry.status[9] || personEntry.status[10] ||
+        if (personEntry.status[9] || personEntry.status[10] ||
             personEntry.status[12] || personEntry.status[13])
             layerCount++;
 
-        float minX = imageCurrent.size().width, maxX = 0, minY = imageCurrent.size().height, maxY = 0;
+        float minX = imageCurrent.size().width;
+        float maxX = 0;
+        float minY = imageCurrent.size().height;
+        float maxY = 0;
         int totalKp = 0;
-        for(size_t i=0; i<personEntry.keypoints.size(); i++)
+        for (size_t i=0; i<personEntry.keypoints.size(); i++)
         {
-            if(!personEntry.status[i]) continue;
-            auto kp = personEntry.keypoints[i];
-            if(kp.x < minX) minX = kp.x;
-            if(kp.x > maxX) maxX = kp.x;
-            if(kp.y < minY) minY = kp.y;
-            if(kp.y > maxY) maxY = kp.y;
+            if (!personEntry.status[i])
+                continue;
+            const auto kp = personEntry.keypoints[i];
+            if (kp.x < minX)
+                minX = kp.x;
+            if (kp.x > maxX)
+                maxX = kp.x;
+            if (kp.y < minY)
+                minY = kp.y;
+            if (kp.y > maxY)
+                maxY = kp.y;
             totalKp++;
         }
-        float xDist = (maxX - minX);
-        float yDist = (maxY - minY);
+        const float xDist = (maxX - minX);
+        const float yDist = (maxY - minY);
         float maxDist;
-        if(xDist > yDist) maxDist = (xDist)*(4/layerCount);
-        if(yDist > xDist) maxDist = (yDist)*(4/layerCount);
-        float lkSize = roundUp(maxDist / 10., 3);
-        //std::cout << lkSize << std::endl;
+        if (xDist > yDist)
+            maxDist = (xDist)*(4/layerCount);
+        else
+            maxDist = (yDist)*(4/layerCount);
+        const float lkSize = roundUp(int(maxDist / 10.), 3);
+        // std::cout << lkSize << std::endl;
         return lkSize;
     }
 
@@ -68,7 +78,7 @@ namespace op
                 PersonTrackerEntry newPersonEntry;
                 PersonTrackerEntry& oldPersonEntry = kv.second;
                 int lkSize = patchSize;
-                if(scaleVarying)
+                if (scaleVarying)
                 {
                     pyramidImagesPrevious.clear();
                     lkSize = computePersonScale(oldPersonEntry, imageCurrent);
@@ -198,8 +208,8 @@ namespace op
                 const auto id = poseIds[i];
 
                 // Update
-                if (personEntries.count(id) && mergeResults){
-
+                if (personEntries.count(id) && mergeResults)
+                {
                     PersonTrackerEntry& personEntry = personEntries[id];
                     for (int j=0; j<poseKeypoints.getSize()[1]; j++)
                     {
@@ -310,11 +320,12 @@ namespace op
         }
     }
 
-    void scaleKeypoints(std::unordered_map<int, PersonTrackerEntry>& personEntries, float xScale, float yScale)
+    void scaleKeypoints(std::unordered_map<int, PersonTrackerEntry>& personEntries,
+                        const float xScale, const float yScale)
     {
         for (auto& kv : personEntries)
         {
-            for(size_t i=0; i<kv.second.keypoints.size(); i++)
+            for (size_t i=0; i<kv.second.keypoints.size(); i++)
             {
                 kv.second.keypoints[i].x *= xScale;
                 kv.second.keypoints[i].y *= yScale;
@@ -335,15 +346,15 @@ namespace op
         mRescale{rescale},
         mLastFrameId{-1ll}
     {
-        // try
-        // {
-        //     error("PersonTracker (`tracking` flag) buggy and not working yet, but we are working on it!"
-        //           " Coming soon!", __LINE__, __FUNCTION__, __FILE__);
-        // }
-        // catch (const std::exception& e)
-        // {
-        //     error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-        // }
+        try
+        {
+            error("PersonTracker (`tracking` flag) buggy and not working yet, but we are working on it!"
+                  " Coming soon!", __LINE__, __FUNCTION__, __FILE__);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
     }
 
     PersonTracker::~PersonTracker()
@@ -357,7 +368,7 @@ namespace op
         {
             /*
              * 1. Get poseKeypoints for all people - Checks
-             * 2. If last image is empty or mPersonEntries is empty (and poseKeypoints and poseIds has data or crash it)
+             * 2. If last image is empty or mPersonEntries is empty (& poseKeypoints and poseIds has data or crash it)
              *      Create mPersonEntries referencing poseIds
              *      Initialize LK points
              * 3. If poseKeypoints is not empty and poseIds has data
@@ -368,8 +379,8 @@ namespace op
              *      2. replace poseKeypoints
              */
 
-            // TODO: This case: if mMergeResults == false --> Run LK tracker ONLY IF poseKeypoints.empty() doesn't consider the case
-            // of poseKeypoints being empty BECAUSE there were no people on the image
+            // TODO: This case: if mMergeResults == false --> Run LK tracker ONLY IF poseKeypoints.empty() doesn't
+            // consider the case of poseKeypoints being empty BECAUSE there were no people on the image
 
             // if mMergeResults == true --> Combine OP + LK tracker
             // if mMergeResults == false --> Run LK tracker ONLY IF poseKeypoints.empty()
@@ -390,7 +401,7 @@ namespace op
                 // Capture current frame as floating point
                 cvMatInput.convertTo(mImagePrevious, CV_8UC3);
                 // Rescale
-                if(mRescale)
+                if (mRescale)
                 {
                     cv::Size rescaleSize(mRescale,mImagePrevious.size().height/(mImagePrevious.size().width/mRescale));
                     cv::resize(mImagePrevious, mImagePrevious, rescaleSize, 0, 0, cv::INTER_CUBIC);
@@ -409,7 +420,7 @@ namespace op
                     std::vector<cv::Mat> pyramidImagesCurrent;
                     cvMatInput.convertTo(imageCurrent, CV_8UC3);
                     float xScale = 1., yScale = 1.;
-                    if(mRescale)
+                    if (mRescale)
                     {
                         cv::Size rescaleSize(mRescale,imageCurrent.size().height/(imageCurrent.size().width/mRescale));
                         xScale = (float)imageCurrent.size().width / (float)rescaleSize.width;
