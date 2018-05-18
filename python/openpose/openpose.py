@@ -26,7 +26,7 @@ class OpenPose(object):
         ct.c_void_p, np.ctypeslib.ndpointer(dtype=np.uint8),
         ct.c_size_t, ct.c_size_t,
         np.ctypeslib.ndpointer(dtype=np.uint8),
-        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32)]
+        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.int32)]
     _libop.poseFromHeatmap.restype = None
 
     def __init__(self, params):
@@ -56,7 +56,24 @@ class OpenPose(object):
             return array, displayImage
         return array
 
-    def poseFromHM(self, image, hm):
+    def poseFromHM(self, image, hm, ratios=[1]):
+        if len(ratios) != len(hm):
+            print "Ratio shape mismatch"
+            stop
+
+        # Find largest
+        hm_combine = np.zeros(shape=(len(hm), hm[0].shape[1], hm[0].shape[2], hm[0].shape[3]),dtype=np.float32)
+        print hm_combine.shape
+        i=0
+        for h in hm:
+           hm_combine[i,:,0:h.shape[2],0:h.shape[3]] = h
+           i+=1
+        hm = hm_combine
+
+        #hm = np.concatenate(hm, axis=0)
+
+        ratios = np.array(ratios,dtype=np.int32)
+
         shape = image.shape
         displayImage = np.zeros(shape=(image.shape),dtype=np.uint8)
         size = np.zeros(shape=(4),dtype=np.int32)
@@ -64,7 +81,8 @@ class OpenPose(object):
         size[1] = hm.shape[1]
         size[2] = hm.shape[2]
         size[3] = hm.shape[3]
-        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size)
+
+        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios)
         array = np.zeros(shape=(size[0],size[1],size[2]),dtype=np.float32)
         self._libop.getOutputs(self.op, array)
         return array, displayImage

@@ -4,13 +4,21 @@ import caffe
 import cv2
 import numpy as np
 import sys
+import time
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append('../../python')
 dir_path + "/../../models/"
 from openpose import OpenPose
 
 # Params
-class Param:
+class Param_a:
+    caffemodel = dir_path + "/../../../models/pose/coco/pose_iter_440000.caffemodel"
+    prototxt = dir_path + "/../../../models/pose/coco/pose_deploy_linevec.prototxt"
+    boxsize = 368*2
+    padValue = 0
+
+# Params
+class Param_b:
     caffemodel = dir_path + "/../../../models/pose/coco/pose_iter_440000.caffemodel"
     prototxt = dir_path + "/../../../models/pose/coco/pose_deploy_linevec.prototxt"
     boxsize = 368
@@ -32,7 +40,8 @@ params["default_model_folder"] = dir_path + "/../../../models/"
 openpose = OpenPose(params)
 caffe.set_mode_gpu()
 caffe.set_device(0)
-net = caffe.Net(Param.prototxt, Param.caffemodel, caffe.TEST)
+net_a = caffe.Net(Param_a.prototxt, Param_a.caffemodel, caffe.TEST)
+net_b = caffe.Net(Param_b.prototxt, Param_b.caffemodel, caffe.TEST)
 print "Net loaded"
 
 def show_image(img):
@@ -97,10 +106,7 @@ def power_law(img, power):
     img = img.astype('uint8')
     return img
 
-currIndex = 0
-first_run = True
-def func(frame):
-    # Reshape
+def process_frame(Param, frame):
     height, width, channels = frame.shape
     scaleImage = float(Param.boxsize) / float(height)
     rframe = cv2.resize(frame, (0,0), fx=scaleImage, fy=scaleImage)
@@ -109,32 +115,52 @@ def func(frame):
     imageForNet = imageForNet.astype(float)
     imageForNet = imageForNet/256. - 0.5
     imageForNet = np.transpose(imageForNet, (2,0,1))
-    #print imageForNet.shape
+    return rframe, imageForNet, padding
+
+currIndex = 0
+first_run = True
+def func(frame):
+    # Reshape
+    #height, width, channels = frame.shape
+
+    rframe_a, imageForNet_a, padding_a = process_frame(Param_a, frame)
+    rframe_b, imageForNet_b, padding_b = process_frame(Param_b, frame)
+
+
 
     global first_run
     if first_run:
-        in_shape = net.blobs['image'].data.shape
-        in_shape = (1, 3, imageForNet.shape[1], imageForNet.shape[2])
-        net.blobs['image'].reshape(*in_shape)
-        net.reshape()
+        in_shape = net_a.blobs['image'].data.shape
+        in_shape = (1, 3, imageForNet_a.shape[1], imageForNet_a.shape[2])
+        net_a.blobs['image'].reshape(*in_shape)
+        net_a.reshape()
+
+        in_shape = net_b.blobs['image'].data.shape
+        in_shape = (1, 3, imageForNet_b.shape[1], imageForNet_b.shape[2])
+        net_b.blobs['image'].reshape(*in_shape)
+        net_b.reshape()
+
         first_run = False
         print "Reshaped"
 
-    net.blobs['image'].data[0,:,:,:] = imageForNet
-    net.forward()
-    heatmaps = net.blobs['net_output'].data[:,:,:,:]
-    print heatmaps.shape
+    net_a.blobs['image'].data[0,:,:,:] = imageForNet_a
+    net_a.forward()
+    heatmaps_a = net_a.blobs['net_output'].data[:,:,:,:]
+
+    net_b.blobs['image'].data[0,:,:,:] = imageForNet_b
+    net_b.forward()
+    heatmaps_b = net_b.blobs['net_output'].data[:,:,:,:]
 
     # Pose from HM Test
-    array, frame = openpose.poseFromHM(frame, heatmaps)
-    print array
+    array, frame = openpose.poseFromHM(frame, [heatmaps_a, heatmaps_b], [2,1])
+    #array, frame = openpose.poseFromHM(frame, [heatmaps_a], [2])
     show_image(frame)
 
     return frame
 
 
 # Run Video
-cap = cv2.VideoCapture(dir_path + "/../../../examples/media/trump.mp4")
+cap = cv2.VideoCapture(0)
 while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
