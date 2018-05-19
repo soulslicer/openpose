@@ -14,14 +14,14 @@ from openpose import OpenPose
 class Param_a:
     caffemodel = dir_path + "/../../../models/pose/coco/pose_iter_440000.caffemodel"
     prototxt = dir_path + "/../../../models/pose/coco/pose_deploy_linevec.prototxt"
-    boxsize = 368*2
+    boxsize = 368
     padValue = 0
 
 # Params
 class Param_b:
     caffemodel = dir_path + "/../../../models/pose/coco/pose_iter_440000.caffemodel"
     prototxt = dir_path + "/../../../models/pose/coco/pose_deploy_linevec.prototxt"
-    boxsize = 368
+    boxsize = 368/2
     padValue = 0
 
 # Load net
@@ -31,8 +31,8 @@ params["output_resolution"] = "-1x-1"
 params["net_resolution"] = "-1x368"
 params["model_pose"] = "COCO"
 params["alpha_pose"] = 0.6
-params["scale_gap"] = 0.3
-params["scale_number"] = 1
+params["scale_gap"] = 0.5
+params["scale_number"] = 2
 params["render_threshold"] = 0.05
 params["num_gpu_start"] = 0
 params["disable_blending"] = False
@@ -152,7 +152,7 @@ def func(frame):
     heatmaps_b = net_b.blobs['net_output'].data[:,:,:,:]
 
     # Pose from HM Test
-    array, frame = openpose.poseFromHM(frame, [heatmaps_a, heatmaps_b], [2,1])
+    array, frame = openpose.poseFromHM(frame, [heatmaps_a, heatmaps_b], [1,0.5])
     #array, frame = openpose.poseFromHM(frame, [heatmaps_a], [2])
     show_image(frame)
 

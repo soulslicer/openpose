@@ -186,19 +186,6 @@ public:
         std::tie(scaleInputToNetInputs, netInputSizes, scaleInputToOutput, outputResolution)
             = scaleAndSizeExtractor->extract(imageSize);
 
-        scaleInputToNetInputs.clear();
-        netInputSizes.clear();
-        for(auto imsize : imageSizes){
-            std::vector<double> scaleInputToNetInputs_I;
-            std::vector<op::Point<int>> netInputSizes_I;
-            double scaleInputToOutput_I;
-            op::Point<int> outputResolution_I;
-            std::tie(scaleInputToNetInputs_I, netInputSizes_I, scaleInputToOutput_I, outputResolution_I)
-                = scaleAndSizeExtractor->extract(imsize);
-            scaleInputToNetInputs.emplace_back(scaleInputToNetInputs_I[0]);
-            netInputSizes.emplace_back(netInputSizes_I[0]);
-        }
-
         const auto netInputArray = cvMatToOpInput.createArray(inputImage, scaleInputToNetInputs, netInputSizes);
 
         // Run the modes
@@ -278,7 +265,7 @@ void getOutputs(c_OP op, float* array){
     memcpy(array, output.getPtr(), output.getSize()[0]*output.getSize()[1]*output.getSize()[2]*sizeof(float));
 }
 
-void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, int* ratios){
+void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios){
     OpenPose* openPose = (OpenPose*)op;
     cv::Mat image(rows, cols, CV_8UC3, img);
     cv::Mat displayImage(rows, cols, CV_8UC3, displayImg);
@@ -307,7 +294,7 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
 
     std::vector<op::Point<int>> imageSizes;
     for(int i=0; i<size[0]; i++){
-        op::Point<int> point{(int)cols*ratios[i], (int)rows*ratios[i]};
+        op::Point<int> point{cols*ratios[i], rows*ratios[i]};
         imageSizes.emplace_back(point);
     }
 
