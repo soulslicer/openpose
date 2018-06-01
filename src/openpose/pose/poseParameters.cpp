@@ -235,7 +235,7 @@ namespace op
         "pose/body_19n/pose_deploy.prototxt",
         "pose/body_19b/pose_deploy.prototxt",
         "pose/body_21/pose_deploy.prototxt",
-        "pose/body_21_x2/pose_deploy.prototxt",
+        "pose/body_21_X2/pose_deploy.prototxt",
     };
     const std::array<std::string, (int)PoseModel::Size> POSE_TRAINED_MODEL{
         "pose/coco/pose_iter_440000.caffemodel",
@@ -249,7 +249,7 @@ namespace op
         "pose/body_19n/pose_iter_XXXXXX.caffemodel",
         "pose/body_19b/pose_iter_XXXXXX.caffemodel",
         "pose/body_21/pose_iter_XXXXXX.caffemodel",
-        "pose/body_21_x2/pose_iter_XXXXXX.caffemodel",
+        "pose/body_21_X2/pose_iter_XXXXXX.caffemodel",
     };
 
     // Constant Array Parameters
