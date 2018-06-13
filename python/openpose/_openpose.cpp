@@ -18,6 +18,7 @@
 #include <openpose/pose/enumClasses.hpp>
 #include <openpose/pose/poseExtractor.hpp>
 #include <openpose/gpu/cuda.hpp>
+#include <openpose/gpu/opencl.hcl>
 
 #define default_logging_level 3
 #define default_output_resolution "-1x-1"
@@ -29,7 +30,9 @@
 #define default_render_threshold 0.05
 #define default_num_gpu_start 0
 #define default_disable_blending false
-#define default_model_folder "/home/raaj/openpose/models/"
+#define default_model_folder "models/"
+
+// Todo, have GPU Number, handle, OpenCL/CPU Cases
 
 class OpenPose{
 public:
@@ -46,6 +49,7 @@ public:
     op::Array<float> mPoseKeypoints;
     op::Array<float> mPoseScores;
     op::PoseModel poseModel;
+    int mGpuID;
 
     OpenPose(int FLAGS_logging_level = default_logging_level,
              std::string FLAGS_output_resolution = default_output_resolution,
@@ -59,9 +63,22 @@ public:
              int FLAGS_disable_blending = default_disable_blending,
              std::string FLAGS_model_folder = default_model_folder
              ){
+        mGpuID = FLAGS_num_gpu_start;
+        #ifdef USE_CUDA
         caffe::Caffe::set_mode(caffe::Caffe::GPU);
-        caffe::Caffe::SetDevice(0);
-
+        caffe::Caffe::SetDevice(mGpuID);
+        #elif USE_OPENCL
+        caffe::Caffe::set_mode(caffe::Caffe::GPU);
+        std::vector<int> devices;
+        const int maxNumberGpu = op::OpenCL::getTotalGPU();
+        for (auto i = 0; i < maxNumberGpu; i++)
+            devices.emplace_back(i);
+        caffe::Caffe::SetDevices(devices);
+        caffe::Caffe::SelectDevice(mGpuID, true);
+        op::OpenCL::getInstance(mGpuID, CL_DEVICE_TYPE_GPU, true);
+        #else
+        caffe::Caffe::set_mode(caffe::Caffe::CPU);
+        #endif
         op::log("OpenPose Library Python Wrapper", op::Priority::High);
         // ------------------------- INITIALIZATION -------------------------
         // Step 1 - Set logging level
@@ -140,6 +157,7 @@ public:
             = scaleAndSizeExtractor->extract(imageSize);
         // Step 3 - Format input image to OpenPose input and output formats
         const auto netInputArray = cvMatToOpInput.createArray(inputImage, scaleInputToNetInputs, netInputSizes);
+
         // Step 4 - Estimate poseKeypoints
         poseExtractorCaffe->forwardPass(netInputArray, imageSize, scaleInputToNetInputs);
         poseKeypoints = poseExtractorCaffe->getPoseKeypoints();
@@ -193,10 +211,22 @@ public:
         resizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
         std::vector<caffe::Blob<float>*> heatMapsBlobs{heatMapsBlob.get()};
         std::vector<caffe::Blob<float>*> peaksBlobs{peaksBlob.get()};
+        #ifdef USE_CUDA
         resizeAndMergeCaffe->Forward_gpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        #elif USE_OPENCL
+        resizeAndMergeCaffe->Forward_ocl(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        #else
+        resizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        #endif
 
         nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
+        #ifdef USE_CUDA
         nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
+        #elif USE_OPENCL
+        nmsCaffe->Forward_ocl(heatMapsBlobs, peaksBlobs);// ~2ms
+        #else
+        nmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs);// ~2ms
+        #endif
         op::cudaCheck(__LINE__, __FUNCTION__, __FILE__);
 
         float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
@@ -275,10 +305,6 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     for(int i=0; i<size[0]; i++){
         boost::shared_ptr<caffe::Blob<float>> caffeHmPtr(new caffe::Blob<float>());
         caffeHmPtr->Reshape(1,size[1],size[2]*((float)ratios[i]/(float)ratios[0]),size[3]*((float)ratios[i]/(float)ratios[0]));
-        //std::cout << ratios[i] << " " << ratios[0] << std::endl;
-        //std::cout << caffeHmPtr->shape()[0] << " " << caffeHmPtr->shape()[1] << " " << caffeHmPtr->shape()[2] << " " << caffeHmPtr->shape()[3] << std::endl;
-        //std::cout << size[2] << " " << size[3] << std::endl;
-        //memcpy(caffeHmPtr->mutable_cpu_data(), &hm[i*size[1]*size[2]*size[3]], sizeof(float)*size[1]*size[2]*size[3]);
         float* startIndex = &hm[i*size[1]*size[2]*size[3]];
         for(int d=0; d<caffeHmPtr->shape()[1]; d++){
             for(int r=0; r<caffeHmPtr->shape()[2]; r++){
@@ -294,7 +320,7 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
 
     std::vector<op::Point<int>> imageSizes;
     for(int i=0; i<size[0]; i++){
-        op::Point<int> point{cols*ratios[i], rows*ratios[i]};
+        op::Point<int> point(cols*ratios[i], rows*ratios[i]);
         imageSizes.emplace_back(point);
     }
 
