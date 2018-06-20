@@ -171,7 +171,7 @@ public:
         }
     }
 
-    void poseFromHeatmap(const cv::Mat& inputImage, std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob, op::Array<float>& poseKeypoints, cv::Mat& displayImage, std::vector<op::Point<int>>& imageSizes){
+    void poseFromHeatmap(const cv::Mat& inputImage, std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob, op::Array<float>& poseKeypoints, cv::Mat& displayImage, std::vector<op::Point<int>>& imageSizes, float& pointScale){
         // Get Scale
         const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
@@ -230,6 +230,7 @@ public:
         op::cudaCheck(__LINE__, __FUNCTION__, __FILE__);
 
         float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
+        pointScale = mScaleNetToOutput;
         bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
         bodyPartConnectorCaffe->setInterMinAboveThreshold(
             (float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterMinAboveThreshold)
@@ -324,8 +325,10 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
         imageSizes.emplace_back(point);
     }
 
-    openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes);
+    float pointScale;
+    openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes, pointScale);
     memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
+    ratios[0] = pointScale;
     // Copy back kp size
     if(output.getSize().size()){
         size[0] = output.getSize()[0];
