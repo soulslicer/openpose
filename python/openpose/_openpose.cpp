@@ -296,7 +296,11 @@ void getOutputs(c_OP op, float* array){
     memcpy(array, output.getPtr(), output.getSize()[0]*output.getSize()[1]*output.getSize()[2]*sizeof(float));
 }
 
-void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios){
+void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios, float* final_hm){
+
+    //***C++11 Style:***
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
     OpenPose* openPose = (OpenPose*)op;
     cv::Mat image(rows, cols, CV_8UC3, img);
     cv::Mat displayImage(rows, cols, CV_8UC3, displayImg);
@@ -329,6 +333,10 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes, pointScale);
     memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
     ratios[0] = pointScale;
+
+    // Copy heatmapsblob combined back to first one
+    //memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+
     // Copy back kp size
     if(output.getSize().size()){
         size[0] = output.getSize()[0];
@@ -337,6 +345,9 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     }else{
         size[0] = 0; size[1] = 0; size[2] = 0;
     }
+
+    std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+    //std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() <<std::endl;
 }
 
 #ifdef __cplusplus
