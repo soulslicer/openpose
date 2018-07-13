@@ -296,7 +296,7 @@ void getOutputs(c_OP op, float* array){
     memcpy(array, output.getPtr(), output.getSize()[0]*output.getSize()[1]*output.getSize()[2]*sizeof(float));
 }
 
-void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios, float* final_hm){
+void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios, float* final_hm, bool get_final_hm, float* peaks, bool get_peaks){
 
     //***C++11 Style:***
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -335,7 +335,13 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     ratios[0] = pointScale;
 
     // Copy heatmapsblob combined back to first one
-    //memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+    if(get_final_hm) memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+
+    // Peak blobs
+    if(get_peaks) memcpy(peaks, openPose->peaksBlob->cpu_data(), sizeof(float)*openPose->peaksBlob->shape()[1]*openPose->peaksBlob->shape()[2]*openPose->peaksBlob->shape()[3]);
+    float* peaksPtr = openPose->peaksBlob->mutable_cpu_data();
+    for(int i=0; i<openPose->peaksBlob->shape()[1]*openPose->peaksBlob->shape()[2]*openPose->peaksBlob->shape()[3]; i++)
+        peaksPtr[i] = 0;
 
     // Copy back kp size
     if(output.getSize().size()){

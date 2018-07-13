@@ -34,7 +34,7 @@ class OpenPose(object):
         ct.c_void_p, np.ctypeslib.ndpointer(dtype=np.uint8),
         ct.c_size_t, ct.c_size_t,
         np.ctypeslib.ndpointer(dtype=np.uint8),
-        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.float32)]
+        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool, np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool]
     _libop.poseFromHeatmap.restype = None
 
     def __init__(self, params):
@@ -91,7 +91,7 @@ class OpenPose(object):
             return array, displayImage
         return array
 
-    def poseFromHM(self, image, hm, ratios=[1], stride=8):
+    def poseFromHM(self, image, hm, ratios=[1], stride=8, get_final_hm=False, get_peaks=False):
         """
         Pose From Heatmap: Takes in an image, computed heatmaps, and require scales and computes pose
 
@@ -128,11 +128,14 @@ class OpenPose(object):
         size[2] = hm.shape[2]
         size[3] = hm.shape[3]
 
-        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios, final_hm)
+        # HARDCODED NOW
+        peaks = np.zeros(shape=(1,21,97,3),dtype=np.float32)
+
+        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios, final_hm, get_final_hm, peaks, get_peaks)
         array = np.zeros(shape=(size[0],size[1],size[2]),dtype=np.float32)
         #combined_hm = hm[0,:,:,:]
         self._libop.getOutputs(self.op, array)
-        return array, displayImage, ratios[0], final_hm
+        return array, displayImage, ratios[0], final_hm, peaks
 
     @staticmethod
     def process_frames(frame, boxsize = 368, scales = [1]):
