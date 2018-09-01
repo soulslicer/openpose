@@ -171,7 +171,7 @@ public:
         }
     }
 
-    void poseFromHeatmap(const cv::Mat& inputImage, std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob, op::Array<float>& poseKeypoints, cv::Mat& displayImage, std::vector<op::Point<int>>& imageSizes, float& pointScale){
+    void poseFromHeatmap(const cv::Mat& inputImage, std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob, op::Array<float>& poseKeypoints, cv::Mat& displayImage, std::vector<op::Point<int>>& imageSizes, float& pointScale, bool get_bp){
         // Get Scale
         const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
@@ -239,10 +239,19 @@ public:
         bodyPartConnectorCaffe->setMinSubsetCnt((int)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetCnt));
         bodyPartConnectorCaffe->setMinSubsetScore((float)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetScore));
 
-        bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
-                                             peaksBlob.get()},
-                                             mPoseKeypoints, mPoseScores);
-        poseKeypoints = mPoseKeypoints;
+        //memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+        if(get_bp){
+            bodyPartConnectorCaffe->Forward_gpu({heatMapsBlob.get(),
+                                                 peaksBlob.get()},
+                                                 mPoseKeypoints, mPoseScores);
+            poseKeypoints = mPoseKeypoints;
+        }
+
+        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
 
         auto outputArray = cvMatToOpOutput.createArray(inputImage, scaleInputToOutput, outputResolution);
         // Step 5 - Render poseKeypoints
@@ -296,7 +305,7 @@ void getOutputs(c_OP op, float* array){
     memcpy(array, output.getPtr(), output.getSize()[0]*output.getSize()[1]*output.getSize()[2]*sizeof(float));
 }
 
-void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios, float* final_hm, bool get_final_hm, float* peaks, bool get_peaks){
+void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios, float* final_hm, bool get_final_hm, float* peaks, bool get_peaks, bool get_bp){
 
     //***C++11 Style:***
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -330,7 +339,7 @@ void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsi
     }
 
     float pointScale;
-    openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes, pointScale);
+    openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes, pointScale, get_bp);
     memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
     ratios[0] = pointScale;
 

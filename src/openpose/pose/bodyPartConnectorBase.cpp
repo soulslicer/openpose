@@ -2,6 +2,7 @@
 #include <openpose/utilities/fastMath.hpp>
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/pose/bodyPartConnectorBase.hpp>
+#include <iostream>
 
 namespace op
 {
@@ -13,6 +14,8 @@ namespace op
     {
         try
         {
+            //exit(-1);
+
             // Parts Connection
             const auto& bodyPartPairs = getPosePartPairs(poseModel);
             const auto& mapIdx = getPoseMapIndex(poseModel);
@@ -35,6 +38,7 @@ namespace op
                 const auto* candidateBPtr = peaksPtr + bodyPartB*peaksOffset;
                 const auto numberA = intRound(candidateAPtr[0]);
                 const auto numberB = intRound(candidateBPtr[0]);
+
 
                 // Add parts into the subset in special case
                 if (numberA == 0 || numberB == 0)
@@ -134,6 +138,7 @@ namespace op
                 else // if (numberA != 0 && numberB != 0)
                 {
                     std::vector<std::tuple<double, int, int>> temp;
+
                     const auto* mapX = heatMapPtr + mapIdx[2*pairIndex] * heatMapOffset;
                     const auto* mapY = heatMapPtr + mapIdx[2*pairIndex+1] * heatMapOffset;
                     for (auto i = 1; i <= numberA; i++)
@@ -172,6 +177,10 @@ namespace op
                                     }
                                 }
 
+                                // L2 Hack
+                                int l2Dist = (int)sqrt(pow(vectorAToBX,2) + pow(vectorAToBY,2));
+                                if(l2Dist <= 2) count = numberPointsInLine;
+
                                 // parts score + connection score
                                 if (count/(float)numberPointsInLine > interMinAboveThreshold)
                                     temp.emplace_back(std::make_tuple(sum/count, i, j));
@@ -183,6 +192,12 @@ namespace op
                     // sort rows in descending order based on parts + connection score
                     if (!temp.empty())
                         std::sort(temp.begin(), temp.end(), std::greater<std::tuple<T, int, int>>());
+
+//                    std::cout << "---" << std::endl;
+//                    for(auto& item : temp){
+//                        std::cout << std::get<0>(item) << " " << std::get<1>(item) << " " << std::get<2>(item) << std::endl;
+//                    }
+//                    exit(-1);
 
                     std::vector<std::tuple<int, int, double>> connectionK;
                     const auto minAB = fastMin(numberA, numberB);
@@ -206,6 +221,10 @@ namespace op
                             occurB[y-1] = 1;
                         }
                     }
+
+//                    for(auto ii : connectionK) std::cout << std::get<0>(ii) << " " << std::get<1>(ii)  << std::endl;
+//                    for(auto ii : occurB) std::cout << ii << std::endl;
+                    //exit(-1);
 
                     // Cluster all the body part candidates into subset based on the part connection
                     if (!connectionK.empty())
@@ -287,6 +306,12 @@ namespace op
                 }
             }
 
+//            for(auto sub : subset){
+//                for(auto item : sub.first) std::cout << item << " ";
+//                std::cout << " - " << sub.second << std::endl;
+//            }
+//            exit(-1);
+
             // Delete people below the following thresholds:
                 // a) minSubsetCnt: removed if less than minSubsetCnt body parts
                 // b) minSubsetScore: removed if global score smaller than this
@@ -330,6 +355,7 @@ namespace op
                 {
                     const auto baseOffset = (person*numberBodyParts + bodyPart) * 3;
                     const auto bodyPartIndex = subsetI[bodyPart];
+
                     if (bodyPartIndex > 0)
                     {
                         poseKeypoints[baseOffset] = peaksPtr[bodyPartIndex-2] * scaleFactor;
@@ -350,6 +376,8 @@ namespace op
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
         }
+
+        //std::cout << poseKeypoints << std::endl;
     }
 
     template void connectBodyPartsCpu(Array<float>& poseKeypoints, Array<float>& poseScores,

@@ -34,7 +34,7 @@ class OpenPose(object):
         ct.c_void_p, np.ctypeslib.ndpointer(dtype=np.uint8),
         ct.c_size_t, ct.c_size_t,
         np.ctypeslib.ndpointer(dtype=np.uint8),
-        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool, np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool]
+        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool, np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool, ct.c_bool]
     _libop.poseFromHeatmap.restype = None
 
     def __init__(self, params):
@@ -91,7 +91,7 @@ class OpenPose(object):
             return array, displayImage
         return array
 
-    def poseFromHM(self, image, hm, ratios=[1], stride=8, get_final_hm=False, get_peaks=False):
+    def poseFromHM(self, image, hm, ratios=[1], stride=8, get_final_hm=False, get_peaks=False, get_bp=True):
         """
         Pose From Heatmap: Takes in an image, computed heatmaps, and require scales and computes pose
 
@@ -131,10 +131,10 @@ class OpenPose(object):
         # HARDCODED NOW
         peaks = np.zeros(shape=(1,21,97,3),dtype=np.float32)
 
-        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios, final_hm, get_final_hm, peaks, get_peaks)
+        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios, final_hm, get_final_hm, peaks, get_peaks, get_bp)
         array = np.zeros(shape=(size[0],size[1],size[2]),dtype=np.float32)
         #combined_hm = hm[0,:,:,:]
-        self._libop.getOutputs(self.op, array)
+        if get_bp: self._libop.getOutputs(self.op, array)
         return array, displayImage, ratios[0], final_hm, peaks
 
     @staticmethod
@@ -211,22 +211,22 @@ if __name__ == "__main__":
     params = dict()
     params["logging_level"] = 3
     params["output_resolution"] = "-1x-1"
-    params["net_resolution"] = "-1x736"
-    params["model_pose"] = "COCO"
+    params["net_resolution"] = "-1x368"
+    params["model_pose"] = "BODY_21"
     params["alpha_pose"] = 0.6
     params["scale_gap"] = 0.3
-    params["scale_number"] = 2
+    params["scale_number"] = 1
     params["render_threshold"] = 0.05
     params["num_gpu_start"] = 0
     params["disable_blending"] = False
-    params["default_model_folder"] = "models/"
+    params["default_model_folder"] = "../../../models/"
     openpose = OpenPose(params)
 
-    img = cv2.imread("examples/media/COCO_val2014_000000000192.jpg")
-    arr, output_image = openpose.forward(img, True)
-    print arr
+    img = cv2.imread("../../../examples/media/COCO_val2014_000000000192.jpg")
+    #print arr
 
     while 1:
+        arr, output_image = openpose.forward(img, True)
         cv2.imshow("output", output_image)
         cv2.waitKey(15)
 
