@@ -89,10 +89,10 @@ def func(frame):
     return frame
 
 
-img = cv2.imread(dir_path + "/../../../examples/media/COCO_val2014_000000000192.jpg")
+img = cv2.imread(dir_path + "/../../../examples/media/img_5449.jpg")
 while 1:
     print img.shape
     frame = func(img)
     cv2.imshow("output", frame)
     cv2.waitKey(15)
-    stop
+    #stop

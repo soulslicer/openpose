@@ -13,7 +13,8 @@ namespace op
                                     const int minSubsetCnt, const T minSubsetScore, const T scaleFactor = 1.f);
 
     template <typename T>
-    OP_API void connectBodyPartsGpu(Array<T>& poseKeypoints, Array<T>& poseScores, const PoseModel poseModel, const Point<int>& heatMapSize,
+    OP_API void connectBodyPartsGpu(Array<T>& poseKeypoints, Array<T>& poseScores, const T* const heatMapPtr,
+                                    const T* const peaksPtr, const PoseModel poseModel, const Point<int>& heatMapSize,
                                     const int maxPeaks, const T interMinAboveThreshold, const T interThreshold,
                                     const int minSubsetCnt, const T minSubsetScore, const T scaleFactor = 1.f,
                                     const T* const heatMapGpuPtr = nullptr, const T* const peaksGpuPtr = nullptr);
