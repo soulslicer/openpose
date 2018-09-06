@@ -241,7 +241,7 @@ public:
 
         //memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
 
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        //std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
         if(get_bp){
             bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
@@ -250,8 +250,8 @@ public:
             poseKeypoints = mPoseKeypoints;
         }
 
-        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
+        //std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        //std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
 
         auto outputArray = cvMatToOpOutput.createArray(inputImage, scaleInputToOutput, outputResolution);
         // Step 5 - Render poseKeypoints
