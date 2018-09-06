@@ -244,7 +244,7 @@ public:
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
         if(get_bp){
-            bodyPartConnectorCaffe->Forward_gpu({heatMapsBlob.get(),
+            bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
                                                  peaksBlob.get()},
                                                  mPoseKeypoints, mPoseScores);
             poseKeypoints = mPoseKeypoints;
