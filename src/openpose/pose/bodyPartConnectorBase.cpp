@@ -182,8 +182,10 @@ namespace op
                                 if(l2Dist <= 2) count = numberPointsInLine;
 
                                 // parts score + connection score
-                                if (count/(float)numberPointsInLine > interMinAboveThreshold)
+                                if (count/(float)numberPointsInLine > interMinAboveThreshold){
                                     temp.emplace_back(std::make_tuple(sum/count, i, j));
+                                    //std::cout << sum/count << " " << pairIndex << " " << " " << i << " " << j << std::endl;
+                                }
                             }
                         }
                     }
