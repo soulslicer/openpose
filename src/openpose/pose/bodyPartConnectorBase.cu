@@ -138,8 +138,6 @@ namespace op
             cudaMemcpy(pairScoresCpu.getPtr(), pairScoresGpuPtr, totalComputations * sizeof(float),
                        cudaMemcpyDeviceToHost);
 
-            std::cout << "A" << std::endl;
-
             // New code
             // Get pair connections and their scores
             const auto pairConnections = pafPtrIntoVector(

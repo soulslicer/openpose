@@ -289,13 +289,18 @@ namespace op
         std::vector<unsigned int>{
             0,1, 14,15, 22,23, 16,17, 18,19, 24,25, 26,27, 6,7, 2,3, 4,5, 8,9, 10,11, 12,13, 30,31, 32,33, 36,37, 34,35, 38,39, 20,21, 28,29, 40,41, 42,43
         },
+        // BODY_21A
+        std::vector<unsigned int>{
+            // Minimum spanning tree
+            0,1,   2,3,   4,5,   6,7,   8,9,  10,11,  12,13, 14,15, 16,17, 18,19, 20,21, 22,23, 24,25, 26,27, 28,29, 30,31, 32,33, 34,35, 36,37, 38,39, 40,41, 42,43, 44,45, 46,47
+        },
     };
     // POSE_BODY_PART_MAPPING on HPP crashes on Windows at dynamic initialization if it's on hpp
     const std::array<std::map<unsigned int, std::string>, (int)PoseModel::Size> POSE_BODY_PART_MAPPING{
         POSE_BODY_25_BODY_PARTS,POSE_COCO_BODY_PARTS,   POSE_MPI_BODY_PARTS,    POSE_MPI_BODY_PARTS,
         POSE_BODY_19_BODY_PARTS,POSE_BODY_19_BODY_PARTS,POSE_BODY_59_BODY_PARTS,POSE_BODY_19_BODY_PARTS,
         POSE_BODY_25_BODY_PARTS,POSE_BODY_25_BODY_PARTS,POSE_BODY_65_BODY_PARTS,POSE_CAR_12_PARTS,
-        POSE_BODY_25_BODY_PARTS,POSE_BODY_21_BODY_PARTS
+        POSE_BODY_25_BODY_PARTS,POSE_BODY_21_BODY_PARTS,POSE_BODY_21_BODY_PARTS
     };
 
     const std::array<std::string, (int)PoseModel::Size> POSE_PROTOTXT{
@@ -313,6 +318,7 @@ namespace op
         "car/car_12/pose_deploy.prototxt",
         "pose/body_25d/pose_deploy.prototxt",
         "pose/body_21/pose_deploy.prototxt",
+        "pose/body_21a/pose_deploy.prototxt",
     };
     const std::array<std::string, (int)PoseModel::Size> POSE_TRAINED_MODEL{
         "pose/body_25/pose_iter_584000.caffemodel",
@@ -329,12 +335,13 @@ namespace op
         "car/car_12/pose_iter_XXXXXX.caffemodel",
         "pose/body_25d/pose_iter_XXXXXX.caffemodel",
         "pose/body_21/pose_iter_XXXXXX.caffemodel",
+        "pose/body_21a/pose_iter_XXXXXX.caffemodel",
     };
 
     // Constant Array Parameters
     // POSE_NUMBER_BODY_PARTS equivalent to size of std::map POSE_BODY_XX_BODY_PARTS - 1 (removing background)
     const std::array<unsigned int, (int)PoseModel::Size> POSE_NUMBER_BODY_PARTS{
-        25, 18, 15, 15, 19, 19, 59, 19, 25, 25, 65, 12, 25, 21
+        25, 18, 15, 15, 19, 19, 59, 19, 25, 25, 65, 12, 25, 21, 21
     };
     const std::array<std::vector<unsigned int>, (int)PoseModel::Size> POSE_BODY_PART_PAIRS{
         // BODY_25
@@ -399,7 +406,12 @@ namespace op
         std::vector<unsigned int>{
             1,8,   1,2,   1,5,   2,3,   3,4,   5,6,   6,7,   8,9,   9,10,  10,11, 8,12,  12,13, 13,14,  1,0,   0,15, 15,17,  0,16, 16,18,   2,17,  5,18, 1,19, 19,20
         },
+        // BODY_21A
+        std::vector<unsigned int>{
+            1,8,   9,10,    10,11,  8,9,    8,12,   12,13,  13,14,  1,2,    2,3,    3,4,    2,17,   1,5,    5,6,    6,7,    5,18,   1,0,    0,15,   0,16,   15,17,  16,18,  1,19,   19,20,  5,12,   2,9
+        },
     };
+
     const std::array<unsigned int, (int)PoseModel::Size> POSE_MAX_PEAKS{
         POSE_MAX_PEOPLE,    // BODY_25
         POSE_MAX_PEOPLE,    // COCO
@@ -415,6 +427,7 @@ namespace op
         POSE_MAX_PEOPLE,    // CAR_12
         POSE_MAX_PEOPLE,    // BODY_25D
         POSE_MAX_PEOPLE,    // BODY_21
+        POSE_MAX_PEOPLE,    // BODY_21A
     };
     const std::array<float, (int)PoseModel::Size> POSE_CCN_DECREASE_FACTOR{
         8.f,    // BODY_25
@@ -431,30 +444,31 @@ namespace op
         8.f,    // CAR_12
         8.f,    // BODY_25D
         8.f,    // BODY_21
+        8.f,    // BODY_21A
     };
 
     // Default Model Parameters
     // They might be modified on running time
     const auto nmsT = (COCO_CHALLENGE ? 0.04f : 0.05f);
     const std::array<float, (int)PoseModel::Size>           POSE_DEFAULT_NMS_THRESHOLD{
-        nmsT,       nmsT,       0.6f,       0.3f,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT
+        nmsT,       nmsT,       0.6f,       0.3f,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT,       nmsT
     };
     const auto minAT = (COCO_CHALLENGE ? 0.75f : 0.95f); // Matlab version: 0.85f
     const std::array<float, (int)PoseModel::Size>    POSE_DEFAULT_CONNECT_INTER_MIN_ABOVE_THRESHOLD{
-        minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT
+        minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT,      minAT
         // 0.85f,      0.85f,      0.85f,      0.85f,      0.85f,      0.85f // Matlab version
     };
     const auto conIT = (COCO_CHALLENGE ? 0.01f : 0.05f);
     const std::array<float, (int)PoseModel::Size>           POSE_DEFAULT_CONNECT_INTER_THRESHOLD{
-        conIT,      conIT,      0.01f,      0.01f,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT
+        conIT,      conIT,      0.01f,      0.01f,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT,      conIT
     };
     const auto minSC = (COCO_CHALLENGE ? 2 : 3);
     const std::array<unsigned int, (int)PoseModel::Size>    POSE_DEFAULT_CONNECT_MIN_SUBSET_CNT{
-        minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC
+        minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC,      minSC
     };
     const auto minSS = (COCO_CHALLENGE ? 0.05f : 0.4f);
     const std::array<float, (int)PoseModel::Size>           POSE_DEFAULT_CONNECT_MIN_SUBSET_SCORE{
-        minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS
+        minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS,      minSS
         // 0.2f,       0.4f,       0.4f,       0.4f,       0.4f,       0.4f // Matlab version
     };
 
