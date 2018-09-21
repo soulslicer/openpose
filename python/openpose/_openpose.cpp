@@ -177,84 +177,95 @@ public:
 		}
 	}
 
-	void poseFromHeatmap(const cv::Mat& inputImage, std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob, op::Array<float>& poseKeypoints, cv::Mat& displayImage, std::vector<op::Point<int>>& imageSizes) {
-		// Get Scale
-		const op::Point<int> inputDataSize{ inputImage.cols, inputImage.rows };
+    void poseFromHeatmap(const cv::Mat& inputImage, std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob, op::Array<float>& poseKeypoints, cv::Mat& displayImage, std::vector<op::Point<int>>& imageSizes, float& pointScale, bool get_bp){
+        // Get Scale
+        const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
-		// Convert to Ptr
-		//std::vector<boost::shared_ptr<caffe::Blob<float>>> a;
-		//caffeNetOutputBlob.emplace_back(caffeHmPtr);
-		const auto caffeNetOutputBlobs = caffeNetSharedToPtr(caffeNetOutputBlob);
+        // Convert to Ptr
+        //std::vector<boost::shared_ptr<caffe::Blob<float>>> a;
+        //caffeNetOutputBlob.emplace_back(caffeHmPtr);
+        const auto caffeNetOutputBlobs = caffeNetSharedToPtr(caffeNetOutputBlob);
 
-		// To be called once only
-		resizeAndMergeCaffe->Reshape(caffeNetOutputBlobs, { heatMapsBlob.get() },
-			op::getPoseNetDecreaseFactor(poseModel), 1.f / 1.f, true,
-			0);
-		nmsCaffe->Reshape({ heatMapsBlob.get() }, { peaksBlob.get() }, op::getPoseMaxPeaks(poseModel),
-			op::getPoseNumberBodyParts(poseModel), 0);
-		bodyPartConnectorCaffe->Reshape({ heatMapsBlob.get(), peaksBlob.get() });
+        // To be called once only
+        resizeAndMergeCaffe->Reshape(caffeNetOutputBlobs, {heatMapsBlob.get()},
+                                     op::getPoseNetDecreaseFactor(poseModel), 1.f/1.f, true,
+                                     0);
+        nmsCaffe->Reshape({heatMapsBlob.get()}, {peaksBlob.get()}, op::getPoseMaxPeaks(poseModel),
+                          op::getPoseNumberBodyParts(poseModel), 0);
+        bodyPartConnectorCaffe->Reshape({heatMapsBlob.get(), peaksBlob.get()});
 
-		// Normal
-		op::OpOutputToCvMat opOutputToCvMat;
-		op::CvMatToOpInput cvMatToOpInput;
-		op::CvMatToOpOutput cvMatToOpOutput;
-		if (inputImage.empty())
-			op::error("Could not open or find the image: ", __LINE__, __FUNCTION__, __FILE__);
-		const op::Point<int> imageSize{ inputImage.cols, inputImage.rows };
-		// Step 2 - Get desired scale sizes
-		std::vector<double> scaleInputToNetInputs;
-		std::vector<op::Point<int>> netInputSizes;
-		double scaleInputToOutput;
-		op::Point<int> outputResolution;
+        // Normal
+        op::OpOutputToCvMat opOutputToCvMat;
+        op::CvMatToOpInput cvMatToOpInput;
+        op::CvMatToOpOutput cvMatToOpOutput;
+        if(inputImage.empty())
+            op::error("Could not open or find the image: ", __LINE__, __FUNCTION__, __FILE__);
+        const op::Point<int> imageSize{inputImage.cols, inputImage.rows};
+        // Step 2 - Get desired scale sizes
+        std::vector<double> scaleInputToNetInputs;
+        std::vector<op::Point<int>> netInputSizes;
+        double scaleInputToOutput;
+        op::Point<int> outputResolution;
 
-		std::tie(scaleInputToNetInputs, netInputSizes, scaleInputToOutput, outputResolution)
-			= scaleAndSizeExtractor->extract(imageSize);
+        std::tie(scaleInputToNetInputs, netInputSizes, scaleInputToOutput, outputResolution)
+            = scaleAndSizeExtractor->extract(imageSize);
+        const auto netInputArray = cvMatToOpInput.createArray(inputImage, scaleInputToNetInputs, netInputSizes);
 
-		const auto netInputArray = cvMatToOpInput.createArray(inputImage, scaleInputToNetInputs, netInputSizes);
+        // Run the modes
+        const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
+        resizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
+        std::vector<caffe::Blob<float>*> heatMapsBlobs{heatMapsBlob.get()};
+        std::vector<caffe::Blob<float>*> peaksBlobs{peaksBlob.get()};
+        #ifdef USE_CUDA
+        resizeAndMergeCaffe->Forward_gpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        #elif USE_OPENCL
+        resizeAndMergeCaffe->Forward_ocl(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        #else
+        resizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        #endif
 
-		// Run the modes
-		const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
-		resizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
-		std::vector<caffe::Blob<float>*> heatMapsBlobs{ heatMapsBlob.get() };
-		std::vector<caffe::Blob<float>*> peaksBlobs{ peaksBlob.get() };
-#ifdef USE_CUDA
-		resizeAndMergeCaffe->Forward_gpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
-#elif USE_OPENCL
-		resizeAndMergeCaffe->Forward_ocl(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
-#else
-		resizeAndMergeCaffe->Forward_cpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
-#endif
+        nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
+        #ifdef USE_CUDA
+        nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
+        #elif USE_OPENCL
+        nmsCaffe->Forward_ocl(heatMapsBlobs, peaksBlobs);// ~2ms
+        #else
+        nmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs);// ~2ms
+        #endif
+        op::cudaCheck(__LINE__, __FUNCTION__, __FILE__);
 
-		nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
-#ifdef USE_CUDA
-		nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
-#elif USE_OPENCL
-		nmsCaffe->Forward_ocl(heatMapsBlobs, peaksBlobs);// ~2ms
-#else
-		nmsCaffe->Forward_cpu(heatMapsBlobs, peaksBlobs);// ~2ms
-#endif
-		op::cudaCheck(__LINE__, __FUNCTION__, __FILE__);
+        float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
+        pointScale = mScaleNetToOutput;
+        bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
+        bodyPartConnectorCaffe->setInterMinAboveThreshold(
+            (float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterMinAboveThreshold)
+        );
+        bodyPartConnectorCaffe->setInterThreshold((float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterThreshold));
+        bodyPartConnectorCaffe->setMinSubsetCnt((int)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetCnt));
+        bodyPartConnectorCaffe->setMinSubsetScore((float)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetScore));
 
-		float mScaleNetToOutput = 1. / scaleInputToNetInputs[0];
-		bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
-		bodyPartConnectorCaffe->setInterMinAboveThreshold(
-			(float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterMinAboveThreshold)
-		);
-		bodyPartConnectorCaffe->setInterThreshold((float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterThreshold));
-		bodyPartConnectorCaffe->setMinSubsetCnt((int)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetCnt));
-		bodyPartConnectorCaffe->setMinSubsetScore((float)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetScore));
+        std::cout << "Try" << std::endl;
+        if(get_bp){
+            #ifdef USE_CUDA
+            bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
+                                                 peaksBlob.get()},
+                                                 mPoseKeypoints, mPoseScores);
+            #else
+            bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
+                                                 peaksBlob.get()},
+                                                 mPoseKeypoints, mPoseScores);
+            #endif
+            poseKeypoints = mPoseKeypoints;
+        }
 
-		bodyPartConnectorCaffe->Forward_cpu({ heatMapsBlob.get(),
-			peaksBlob.get() },
-			mPoseKeypoints, mPoseScores);
-		poseKeypoints = mPoseKeypoints;
+        auto outputArray = cvMatToOpOutput.createArray(inputImage, scaleInputToOutput, outputResolution);
+        // Step 5 - Render poseKeypoints
+        poseRenderer->renderPose(outputArray, mPoseKeypoints, scaleInputToOutput);
+        // Step 6 - OpenPose output format to cv::Mat
+        displayImage = opOutputToCvMat.formatToCvMat(outputArray);
 
-		auto outputArray = cvMatToOpOutput.createArray(inputImage, scaleInputToOutput, outputResolution);
-		// Step 5 - Render poseKeypoints
-		poseRenderer->renderPose(outputArray, mPoseKeypoints, scaleInputToOutput);
-		// Step 6 - OpenPose output format to cv::Mat
-		displayImage = opOutputToCvMat.formatToCvMat(outputArray);
-	}
+        std::cout << "End" << std::endl;
+    }
 };
 
 #ifdef __cplusplus
@@ -301,46 +312,57 @@ extern "C" {
 		if (output.getSize().size())
 			memcpy(array, output.getPtr(), output.getSize()[0] * output.getSize()[1] * output.getSize()[2] * sizeof(float));
 	}
-    OP_EXPORT void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios) {
-		OpenPose* openPose = (OpenPose*)op;
-		cv::Mat image(rows, cols, CV_8UC3, img);
-		cv::Mat displayImage(rows, cols, CV_8UC3, displayImg);
+    OP_EXPORT void poseFromHeatmap(c_OP op, unsigned char* img, size_t rows, size_t cols, unsigned char* displayImg, float* hm, int* size, float* ratios, float* final_hm, bool get_final_hm, float* peaks, bool get_peaks, bool get_bp) {
+        OpenPose* openPose = (OpenPose*)op;
+        cv::Mat image(rows, cols, CV_8UC3, img);
+        cv::Mat displayImage(rows, cols, CV_8UC3, displayImg);
 
-		std::vector<boost::shared_ptr<caffe::Blob<float>>> caffeNetOutputBlob;
+        std::vector<boost::shared_ptr<caffe::Blob<float>>> caffeNetOutputBlob;
 
-		for (int i = 0; i<size[0]; i++) {
-			boost::shared_ptr<caffe::Blob<float>> caffeHmPtr(new caffe::Blob<float>());
-			caffeHmPtr->Reshape(1, size[1], size[2] * ((float)ratios[i] / (float)ratios[0]), size[3] * ((float)ratios[i] / (float)ratios[0]));
-			float* startIndex = &hm[i*size[1] * size[2] * size[3]];
-			for (int d = 0; d<caffeHmPtr->shape()[1]; d++) {
-				for (int r = 0; r<caffeHmPtr->shape()[2]; r++) {
-					for (int c = 0; c<caffeHmPtr->shape()[3]; c++) {
-						int toI = d*caffeHmPtr->shape()[2] * caffeHmPtr->shape()[3] + r*caffeHmPtr->shape()[3] + c;
-						int fromI = d*size[2] * size[3] + r*size[3] + c;
-						caffeHmPtr->mutable_cpu_data()[toI] = startIndex[fromI];
-					}
-				}
-			}
-			caffeNetOutputBlob.emplace_back(caffeHmPtr);
-		}
+        for(int i=0; i<size[0]; i++){
+            boost::shared_ptr<caffe::Blob<float>> caffeHmPtr(new caffe::Blob<float>());
+            caffeHmPtr->Reshape(1,size[1],size[2]*((float)ratios[i]/(float)ratios[0]),size[3]*((float)ratios[i]/(float)ratios[0]));
+            float* startIndex = &hm[i*size[1]*size[2]*size[3]];
+            for(int d=0; d<caffeHmPtr->shape()[1]; d++){
+                for(int r=0; r<caffeHmPtr->shape()[2]; r++){
+                    for(int c=0; c<caffeHmPtr->shape()[3]; c++){
+                        int toI = d*caffeHmPtr->shape()[2]*caffeHmPtr->shape()[3] + r*caffeHmPtr->shape()[3] + c;
+                        int fromI = d*size[2]*size[3] + r*size[3] + c;
+                        caffeHmPtr->mutable_cpu_data()[toI] = startIndex[fromI];
+                    }
+                }
+            }
+            caffeNetOutputBlob.emplace_back(caffeHmPtr);
+        }
 
-		std::vector<op::Point<int>> imageSizes;
-		for (int i = 0; i<size[0]; i++) {
-			op::Point<int> point(cols*ratios[i], rows*ratios[i]);
-			imageSizes.emplace_back(point);
-		}
+        std::vector<op::Point<int>> imageSizes;
+        for(int i=0; i<size[0]; i++){
+            op::Point<int> point(cols*ratios[i], rows*ratios[i]);
+            imageSizes.emplace_back(point);
+        }
 
-		openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes);
-		memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols * 3);
-		// Copy back kp size
-		if (output.getSize().size()) {
-			size[0] = output.getSize()[0];
-			size[1] = output.getSize()[1];
-			size[2] = output.getSize()[2];
-		}
-		else {
-			size[0] = 0; size[1] = 0; size[2] = 0;
-		}
+        float pointScale;
+        openPose->poseFromHeatmap(image, caffeNetOutputBlob, output, displayImage, imageSizes, pointScale, get_bp);
+        memcpy(displayImg, displayImage.ptr(), sizeof(unsigned char)*rows*cols*3);
+        ratios[0] = pointScale;
+
+        // Copy heatmapsblob combined back to first one
+        if(get_final_hm) memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+
+        // Peak blobs
+        if(get_peaks) memcpy(peaks, openPose->peaksBlob->cpu_data(), sizeof(float)*openPose->peaksBlob->shape()[1]*openPose->peaksBlob->shape()[2]*openPose->peaksBlob->shape()[3]);
+        float* peaksPtr = openPose->peaksBlob->mutable_cpu_data();
+        for(int i=0; i<openPose->peaksBlob->shape()[1]*openPose->peaksBlob->shape()[2]*openPose->peaksBlob->shape()[3]; i++)
+            peaksPtr[i] = 0;
+
+        // Copy back kp size
+        if(output.getSize().size()){
+            size[0] = output.getSize()[0];
+            size[1] = output.getSize()[1];
+            size[2] = output.getSize()[2];
+        }else{
+            size[0] = 0; size[1] = 0; size[2] = 0;
+        }
 	}
 
 #ifdef __cplusplus

@@ -47,7 +47,7 @@ class OpenPose(object):
         ct.c_void_p, np.ctypeslib.ndpointer(dtype=np.uint8),
         ct.c_size_t, ct.c_size_t,
         np.ctypeslib.ndpointer(dtype=np.uint8),
-        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.float32)]
+        np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.int32), np.ctypeslib.ndpointer(dtype=np.float32), np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool, np.ctypeslib.ndpointer(dtype=np.float32), ct.c_bool, ct.c_bool]
     _libop.poseFromHeatmap.restype = None
 
     def encode(self, string):
@@ -107,7 +107,8 @@ class OpenPose(object):
             return array, displayImage
         return array
 
-    def poseFromHM(self, image, hm, ratios=[1]):
+
+    def poseFromHM(self, image, hm, ratios=[1], stride=8, get_final_hm=False, get_peaks=False, get_bp=True):
         """
         Pose From Heatmap: Takes in an image, computed heatmaps, and require scales and computes pose
 
@@ -126,6 +127,7 @@ class OpenPose(object):
             raise Exception("Ratio shape mismatch")
 
         # Find largest
+        final_hm = np.zeros(shape=(1, hm[0].shape[1], hm[0].shape[2]*stride, hm[0].shape[3]*stride),dtype=np.float32)
         hm_combine = np.zeros(shape=(len(hm), hm[0].shape[1], hm[0].shape[2], hm[0].shape[3]),dtype=np.float32)
         i=0
         for h in hm:
@@ -143,10 +145,14 @@ class OpenPose(object):
         size[2] = hm.shape[2]
         size[3] = hm.shape[3]
 
-        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios)
+        # HARDCODED NOW
+        peaks = np.zeros(shape=(1,21,97,3),dtype=np.float32)
+
+        self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios, final_hm, get_final_hm, peaks, get_peaks, get_bp)
         array = np.zeros(shape=(size[0],size[1],size[2]),dtype=np.float32)
-        self._libop.getOutputs(self.op, array)
-        return array, displayImage
+        #combined_hm = hm[0,:,:,:]
+        if get_bp: self._libop.getOutputs(self.op, array)
+        return array, displayImage, ratios[0], final_hm, peaks
 
     @staticmethod
     def process_frames(frame, boxsize = 368, scales = [1]):

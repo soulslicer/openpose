@@ -30,15 +30,15 @@ scales = [1]
 # defRes = 736
 # scales = [1, 0.75, 0.5, 0.25]
 class Param:
-    caffemodel = dir_path + "/../../../models/pose/body_25/pose_iter_584000.caffemodel"
-    prototxt = dir_path + "/../../../models/pose/body_25/pose_deploy.prototxt"
+    caffemodel = dir_path + "/../../../models/pose/body_21a/pose_iter_XXXXXX.caffemodel"
+    prototxt = dir_path + "/../../../models/pose/body_21a/pose_deploy.prototxt"
 
 # Load OpenPose object and Caffe Nets
 params = dict()
 params["logging_level"] = 3
 params["output_resolution"] = "-1x-1"
 params["net_resolution"] = "-1x"+str(defRes)
-params["model_pose"] = "BODY_25"
+params["model_pose"] = "BODY_21A"
 params["alpha_pose"] = 0.6
 params["scale_gap"] = 0.25
 params["scale_number"] = len(scales)
@@ -85,7 +85,7 @@ def func(frame):
         heatmaps.append(net.blobs['net_output'].data[:,:,:,:])
 
     # Pose from HM Test
-    array, frame = openpose.poseFromHM(frame, heatmaps, scales)
+    array, frame, aa,bb,cc = openpose.poseFromHM(frame, heatmaps, scales)
 
     # Draw Heatmaps instead
     #hm = heatmaps[0][:,0:18,:,:]; frame = OpenPose.draw_all(imagesOrig[0], hm, -1, 1, True)
