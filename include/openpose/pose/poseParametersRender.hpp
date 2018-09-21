@@ -322,6 +322,31 @@ namespace op
         255.f,     0.f,   255.f, \
         255.f,     0.f,   255.f
 
+    // BODY_21
+    #define POSE_BODY_21_PAIRS_RENDER_GPU \
+        1,8,   1,2,   1,5,   2,3,   3,4,   5,6,   6,7,   8,9,   9,10,  10,11, 8,12,  12,13, 13,14,  1,0,   0,15, 15,17,  0,16, 16,18, 1,19, 19,20
+    #define POSE_BODY_21_SCALES_RENDER_GPU 1
+    #define POSE_BODY_21_COLORS_RENDER_GPU \
+        255.f,     0.f,    85.f, \
+        255.f,     0.f,     0.f, \
+        255.f,    85.f,     0.f, \
+        255.f,   170.f,     0.f, \
+        255.f,   255.f,     0.f, \
+        170.f,   255.f,     0.f, \
+         85.f,   255.f,     0.f, \
+          0.f,   255.f,     0.f, \
+        255.f,     0.f,     0.f, \
+          0.f,   255.f,    85.f, \
+          0.f,   255.f,   170.f, \
+          0.f,   255.f,   255.f, \
+          0.f,   170.f,   255.f, \
+          0.f,    85.f,   255.f, \
+          0.f,     0.f,   255.f, \
+        255.f,     0.f,   170.f, \
+        170.f,     0.f,   255.f, \
+        255.f,     0.f,   255.f, \
+         85.f,     0.f,   255.f
+
     // Rendering functions
     OP_API const std::vector<float>& getPoseScales(const PoseModel poseModel);
     OP_API const std::vector<float>& getPoseColors(const PoseModel poseModel);
