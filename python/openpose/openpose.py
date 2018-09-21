@@ -146,7 +146,7 @@ class OpenPose(object):
         size[3] = hm.shape[3]
 
         # HARDCODED NOW
-        peaks = np.zeros(shape=(1,21,97,3),dtype=np.float32)
+        peaks = np.zeros(shape=(1,21,128,3),dtype=np.float32)
 
         self._libop.poseFromHeatmap(self.op, image, shape[0], shape[1], displayImage, hm, size, ratios, final_hm, get_final_hm, peaks, get_peaks, get_bp)
         array = np.zeros(shape=(size[0],size[1],size[2]),dtype=np.float32)

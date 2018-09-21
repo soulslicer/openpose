@@ -28,7 +28,7 @@ endif (NOT WIN32 AND NOT UNIX AND NOT APPLE)
 
 ### BUILD_TYPE
 # Default: Release
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build.")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 
 

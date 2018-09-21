@@ -244,10 +244,9 @@ public:
         bodyPartConnectorCaffe->setMinSubsetCnt((int)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetCnt));
         bodyPartConnectorCaffe->setMinSubsetScore((float)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetScore));
 
-        std::cout << "Try" << std::endl;
         if(get_bp){
             #ifdef USE_CUDA
-            bodyPartConnectorCaffe->Forward_cpu({heatMapsBlob.get(),
+            bodyPartConnectorCaffe->Forward_gpu({heatMapsBlob.get(),
                                                  peaksBlob.get()},
                                                  mPoseKeypoints, mPoseScores);
             #else
@@ -263,8 +262,6 @@ public:
         poseRenderer->renderPose(outputArray, mPoseKeypoints, scaleInputToOutput);
         // Step 6 - OpenPose output format to cv::Mat
         displayImage = opOutputToCvMat.formatToCvMat(outputArray);
-
-        std::cout << "End" << std::endl;
     }
 };
 
@@ -347,7 +344,9 @@ extern "C" {
         ratios[0] = pointScale;
 
         // Copy heatmapsblob combined back to first one
-        if(get_final_hm) memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+        if(get_final_hm) {
+            memcpy(final_hm, openPose->heatMapsBlob->cpu_data(), sizeof(float)*openPose->heatMapsBlob->shape()[1]*openPose->heatMapsBlob->shape()[2]*openPose->heatMapsBlob->shape()[3]);
+        }
 
         // Peak blobs
         if(get_peaks) memcpy(peaks, openPose->peaksBlob->cpu_data(), sizeof(float)*openPose->peaksBlob->shape()[1]*openPose->peaksBlob->shape()[2]*openPose->peaksBlob->shape()[3]);
