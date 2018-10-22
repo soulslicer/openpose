@@ -4,15 +4,15 @@
 
 namespace op
 {
-    void wrapperConfigureSecurityChecks(WrapperStructPose& wrapperStructPose,
-                                        const WrapperStructFace& wrapperStructFace,
-                                        const WrapperStructHand& wrapperStructHand,
-                                        const WrapperStructExtra& wrapperStructExtra,
-                                        const WrapperStructInput& wrapperStructInput,
-                                        const WrapperStructOutput& wrapperStructOutput,
-                                        const bool renderOutput,
-                                        const bool userOutputWsEmpty,
-                                        const ThreadManagerMode threadManagerMode)
+    void wrapperConfigureSanityChecks(WrapperStructPose& wrapperStructPose,
+                                      const WrapperStructFace& wrapperStructFace,
+                                      const WrapperStructHand& wrapperStructHand,
+                                      const WrapperStructExtra& wrapperStructExtra,
+                                      const WrapperStructInput& wrapperStructInput,
+                                      const WrapperStructOutput& wrapperStructOutput,
+                                      const bool renderOutput,
+                                      const bool userOutputWsEmpty,
+                                      const ThreadManagerMode threadManagerMode)
     {
         try
         {
@@ -174,6 +174,19 @@ namespace op
             #endif
 
             log("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    void threadIdPP(unsigned long long& threadId, const bool multiThreadEnabled)
+    {
+        try
+        {
+            if (multiThreadEnabled)
+                threadId++;
         }
         catch (const std::exception& e)
         {

@@ -2,10 +2,10 @@
     #include <caffe/blob.hpp>
 #endif
 #include <openpose/gpu/cuda.hpp>
+#include <openpose/net/bodyPartConnectorCaffe.hpp>
 #include <openpose/net/netCaffe.hpp>
 #include <openpose/net/nmsCaffe.hpp>
 #include <openpose/net/resizeAndMergeCaffe.hpp>
-#include <openpose/pose/bodyPartConnectorCaffe.hpp>
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/utilities/check.hpp>
 #include <openpose/utilities/fastMath.hpp>
@@ -118,7 +118,7 @@ namespace op
                 // Initializing them on the thread
                 netCaffe.back()->initializationOnThread();
                 caffeNetOutputBlob.emplace_back(netCaffe.back()->getOutputBlob());
-                // Security checks
+                // Sanity check
                 if (netCaffe.size() != caffeNetOutputBlob.size())
                     error("Weird error, this should not happen. Notify us.", __LINE__, __FUNCTION__, __FILE__);
                 // Cuda check
@@ -204,7 +204,7 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                // Security checks
+                // Sanity checks
                 if (inputNetData.empty())
                     error("Empty inputNetData.", __LINE__, __FUNCTION__, __FILE__);
                 for (const auto& inputNetDataI : inputNetData)

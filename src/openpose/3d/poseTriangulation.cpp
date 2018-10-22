@@ -1,4 +1,3 @@
-// #include <thread>
 #include <numeric> // std::accumulate
 #ifdef USE_CERES
     #include <ceres/ceres.h>
@@ -122,7 +121,7 @@ namespace op
     {
         try
         {
-            // Security checks
+            // Sanity checks
             if (cameraMatrices.size() != pointsOnEachCamera.size())
                 error("numberCameras.size() != pointsOnEachCamera.size() (" + std::to_string(cameraMatrices.size())
                       + " vs. " + std::to_string(pointsOnEachCamera.size()) + ").",
@@ -333,7 +332,7 @@ namespace op
         {
             auto& keypoints3D = *keypoints3DPtr;
 
-            // Security checks
+            // Sanity check
             if (cameraMatrices.size() < 2)
                 error("Only 1 camera detected. The 3-D reconstruction module can only be used with > 1 cameras"
                       " simultaneously. E.g., using FLIR stereo cameras (`--flir_camera`).",
@@ -455,7 +454,7 @@ namespace op
     {
         try
         {
-            // Security checks
+            // Sanity check
             if (0 <= mMinViews3d && mMinViews3d < 2)
                 error("Minimum number of views must be at least 2 (e.g., `--3d_min_views 2`) or negative.",
                       __LINE__, __FUNCTION__, __FILE__);
@@ -464,6 +463,10 @@ namespace op
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
         }
+    }
+
+    PoseTriangulation::~PoseTriangulation()
+    {
     }
 
     void PoseTriangulation::initializationOnThread()
