@@ -26,7 +26,7 @@ if (NOT WIN32 AND NOT UNIX AND NOT APPLE)
 endif (NOT WIN32 AND NOT UNIX AND NOT APPLE)
 
 
-### BUILD_TYPE
+### CMAKE_BUILD_TYPE
 # Default: Release
 # Bug fixed: By default, it uses something different to Release, that provokes OpenPose to be about 15% slower than
 # it should be.
