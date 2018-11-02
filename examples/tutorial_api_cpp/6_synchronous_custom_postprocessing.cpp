@@ -86,6 +86,8 @@ int tutorialApiCpp6()
         // op::Profiler::setDefaultX(100);
 
         // Applying user defined configuration - GFlags to program variables
+        // cameraSize
+        const auto cameraSize = op::flagsToPoint(FLAGS_camera_resolution, "-1x-1");
         // outputSize
         const auto outputSize = op::flagsToPoint(FLAGS_output_resolution, "-1x-1");
         // netInputSize
@@ -95,10 +97,10 @@ int tutorialApiCpp6()
         // handNetInputSize
         const auto handNetInputSize = op::flagsToPoint(FLAGS_hand_net_resolution, "368x368 (multiples of 16)");
         // producerType
-        const auto producerSharedPtr = op::flagsToProducer(
-            FLAGS_image_dir, FLAGS_video, FLAGS_ip_camera, FLAGS_camera, FLAGS_flir_camera, FLAGS_camera_resolution,
-            FLAGS_camera_fps, FLAGS_camera_parameter_folder, !FLAGS_frame_keep_distortion,
-            (unsigned int) FLAGS_3d_views, FLAGS_flir_camera_index);
+        op::ProducerType producerType;
+        std::string producerString;
+        std::tie(producerType, producerString) = op::flagsToProducer(
+            FLAGS_image_dir, FLAGS_video, FLAGS_ip_camera, FLAGS_camera, FLAGS_flir_camera, FLAGS_flir_camera_index);
         // poseModel
         const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
         // JSON saving
@@ -152,16 +154,18 @@ int tutorialApiCpp6()
         opWrapperT.configure(wrapperStructExtra);
         // Producer (use default to disable any input)
         const op::WrapperStructInput wrapperStructInput{
-            producerSharedPtr, FLAGS_frame_first, FLAGS_frame_step, FLAGS_frame_last, FLAGS_process_real_time,
-            FLAGS_frame_flip, FLAGS_frame_rotate, FLAGS_frames_repeat};
+            producerType, producerString, FLAGS_frame_first, FLAGS_frame_step, FLAGS_frame_last,
+            FLAGS_process_real_time, FLAGS_frame_flip, FLAGS_frame_rotate, FLAGS_frames_repeat,
+            cameraSize, FLAGS_camera_fps, FLAGS_camera_parameter_folder, !FLAGS_frame_keep_distortion,
+            (unsigned int) FLAGS_3d_views};
         opWrapperT.configure(wrapperStructInput);
         // Consumer (comment or use default argument to disable any output)
         const op::WrapperStructOutput wrapperStructOutput{
             op::flagsToDisplayMode(FLAGS_display, FLAGS_3d), !FLAGS_no_gui_verbose, FLAGS_fullscreen,
             FLAGS_write_keypoint, op::stringToDataFormat(FLAGS_write_keypoint_format), FLAGS_write_json,
-            FLAGS_write_coco_json, FLAGS_write_coco_foot_json, FLAGS_write_images, FLAGS_write_images_format,
-            FLAGS_write_video, FLAGS_camera_fps, FLAGS_write_heatmaps, FLAGS_write_heatmaps_format,
-            FLAGS_write_video_adam, FLAGS_write_bvh, FLAGS_udp_host, FLAGS_udp_port};
+            FLAGS_write_coco_json, FLAGS_write_coco_foot_json, FLAGS_write_coco_json_variant, FLAGS_write_images,
+            FLAGS_write_images_format, FLAGS_write_video, FLAGS_camera_fps, FLAGS_write_heatmaps,
+            FLAGS_write_heatmaps_format, FLAGS_write_video_adam, FLAGS_write_bvh, FLAGS_udp_host, FLAGS_udp_port};
         opWrapperT.configure(wrapperStructOutput);
         // Set to single-thread (for sequential processing and/or debugging and/or reducing latency)
         if (FLAGS_disable_multi_thread)

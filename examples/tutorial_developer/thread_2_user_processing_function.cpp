@@ -22,9 +22,9 @@
 #include <openpose/thread/headers.hpp>
 #include <openpose/utilities/headers.hpp>
 
-// See all the available parameter options withe the `--help` flag. E.g. `build/examples/openpose/openpose.bin --help`
+// See all the available parameter options withe the `--help` flag. E.g., `build/examples/openpose/openpose.bin --help`
 // Note: This command will show you flags for other unnecessary 3rdparty files. Check only the flags for the OpenPose
-// executable. E.g. for `openpose.bin`, look for `Flags from examples/openpose/openpose.cpp:`.
+// executable. E.g., for `openpose.bin`, look for `Flags from examples/openpose/openpose.cpp:`.
 // Debugging/Other
 DEFINE_int32(logging_level,             3,              "The logging level. Integer in the range [0, 255]. 0 will output any log() message, while"
                                                         " 255 will not output any. Current OpenPose library messages are in the range 0-4: 1 for"
@@ -46,7 +46,7 @@ DEFINE_int32(flir_camera_index,         -1,             "Select -1 (default) to 
                                                         " camera index to run, where 0 corresponds to the detected flir camera with the lowest"
                                                         " serial number, and `n` to the `n`-th lowest serial number camera.");
 DEFINE_string(ip_camera,                "",             "String with the IP camera URL. It supports protocols like RTSP and HTTP.");
-DEFINE_bool(process_real_time,          false,          "Enable to keep the original source frame rate (e.g. for video). If the processing time is"
+DEFINE_bool(process_real_time,          false,          "Enable to keep the original source frame rate (e.g., for video). If the processing time is"
                                                         " too long, it will skip frames. If it is too fast, it will slow it down.");
 DEFINE_string(camera_parameter_folder,  "models/cameraParameters/flir/", "String with the folder where the camera parameters are located.");
 DEFINE_bool(frame_keep_distortion,      false,          "If false (default), it will undistortionate the image based on the"
@@ -110,29 +110,35 @@ int tutorialDeveloperThread2()
                   __LINE__, __FUNCTION__, __FILE__);
         op::ConfigureLog::setPriorityThreshold((op::Priority)FLAGS_logging_level);
         // Step 2 - Read GFlags (user defined configuration)
+        // cameraSize
+        const auto cameraSize = op::flagsToPoint(FLAGS_camera_resolution, "-1x-1");
         // outputSize
         const auto outputSize = op::flagsToPoint(FLAGS_output_resolution, "-1x-1");
         // producerType
-        const auto producerSharedPtr = op::flagsToProducer(
-            FLAGS_image_dir, FLAGS_video, FLAGS_ip_camera, FLAGS_camera, FLAGS_flir_camera, FLAGS_camera_resolution,
-            FLAGS_camera_fps, FLAGS_camera_parameter_folder, !FLAGS_frame_keep_distortion,
-            (unsigned int) FLAGS_3d_views, FLAGS_flir_camera_index);
+        op::ProducerType producerType;
+        std::string producerString;
+        std::tie(producerType, producerString) = op::flagsToProducer(
+            FLAGS_image_dir, FLAGS_video, FLAGS_ip_camera, FLAGS_camera, FLAGS_flir_camera, FLAGS_flir_camera_index);
         const auto displayProducerFpsMode = (FLAGS_process_real_time
                                           ? op::ProducerFpsMode::OriginalFps : op::ProducerFpsMode::RetrievalFps);
+        auto producerSharedPtr = createProducer(
+            producerType, producerString, cameraSize, FLAGS_camera_fps, FLAGS_camera_parameter_folder,
+            !FLAGS_frame_keep_distortion, (unsigned int) FLAGS_3d_views);
         producerSharedPtr->setProducerFpsMode(displayProducerFpsMode);
         op::log("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
         // Step 3 - Setting producer
         auto videoSeekSharedPtr = std::make_shared<std::pair<std::atomic<bool>, std::atomic<int>>>();
         videoSeekSharedPtr->first = false;
         videoSeekSharedPtr->second = 0;
-        const op::Point<int> producerSize{(int)producerSharedPtr->get(CV_CAP_PROP_FRAME_WIDTH),
-                                    (int)producerSharedPtr->get(CV_CAP_PROP_FRAME_HEIGHT)};
+        const op::Point<int> producerSize{
+            (int)producerSharedPtr->get(CV_CAP_PROP_FRAME_WIDTH),
+            (int)producerSharedPtr->get(CV_CAP_PROP_FRAME_HEIGHT)};
         // Step 4 - Setting thread workers && manager
         typedef std::vector<op::Datum> TypedefDatumsNoPtr;
         typedef std::shared_ptr<TypedefDatumsNoPtr> TypedefDatums;
         op::ThreadManager<TypedefDatums> threadManager;
         // Step 5 - Initializing the worker classes
-        // Frames producer (e.g. video, webcam, ...)
+        // Frames producer (e.g., video, webcam, ...)
         auto DatumProducer = std::make_shared<op::DatumProducer<TypedefDatumsNoPtr>>(producerSharedPtr);
         auto wDatumProducer = std::make_shared<op::WDatumProducer<TypedefDatums, TypedefDatumsNoPtr>>(DatumProducer);
         // Specific WUserClass
