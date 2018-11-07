@@ -7,9 +7,12 @@ set(EXAMPLE_FILES
     6_synchronous_custom_postprocessing.cpp
     7_synchronous_custom_input.cpp
     8_synchronous_custom_output.cpp
-    9_synchronous_custom_all.cpp)
+    9_synchronous_custom_all.cpp
+    x_tracking.cpp)
 
 include(${CMAKE_SOURCE_DIR}/cmake/Utils.cmake)
+
+find_package(Boost COMPONENTS system REQUIRED)
 
 foreach(EXAMPLE_FILE ${EXAMPLE_FILES})
 
@@ -23,7 +26,7 @@ foreach(EXAMPLE_FILE ${EXAMPLE_FILES})
 
   message(STATUS "Adding Example ${EXE_NAME}")
   add_executable(${EXE_NAME} ${EXAMPLE_FILE})
-  target_link_libraries(${EXE_NAME} openpose ${examples_3rdparty_libraries})
+  target_link_libraries(${EXE_NAME} openpose ${examples_3rdparty_libraries} ${Boost_SYSTEM_LIBRARY})
 
   if (WIN32)
     set_property(TARGET ${EXE_NAME} PROPERTY FOLDER "Examples/Tutorial/C++ API")
