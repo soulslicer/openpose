@@ -14,44 +14,136 @@
 #include <openpose/gpu/cuda.hpp>
 #include <dirent.h>
 
+#include <x_util.h>
+
 // Custom OpenPose flags
 // Producer
-DEFINE_string(image_path, "/home/raaj/video_datasets/posetrack_data/images/bonn/000017_bonn/",
+DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn/000017_bonn/",
               "Process an image. Read all standard formats (jpg, png, bmp, etc.).");
 
 #define MODEL_PATH "/home/raaj/openpose/tracker/"
-#define default_logging_level 3
-#define default_output_resolution "-1x-1"
-#define default_net_resolution 368
-#define default_model_pose "BODY_21A"
-#define default_alpha_pose 0.6
-#define default_scale_gap 0.25
-#define default_scale_number 1
-#define default_render_threshold 0.05
-#define default_num_gpu_start 0
-#define default_disable_blending false
+#define FLAGS_logging_level 3
+#define FLAGS_output_resolution "-1x-1"
+#define FLAGS_net_resolution "-1x368"
+#define FLAGS_resolution 368
+#define FLAGS_model_pose "BODY_21A"
+#define FLAGS_alpha_pose 0.6
+#define FLAGS_scale_gap 0.25
+#define FLAGS_scale_number 1
+#define FLAGS_render_threshold 0.05
+#define FLAGS_num_gpu_start 0
+#define FLAGS_disable_blending false
 
-template<typename Dtype>
-void matToCaffe(Dtype* caffeImg, const cv::Mat& imgAug){
-    const int imageAugmentedArea = imgAug.rows * imgAug.cols;
-    auto* uCharPtrCvMat = (unsigned char*)(imgAug.data);
-    for (auto y = 0; y < imgAug.rows; y++)
-    {
-        const auto yOffset = y*imgAug.cols;
-        for (auto x = 0; x < imgAug.cols; x++)
-        {
-            const auto xyOffset = yOffset + x;
-            // const cv::Vec3b& bgr = imageAugmented.at<cv::Vec3b>(y, x);
-            auto* bgr = &uCharPtrCvMat[3*xyOffset];
-            caffeImg[xyOffset] = (bgr[0] - 128) / 256.0;
-            caffeImg[xyOffset + imageAugmentedArea] = (bgr[1] - 128) / 256.0;
-            caffeImg[xyOffset + 2*imageAugmentedArea] = (bgr[2] - 128) / 256.0;
-        }
-    }
+op::Array<float> get_person_no_copy(op::Array<float>& poseKeypoints, int pid){
+    return op::Array<float>({poseKeypoints.getSize()[1], poseKeypoints.getSize()[2]}, poseKeypoints.getPtr() + pid*poseKeypoints.getSize()[1]*poseKeypoints.getSize()[2]);
 }
+
+op::Array<float> get_bp_no_copy(op::Array<float>& person_kp, int bp){
+    return op::Array<float>({person_kp.getSize()[1]}, person_kp.getPtr() + bp*person_kp.getSize()[1]);
+}
+
+float l2(op::Array<float>&a, op::Array<float>&b){
+    return sqrt(pow(b[0]-a[0],2) + pow(b[1]-a[1],2));
+}
+
+struct Tracklet{
+    op::Array<float> kp, kp_prev;
+    int kp_hitcount;
+    int kp_count;
+    bool valid;
+};
+
+class Tracker{
+public:
+    const float render_threshold = FLAGS_render_threshold;
+    std::vector<int> taf_part_pairs = {1,8, 9,10, 10,11, 8,9, 8,12, 12,13, 13,14, 1,2, 2,3, 3,4, 2,17, 1,5, 5,6, 6,7, 5,18, 1,0, 0,15, 0,16, 15,17, 16,18, 1,19, 19,20};
+    // for heatmaps offset = 22+48 --- i*(48) + [j*2 + k]
+
+
+    std::map<int, Tracklet> tracklets_internal;
+    int frame_count = -1;
+
+    int get_next_id(){
+        int max = -1;
+        for ( const auto &t : tracklets_internal ) {
+            if(t.first > max) max = t.first;
+        }
+        return (max + 1) % 999;
+    }
+
+    int add_new_tracklet(op::Array<float>& person_kp){
+        int id = get_next_id();
+        tracklets_internal[id] = Tracklet();
+        tracklets_internal[id].kp = person_kp.clone();
+        tracklets_internal[id].kp_hitcount = frame_count;
+        tracklets_internal[id].kp_count = 0;
+        tracklets_internal[id].valid = true;
+    }
+
+    void update_tracklet(int tid, op::Array<float>& person_kp){
+        tracklets_internal[tid].kp_prev = tracklets_internal[tid].kp.clone();
+        tracklets_internal[tid].kp = person_kp.clone();
+        tracklets_internal[tid].kp_hitcount += 1;
+        tracklets_internal[tid].kp_count += 1;
+    }
+
+    void reset(){
+        frame_count = -1;
+        tracklets_internal.clear();
+    }
+
+    std::vector<int> compute_track_score(op::Array<float>& pose_keypoints, int pid, op::Array<float>& taf_scores){
+        op::Array<float> person_kp = get_person_no_copy(pose_keypoints, pid);
+        std::vector<int> final_idxs(person_kp.getSize()[0], -1);
+
+        // Kp iterate on person
+        for(int j=0; j<person_kp.getSize()[0]; j++){
+            auto body_part = get_bp_no_copy(person_kp, j);
+            if(body_part[2] < render_threshold) continue;
+
+            // Find best match
+            int best_cost = 1000000;
+            int best_tid = -1;
+
+            // Iterate current tracklets
+            for ( auto &trackletPair : tracklets_internal ) {
+                Tracklet& tracklet = trackletPair.second;
+                int tid = trackletPair.first;
+                if(!tracklet.valid) continue;
+                float tracklet_cost = 0;
+
+                auto tracklet_body_part = get_bp_no_copy(tracklet.kp, j);
+                if(tracklet_body_part[2] < render_threshold) continue;
+                float l2Dist = l2(tracklet_body_part, body_part);
+                if(l2Dist > 1) continue;
+                tracklet_cost += l2Dist;
+
+                if(tracklet_cost < best_cost){
+                    best_cost = tracklet_cost;
+                    best_tid = tid;
+                }
+            }
+
+            // Set TID
+            if(best_tid >= 0) final_idxs[j]=best_tid;
+        }
+
+        return final_idxs;
+    }
+
+    void run(op::Array<float>& pose_keypoints, std::shared_ptr<caffe::Blob<float>> heatMapsBlob, std::shared_ptr<caffe::Blob<float>> peaksBlob){
+
+    }
+
+    Tracker(){
+
+    }
+
+};
 
 struct NetSet{
     std::shared_ptr<caffe::Net<float> > netVGG, netA, netB;
+    std::shared_ptr<caffe::Blob<float> > pafMem, hmMem, fmMem;
     void load(){
         // Load nets
         netVGG.reset(new caffe::Net<float>(std::string(MODEL_PATH)+"vgg.prototxt", caffe::TEST));
@@ -60,6 +152,9 @@ struct NetSet{
         netVGG->CopyTrainedLayersFrom(std::string(MODEL_PATH)+"pose_iter_264000.caffemodel");
         netA->CopyTrainedLayersFrom(std::string(MODEL_PATH)+"pose_iter_264000.caffemodel");
         netB->CopyTrainedLayersFrom(std::string(MODEL_PATH)+"pose_iter_264000.caffemodel");
+        pafMem.reset(new caffe::Blob<float>());
+        hmMem.reset(new caffe::Blob<float>());
+        fmMem.reset(new caffe::Blob<float>());
     }
 
     void reshape(){
@@ -73,6 +168,23 @@ public:
     //Nets nets;
     std::vector<NetSet> nets;
     std::vector<float> scales;
+    bool first_frame = true;
+    double scaleInputToOutput;
+    op::Point<int> outputResolution;
+    std::map<std::string, int> COCO21_MAPPING;
+    std::vector<std::vector<int>> colors;
+
+    std::unique_ptr<op::PoseCpuRenderer> poseRenderer;
+    std::unique_ptr<op::PoseExtractorCaffe> poseExtractorCaffe;
+    std::unique_ptr<op::ScaleAndSizeExtractor> scaleAndSizeExtractor;
+    std::unique_ptr<op::ResizeAndMergeCaffe<float>> resizeAndMergeCaffe;
+    std::unique_ptr<op::NmsCaffe<float>> nmsCaffe;
+    std::unique_ptr<op::BodyPartConnectorCaffe<float>> bodyPartConnectorCaffe;
+    op::PoseModel poseModel;
+    std::shared_ptr<caffe::Blob<float>> heatMapsBlob;
+    std::shared_ptr<caffe::Blob<float>> peaksBlob;
+
+    Tracker tracker;
 
     TrackingNet(){
         // Caffe crap
@@ -80,11 +192,11 @@ public:
         caffe::Caffe::SetDevice(0);
         google::InitGoogleLogging("XXX");
         google::SetCommandLineOption("GLOG_minloglevel", "2");
-        op::ConfigureLog::setPriorityThreshold((op::Priority)default_logging_level);
+        op::ConfigureLog::setPriorityThreshold((op::Priority)FLAGS_logging_level);
 
         // Setup scales
-        for(int i=0; i<default_scale_number; i++){
-            scales.emplace_back(1 - i*default_scale_gap);
+        for(int i=0; i<FLAGS_scale_number; i++){
+            scales.emplace_back(1 - i*FLAGS_scale_gap);
         }
 
         // Setup net
@@ -93,12 +205,106 @@ public:
             nets.back().load();
         }
 
-    }
-    ~TrackingNet(){
+        // Mapping
+        COCO21_MAPPING = {
+            {"NOSE", 0},
+            {"NECK", 1},
+            {"RSHOULDER", 2},
+            {"RELBOW", 3},
+            {"RWRIST", 4},
+            {"LSHOULDER", 5},
+            {"LELBOW", 6},
+            {"LWRIST", 7},
+            {"LOWERABS", 8},
+            {"RHIP", 9},
+            {"RKNEE", 10},
+            {"RANKLE", 11},
+            {"LHIP", 12},
+            {"LKNEE", 13},
+            {"LANKLE", 14},
+            {"REYE", 15},
+            {"LEYE", 16},
+            {"REAR", 17},
+            {"LEAR", 18},
+            {"REALNECK", 19},
+            {"TOP", 20},
+        };
+        colors = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,255,0},{0,128,255},{128,0,255},{128,0,0},{0,128,0},{0,0,128},{50,50,0},{50,50,0},{0,50,128},{0,100,128},{100,30,128},{0,50,255},{50,255,128},{100,90,128},{0,90,255},{50,90,128},{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,255,0},{0,128,255},{128,0,255},{128,0,0},{0,128,0},{0,0,128},{50,50,0},{50,50,0},{0,50,128},{0,100,128},{100,30,128},{0,50,255},{50,255,128},{100,90,128},{0,90,255},{50,90,128}};
+
+        // Other
+        poseModel = op::flagsToPoseModel(FLAGS_model_pose);
+        const auto outputSize = op::flagsToPoint(FLAGS_output_resolution, "-1x-1");
+        const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "-1x368");
+        poseExtractorCaffe = std::unique_ptr<op::PoseExtractorCaffe>(new op::PoseExtractorCaffe{ poseModel, FLAGS_model_folder, FLAGS_num_gpu_start });
+        scaleAndSizeExtractor = std::unique_ptr<op::ScaleAndSizeExtractor>(new op::ScaleAndSizeExtractor(netInputSize, outputSize, FLAGS_scale_number, FLAGS_scale_gap));
+        resizeAndMergeCaffe = std::unique_ptr<op::ResizeAndMergeCaffe<float>>(new op::ResizeAndMergeCaffe<float>{});
+        nmsCaffe = std::unique_ptr<op::NmsCaffe<float>>(new op::NmsCaffe<float>{});
+        bodyPartConnectorCaffe = std::unique_ptr<op::BodyPartConnectorCaffe<float>>(new op::BodyPartConnectorCaffe<float>{});
+        heatMapsBlob = { std::make_shared<caffe::Blob<float>>(1,1,1,1) };
+        peaksBlob = { std::make_shared<caffe::Blob<float>>(1,1,1,1) };
+        bodyPartConnectorCaffe->setPoseModel(poseModel);
+        poseRenderer = std::unique_ptr<op::PoseCpuRenderer>(new op::PoseCpuRenderer{ poseModel, (float)FLAGS_render_threshold, !FLAGS_disable_blending,
+                                                                                     (float)FLAGS_alpha_pose });
 
     }
+    //    ~TrackingNet(){
+
+    //    }
 
     void reset(){
+
+    }
+
+
+    void gpu_copy(boost::shared_ptr<caffe::Blob<float>> dest, boost::shared_ptr<caffe::Blob<float>> src){
+        size_t size = sizeof(float)*src->shape()[1]*src->shape()[2]*src->shape()[3];
+        cudaMemcpy(dest->mutable_gpu_data(),src->mutable_gpu_data(),size, cudaMemcpyDeviceToDevice);
+    }
+    void gpu_copy(std::shared_ptr<caffe::Blob<float>> dest, boost::shared_ptr<caffe::Blob<float>> src){
+        size_t size = sizeof(float)*src->shape()[1]*src->shape()[2]*src->shape()[3];
+        cudaMemcpy(dest->mutable_gpu_data(),src->mutable_gpu_data(),size, cudaMemcpyDeviceToDevice);
+    }
+    void gpu_copy(boost::shared_ptr<caffe::Blob<float>> dest, std::shared_ptr<caffe::Blob<float>> src){
+        size_t size = sizeof(float)*src->shape()[1]*src->shape()[2]*src->shape()[3];
+        cudaMemcpy(dest->mutable_gpu_data(),src->mutable_gpu_data(),size, cudaMemcpyDeviceToDevice);
+    }
+
+    std::vector<caffe::Blob<float>*> caffeNetSharedToPtr(
+            std::vector<boost::shared_ptr<caffe::Blob<float>>>& caffeNetOutputBlob)
+    {
+        try
+        {
+            // Prepare spCaffeNetOutputBlobss
+            std::vector<caffe::Blob<float>*> caffeNetOutputBlobs(caffeNetOutputBlob.size());
+            for (auto i = 0u; i < caffeNetOutputBlobs.size(); i++)
+                caffeNetOutputBlobs[i] = caffeNetOutputBlob[i].get();
+            return caffeNetOutputBlobs;
+        }
+        catch (const std::exception& e)
+        {
+            op::error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return{};
+        }
+    }
+
+    void visualize_hm(cv::Mat& imageForNet, float* heatmaps, std::vector<int> size, int cstart, int cend){
+        float netDecreaseFactor = (float)(imageForNet.size().height / size[2]);
+        int num_maps = cend-cstart;
+        std::vector<cv::Mat> resized_heatmaps(num_maps);
+        cv::Mat accum = cv::Mat(size[2]*netDecreaseFactor, size[3]*netDecreaseFactor, CV_32FC1, cv::Scalar(0.));
+        for(int i=cstart; i<cend; i++){
+            cv::Mat& hm = resized_heatmaps[i-cstart];
+            hm = cv::Mat(size[2], size[3], CV_32FC1, &heatmaps[i*size[2]*size[3]]);
+            cv::resize(hm, hm, cv::Size(0,0), netDecreaseFactor, netDecreaseFactor);
+            accum += hm;
+        }
+        accum = accum*255;
+        accum.convertTo(accum, CV_8UC1);
+        cv::applyColorMap(accum, accum, cv::COLORMAP_JET);
+        cv::Mat final;
+        cv::addWeighted(imageForNet, 0.5, accum, 0.5, 0, final);
+        cv::imshow("win", final);
+        cv::waitKey(15);
 
     }
 
@@ -106,30 +312,152 @@ public:
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-        std::vector<caffe::Blob<float>> blobsForNet;
+        //std::vector<caffe::Blob<float>> blobsForNet;
         std::vector<cv::Mat> imagesOrig;
-        process_frames(image, blobsForNet, imagesOrig);
+        process_frames(image, imagesOrig);
 
-        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-
-        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
+        std::vector<boost::shared_ptr<caffe::Blob<float>>> caffeNetOutputBlob;
 
         for(int i=0; i<scales.size(); i++){
             NetSet& netSet = nets[i];
-            caffe::Blob<float>& blob = blobsForNet[i];
-            //netSet.netVGG->blob_by_name("image");
+            cv::Mat& imageForNet = imagesOrig[i];
+
+            if(first_frame){
+
+                // Do Reshaping once
+                netSet.netVGG->blob_by_name("image")->Reshape({1, 3, imageForNet.size().height, imageForNet.size().width});
+                netSet.netVGG->Reshape();
+                netSet.netA->blob_by_name("conv4_4_CPM")->Reshape(netSet.netVGG->blob_by_name("conv4_4_CPM")->shape());
+                netSet.netA->Reshape();
+                netSet.netB->blob_by_name("conv4_4_CPM")->Reshape(netSet.netVGG->blob_by_name("conv4_4_CPM")->shape());
+                netSet.netB->blob_by_name("last_paf")->Reshape(netSet.netA->blob_by_name("Mconv10_stage1_L2_cont2")->shape());
+                netSet.netB->blob_by_name("last_hm")->Reshape(netSet.netA->blob_by_name("Mconv7_stage2_L1_cont2")->shape());
+                netSet.netB->blob_by_name("last_fm")->Reshape(netSet.netVGG->blob_by_name("conv4_4_CPM")->shape());
+                netSet.netB->Reshape();
+
+                netSet.pafMem->Reshape(netSet.netB->blob_by_name("last_paf")->shape());
+                netSet.hmMem->Reshape(netSet.netB->blob_by_name("last_hm")->shape());
+                netSet.fmMem->Reshape(netSet.netB->blob_by_name("last_fm")->shape());
+                // netA PAF - Mconv10_stage1_L2_cont2
+                // netA HM - Mconv7_stage2_L1_cont2
+                // net B PAF - Mconv7_stage3_L2_cont2
+                // netB HM - Mconv7_stage4_L1_cont2
+
+                // Forward Net
+                op::uCharCvMatToFloatPtr(netSet.netVGG->blob_by_name("image")->mutable_cpu_data(), imageForNet, 1);
+                netSet.netVGG->Forward();
+                gpu_copy(netSet.netA->blob_by_name("conv4_4_CPM"), netSet.netVGG->blob_by_name("conv4_4_CPM"));
+                netSet.netA->Forward();
+
+                // Copy Mem
+                gpu_copy(netSet.pafMem, netSet.netA->blob_by_name("Mconv10_stage1_L2_cont2"));
+                gpu_copy(netSet.hmMem, netSet.netA->blob_by_name("Mconv7_stage2_L1_cont2"));
+                gpu_copy(netSet.fmMem, netSet.netVGG->blob_by_name("conv4_4_CPM"));
+
+                caffeNetOutputBlob.emplace_back(netSet.netA->blob_by_name("net_output"));
+
+            }else{
+
+                // Copy state
+                gpu_copy(netSet.netB->blob_by_name("last_paf"), netSet.pafMem);
+                gpu_copy(netSet.netB->blob_by_name("last_hm"), netSet.hmMem);
+                gpu_copy(netSet.netB->blob_by_name("last_fm"), netSet.fmMem);
+
+                // Forward Net
+                op::uCharCvMatToFloatPtr(netSet.netVGG->blob_by_name("image")->mutable_cpu_data(), imageForNet, 1);
+                netSet.netVGG->Forward();
+                gpu_copy(netSet.netB->blob_by_name("conv4_4_CPM"), netSet.netVGG->blob_by_name("conv4_4_CPM"));
+                netSet.netB->Forward();
+
+                // Copy Mem
+                gpu_copy(netSet.pafMem, netSet.netB->blob_by_name("Mconv7_stage3_L2_cont2"));
+                gpu_copy(netSet.hmMem, netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2"));
+                gpu_copy(netSet.fmMem, netSet.netVGG->blob_by_name("conv4_4_CPM"));
+
+                caffeNetOutputBlob.emplace_back(netSet.netB->blob_by_name("net_output"));
+
+                //visualize_hm(imageForNet,netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2")->mutable_cpu_data(),netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2")->shape(), 0, 21);
+            }
         }
 
-//        cv::imshow("win", image);
-//        cv::waitKey(15);
+        const auto caffeNetOutputBlobs = caffeNetSharedToPtr(caffeNetOutputBlob);
+
+        if(first_frame){
+            resizeAndMergeCaffe->Reshape(caffeNetOutputBlobs, {heatMapsBlob.get()},
+                                         op::getPoseNetDecreaseFactor(poseModel), 1.f/1.f, true,
+                                         0);
+            nmsCaffe->Reshape({heatMapsBlob.get()}, {peaksBlob.get()}, op::getPoseMaxPeaks(poseModel),
+                              op::getPoseNumberBodyParts(poseModel), 0);
+            bodyPartConnectorCaffe->Reshape({heatMapsBlob.get(), peaksBlob.get()});
+
+            const op::Point<int> imageSize{image.cols, image.rows};
+            std::vector<double> scaleInputToNetInputs;
+            std::vector<op::Point<int>> netInputSizes;
+            //double scaleInputToOutput;
+            //op::Point<int> outputResolution;
+
+            std::tie(scaleInputToNetInputs, netInputSizes, scaleInputToOutput, outputResolution)
+                    = scaleAndSizeExtractor->extract(imageSize);
+            const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
+            resizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
+            nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
+
+            float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
+            float pointScale = mScaleNetToOutput;
+            bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
+            bodyPartConnectorCaffe->setInterMinAboveThreshold(
+                        (float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterMinAboveThreshold)
+                        );
+            bodyPartConnectorCaffe->setInterThreshold((float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterThreshold));
+            bodyPartConnectorCaffe->setMinSubsetCnt((int)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetCnt));
+            bodyPartConnectorCaffe->setMinSubsetScore((float)poseExtractorCaffe->get(op::PoseProperty::ConnectMinSubsetScore));
+
+        }
+
+        // Process
+        std::vector<caffe::Blob<float>*> heatMapsBlobs{heatMapsBlob.get()};
+        std::vector<caffe::Blob<float>*> peaksBlobs{peaksBlob.get()};
+        resizeAndMergeCaffe->Forward_gpu(caffeNetOutputBlobs, heatMapsBlobs); // ~5ms
+        nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
+        op::Array<float> mPoseKeypoints;
+        op::Array<float> mPoseScores;
+        bodyPartConnectorCaffe->Forward_gpu({heatMapsBlob.get(),peaksBlob.get()},mPoseKeypoints, mPoseScores);
+
+        // My own draw function that takes in posekeypoints and mids for drawing
+
+        // TAF Score calculator?
+
+        std::cout << mPoseKeypoints.printSize() << std::endl;
+        std::cout << peaksBlobs.back()->shape_string() << std::endl;
+
+
+        cudaDeviceSynchronize();
+
+        //visualize_hm(imagesOrig[0],heatMapsBlobs.back()->mutable_cpu_data(),heatMapsBlobs.back()->shape(), 0, 21);
+        cv::Mat drawImage = image.clone();
+        draw_lines_coco_21(drawImage, mPoseKeypoints, std::vector<int>(mPoseKeypoints.getSize()[0], 0), COCO21_MAPPING, colors);
+
+
+        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
+
+
+        cv::imshow("win", drawImage);
+        cv::waitKey(15);
+
+
+        if(first_frame) first_frame = false;
+
+        //        cv::imshow("win", image);
+        //        cv::waitKey(15);
 
     }
 
-    void process_frames(const cv::Mat& frame, std::vector<caffe::Blob<float>>& blobsForNet, std::vector<cv::Mat>& imagesOrig){
+    void process_frames(const cv::Mat& frame, std::vector<cv::Mat>& imagesOrig){
         // 1 = width, 0 = height
-        const float boxsize = default_net_resolution;
+        const float boxsize = FLAGS_resolution;
         std::vector<int> base_net_res;
-        blobsForNet = std::vector<caffe::Blob<float>>(scales.size());
+        //blobsForNet = std::vector<caffe::Blob<float>>(scales.size());
         imagesOrig = std::vector<cv::Mat>(scales.size());
 
         for(int i=0; i<scales.size(); i++){
@@ -140,12 +468,12 @@ public:
                 base_net_res = net_res;
             }else{
                 net_res = {(int)(std::min(base_net_res[0], std::max(1, (int)((base_net_res[0] * scale)+0.5)/16*16))),
-                          (int)(std::min(base_net_res[1], std::max(1, (int)((base_net_res[1] * scale)+0.5)/16*16)))};
+                           (int)(std::min(base_net_res[1], std::max(1, (int)((base_net_res[1] * scale)+0.5)/16*16)))};
             }
             std::vector<int> input_res = {frame.size().width, frame.size().height};
             float scale_factor = std::min((net_res[0] - 1) / (float)(input_res[0] - 1), (net_res[1] - 1) / (float)(input_res[1] - 1));
             cv::Mat warp_matrix = (cv::Mat_<float>(2,3) << scale_factor, 0, 0,
-                                                           0, scale_factor, 0);
+                                   0, scale_factor, 0);
             cv::Mat imageForNet;
             int flag; if(scale_factor < 1.) flag = cv::INTER_AREA; else flag = cv::INTER_CUBIC;
             if(scale_factor != 1){
@@ -156,10 +484,10 @@ public:
 
             imagesOrig[i] = imageForNet;
 
-            caffe::Blob<float>& blobForNet = blobsForNet[i];
-            blobForNet.Reshape({1, 3, imageForNet.size().height, imageForNet.size().width});
-            //matToCaffe(blobForNet.mutable_cpu_data(), imageForNet);
-            op::uCharCvMatToFloatPtr(blobForNet.mutable_cpu_data(), imageForNet, 1);
+            //            caffe::Blob<float>& blobForNet = blobsForNet[i];
+            //            blobForNet.Reshape({1, 3, imageForNet.size().height, imageForNet.size().width});
+            //            //matToCaffe(blobForNet.mutable_cpu_data(), imageForNet);
+            //            op::uCharCvMatToFloatPtr(blobForNet.mutable_cpu_data(), imageForNet, 1);
         }
 
     }
@@ -172,15 +500,15 @@ std::vector<std::string> filesFromFolder(std::string folder){
     DIR *dir;
     struct dirent *ent;
     if ((dir = opendir (folder.c_str())) != NULL) {
-      /* print all the files and directories within directory */
-      while ((ent = readdir (dir)) != NULL) {
-        if(ent->d_name[0] == '.') continue;
-        files.emplace_back(ent->d_name);
-      }
-      closedir (dir);
+        /* print all the files and directories within directory */
+        while ((ent = readdir (dir)) != NULL) {
+            if(ent->d_name[0] == '.') continue;
+            files.emplace_back(ent->d_name);
+        }
+        closedir (dir);
     } else {
-      /* could not open directory */
-      perror ("");
+        /* could not open directory */
+        perror ("");
     }
     std::sort(files.begin(),files.end());
     return files;
@@ -188,6 +516,29 @@ std::vector<std::string> filesFromFolder(std::string folder){
 
 int main(int argc, char *argv[])
 {
+//    op::Array<float> xx; xx.reset({3, 21, 3}, 1);
+
+//    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+//    for(int i=0; i<1000; i++){
+
+//        op::Array<float> person_kp = get_person_no_copy(xx, 1);
+//        person_kp = person_kp.clone();
+
+////        person_kp.at(0) = 500;
+
+////        std::cout << xx << std::endl;
+////        break;
+
+//        //break;
+//    }
+
+//    std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+//    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
+
+
+//    return 0;
+
     // Parsing command line flags
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -200,6 +551,8 @@ int main(int argc, char *argv[])
 
         t.run(img);
     }
+
+
 
 
     return 0;

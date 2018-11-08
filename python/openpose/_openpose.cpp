@@ -181,6 +181,8 @@ public:
         // Get Scale
         const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
+        std::cout << inputDataSize << std::endl;
+
         // Convert to Ptr
         //std::vector<boost::shared_ptr<caffe::Blob<float>>> a;
         //caffeNetOutputBlob.emplace_back(caffeHmPtr);
@@ -225,6 +227,7 @@ public:
         #endif
 
         nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
+        std::cout << poseExtractorCaffe->get(op::PoseProperty::NMSThreshold) << std::endl;
         #ifdef USE_CUDA
         nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
         #elif USE_OPENCL

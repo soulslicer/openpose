@@ -94,7 +94,7 @@ def func(frame):
     return frame
 
 
-img = cv2.imread(dir_path + "/../../../examples/media/COCO_val2014_000000000192.jpg")
+img = cv2.imread("/media/raaj/Storage/video_datasets/posetrack_data/images/bonn/000017_bonn/10545.jpg")
 frame = func(img)
 while 1:
     cv2.imshow("output", frame)
