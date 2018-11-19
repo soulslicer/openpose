@@ -563,7 +563,7 @@ public:
             resizeAndMergeCaffe->Reshape(caffeNetOutputBlobs, {heatMapsBlob.get()},
                                          op::getPoseNetDecreaseFactor(poseModel), 1.f/1.f, true,
                                          0);
-            nmsCaffe->Reshape({heatMapsBlob.get()}, {peaksBlob.get()}, op::getPoseMaxPeaks(poseModel),
+            nmsCaffe->Reshape({heatMapsBlob.get()}, {peaksBlob.get()}, op::getPoseMaxPeaks(),
                               op::getPoseNumberBodyParts(poseModel), 0);
             bodyPartConnectorCaffe->Reshape({heatMapsBlob.get(), peaksBlob.get()});
 
@@ -730,29 +730,6 @@ std::vector<std::string> filesFromFolder(std::string folder){
 int main(int argc, char *argv[])
 {
 
-//    op::Array<float> xx; xx.reset({3, 21, 3}, 1);
-
-//    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-//    for(int i=0; i<1000; i++){
-
-//        op::Array<float> person_kp = get_person_no_copy(xx, 1);
-//        person_kp = person_kp.clone();
-
-////        person_kp.at(0) = 500;
-
-////        std::cout << xx << std::endl;
-////        break;
-
-//        //break;
-//    }
-
-//    std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-//    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
-
-
-//    return 0;
-
     // Parsing command line flags
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -760,19 +737,31 @@ int main(int argc, char *argv[])
 
 
     cv::VideoCapture cap;
-    // open the default camera, use something different from 0 otherwise;
-    // Check VideoCapture documentation.
+
     if(!cap.open(0))
         return 0;
-
     cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
     cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
 
+//    if(!cap.open("/home/raaj/Desktop/reid.mp4"))
+//        return 0;
+
+    int skip=0;
+
     for(;;)
     {
+
+
           cv::Mat frame;
           cap >> frame;
           if( frame.empty() ) break; // end of video stream
+
+          skip++;
+          if(skip < 3){
+              continue;
+          }
+          skip = 0;
+
           t.run(frame);
 
     }
@@ -787,34 +776,6 @@ int main(int argc, char *argv[])
 //        t.run(img);
 //    }
 
-    std::string folder = "/home/raaj/Downloads/detectron/1/";
-    std::vector<std::string> imagePaths = filesFromFolder(folder);
-
-    std::vector<float> times;
-    for(auto imagePath : imagePaths){
-        cv::Mat img = cv::imread(folder+imagePath);
-
-        cv::resize(img, img, cv::Size(656,368));
-
-        for(int i=0; i<100; i++){
-            float time = t.run(img);
-            times.emplace_back(time);
-        }
-        t.reset();
-    }
-
-
-    float sum=0.;
-    for(auto time : times) sum+=time;
-    std::cout << sum/(float)(times.size()) << std::endl;
-
-    // 100 - 39.8ms
-    // 38 - 36ms
-    // 20 - 33.5ms
-    // 15 - 33.3ms
-    // 10 - 32.3
-    // 5 - 32.2
-    // 1 - 32.0
 
 
 

@@ -257,7 +257,7 @@ namespace op
                              const T* const peaksPtr, const PoseModel poseModel, const Point<int>& heatMapSize,
                              const int maxPeaks, const T interMinAboveThreshold, const T interThreshold,
                              const int minSubsetCnt, const T minSubsetScore, const T scaleFactor,
-                             Array<T> pairScoresCpu, T* pairScoresGpuPtr,
+                             const bool maximizePositives, Array<T> pairScoresCpu, T* pairScoresGpuPtr,
                              const unsigned int* const bodyPartPairsGpuPtr, const unsigned int* const mapIdxGpuPtr,
                              const T* const peaksGpuPtr)
     {
@@ -315,7 +315,7 @@ namespace op
             std::vector<int> validSubsetIndexes;
             validSubsetIndexes.reserve(fastMin((size_t)maxPeaks, peopleVector.size()));
             removePeopleBelowThresholds(validSubsetIndexes, numberPeople, peopleVector, numberBodyParts, minSubsetCnt,
-                                        minSubsetScore, maxPeaks);
+                                        minSubsetScore, maxPeaks, maximizePositives);
 
             // Fill and return poseKeypoints
             peopleVectorToPeopleArray(poseKeypoints, poseScores, scaleFactor, peopleVector, validSubsetIndexes,
@@ -334,16 +334,16 @@ namespace op
         Array<float>& poseKeypoints, Array<float>& poseScores, const float* const heatMapGpuPtr,
         const float* const peaksPtr, const PoseModel poseModel, const Point<int>& heatMapSize, const int maxPeaks,
         const float interMinAboveThreshold, const float interThreshold, const int minSubsetCnt,
-        const float minSubsetScore, const float scaleFactor, Array<float> pairScoresCpu, float* pairScoresGpuPtr,
-        const unsigned int* const bodyPartPairsGpuPtr, const unsigned int* const mapIdxGpuPtr,
-        const float* const peaksGpuPtr);
+        const float minSubsetScore, const float scaleFactor, const bool maximizePositives,
+        Array<float> pairScoresCpu, float* pairScoresGpuPtr, const unsigned int* const bodyPartPairsGpuPtr,
+        const unsigned int* const mapIdxGpuPtr, const float* const peaksGpuPtr);
     template void connectBodyPartsGpu(
         Array<double>& poseKeypoints, Array<double>& poseScores, const double* const heatMapGpuPtr,
         const double* const peaksPtr, const PoseModel poseModel, const Point<int>& heatMapSize, const int maxPeaks,
         const double interMinAboveThreshold, const double interThreshold, const int minSubsetCnt,
-        const double minSubsetScore, const double scaleFactor, Array<double> pairScoresCpu, double* pairScoresGpuPtr,
-        const unsigned int* const bodyPartPairsGpuPtr, const unsigned int* const mapIdxGpuPtr,
-        const double* const peaksGpuPtr);
+        const double minSubsetScore, const double scaleFactor, const bool maximizePositives,
+        Array<double> pairScoresCpu, double* pairScoresGpuPtr, const unsigned int* const bodyPartPairsGpuPtr,
+        const unsigned int* const mapIdxGpuPtr, const double* const peaksGpuPtr);
 
     template void tafScoreGPU(const op::Array<float>& poseKeypoints, const op::Array<float>& trackletKeypoints,
     const std::shared_ptr<caffe::Blob<float>> heatMapsBlob, op::Array<float>& tafScores,
@@ -351,5 +351,4 @@ namespace op
     template void tafScoreGPU(const op::Array<double>& poseKeypoints, const op::Array<double>& trackletKeypoints,
     const std::shared_ptr<caffe::Blob<double>> heatMapsBlob, op::Array<double>& tafScores,
     const std::vector<int> tafPartPairs, int* &tafPartPairsGpuPtr, int tafChannelStart);
-
 }

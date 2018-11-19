@@ -78,6 +78,7 @@ namespace op
                     tDatum.poseCandidates = spPoseExtractorNet->getCandidatesCopy();
                     tDatum.poseHeatMaps = spPoseExtractorNet->getHeatMapsCopy();
                     tDatum.poseKeypoints = spPoseExtractorNet->getPoseKeypoints().clone();
+                    tDatum.poseIds = spPoseExtractorNet->getPoseIds().clone();
                     tDatum.poseScores = spPoseExtractorNet->getPoseScores().clone();
                     tDatum.scaleNetToOutput = spPoseExtractorNet->getScaleNetToOutput();
                 }

@@ -23,6 +23,8 @@ namespace op
 
         void setPoseModel(const PoseModel poseModel);
 
+        void setMaximizePositives(const bool maximizePositives);
+
         void setInterMinAboveThreshold(const T interMinAboveThreshold);
 
         void setInterThreshold(const T interThreshold);
@@ -32,6 +34,9 @@ namespace op
         void setMinSubsetScore(const T minSubsetScore);
 
         void setScaleNetToOutput(const T scaleNetToOutput);
+
+        virtual void Forward(const std::vector<caffe::Blob<T>*>& bottom, Array<T>& poseKeypoints,
+                             Array<T>& poseScores);
 
         virtual void Forward_cpu(const std::vector<caffe::Blob<T>*>& bottom, Array<T>& poseKeypoints,
                                  Array<T>& poseScores);
@@ -47,6 +52,7 @@ namespace op
 
     private:
         PoseModel mPoseModel;
+        bool mMaximizePositives;
         T mInterMinAboveThreshold;
         T mInterThreshold;
         int mMinSubsetCnt;

@@ -181,8 +181,6 @@ public:
         // Get Scale
         const op::Point<int> inputDataSize{inputImage.cols, inputImage.rows};
 
-        std::cout << inputDataSize << std::endl;
-
         // Convert to Ptr
         //std::vector<boost::shared_ptr<caffe::Blob<float>>> a;
         //caffeNetOutputBlob.emplace_back(caffeHmPtr);
@@ -192,7 +190,7 @@ public:
         resizeAndMergeCaffe->Reshape(caffeNetOutputBlobs, {heatMapsBlob.get()},
                                      op::getPoseNetDecreaseFactor(poseModel), 1.f/1.f, true,
                                      0);
-        nmsCaffe->Reshape({heatMapsBlob.get()}, {peaksBlob.get()}, op::getPoseMaxPeaks(poseModel),
+        nmsCaffe->Reshape({heatMapsBlob.get()}, {peaksBlob.get()}, op::getPoseMaxPeaks(),
                           op::getPoseNumberBodyParts(poseModel), 0);
         bodyPartConnectorCaffe->Reshape({heatMapsBlob.get(), peaksBlob.get()});
 
@@ -227,7 +225,6 @@ public:
         #endif
 
         nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
-        std::cout << poseExtractorCaffe->get(op::PoseProperty::NMSThreshold) << std::endl;
         #ifdef USE_CUDA
         nmsCaffe->Forward_gpu(heatMapsBlobs, peaksBlobs);// ~2ms
         #elif USE_OPENCL

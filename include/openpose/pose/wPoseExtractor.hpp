@@ -82,16 +82,17 @@ namespace op
                     tDatum.poseCandidates = spPoseExtractor->getCandidatesCopy();
                     tDatum.poseHeatMaps = spPoseExtractor->getHeatMapsCopy();
                     tDatum.poseKeypoints = spPoseExtractor->getPoseKeypoints().clone();
+                    tDatum.poseIds = spPoseExtractor->getPoseIds().clone();
                     tDatum.poseScores = spPoseExtractor->getPoseScores().clone();
                     tDatum.scaleNetToOutput = spPoseExtractor->getScaleNetToOutput();
                     // Keep desired top N people
                     spPoseExtractor->keepTopPeople(tDatum.poseKeypoints, tDatum.poseScores);
-                    // ID extractor (experimental)
-                    tDatum.poseIds = spPoseExtractor->extractIdsLockThread(tDatum.poseKeypoints, tDatum.cvInputData,
-                                                                           i, tDatum.id);
+//                    // ID extractor (experimental)
+//                    tDatum.poseIds = spPoseExtractor->extractIdsLockThread(
+//                        tDatum.poseKeypoints, tDatum.cvInputData, i, tDatum.id);
                     // Tracking (experimental)
-                    spPoseExtractor->trackLockThread(tDatum.poseKeypoints, tDatum.poseIds, tDatum.cvInputData, i,
-                                                     tDatum.id);
+                    spPoseExtractor->trackLockThread(
+                        tDatum.poseKeypoints, tDatum.poseIds, tDatum.cvInputData, i, tDatum.id);
                 }
                 // Profiling speed
                 Profiler::timerEnd(profilerKey);

@@ -36,6 +36,8 @@ namespace op
 
         Array<float> getPoseKeypoints() const;
 
+        Array<long long> getPoseIds() const;
+
         Array<float> getPoseScores() const;
 
         float getScaleNetToOutput() const;

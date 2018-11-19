@@ -1,13 +1,13 @@
 #ifdef USE_CAFFE
     #include <caffe/blob.hpp>
 #endif
-#include <openpose/net/resizeAndMergeBase.hpp>
-#include <openpose/utilities/fastMath.hpp>
-#include <openpose/net/resizeAndMergeCaffe.hpp>
 #ifdef USE_OPENCL
     #include <openpose/gpu/opencl.hcl>
     #include <openpose/gpu/cl2.hpp>
 #endif
+#include <openpose/net/resizeAndMergeBase.hpp>
+#include <openpose/utilities/fastMath.hpp>
+#include <openpose/net/resizeAndMergeCaffe.hpp>
 
 namespace op
 {
@@ -118,6 +118,29 @@ namespace op
         try
         {
             mScaleRatios = {scaleRatios};
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    template <typename T>
+    void ResizeAndMergeCaffe<T>::Forward(const std::vector<caffe::Blob<T>*>& bottom,
+                                         const std::vector<caffe::Blob<T>*>& top)
+    {
+        try
+        {
+            // CUDA
+            #ifdef USE_CUDA
+                Forward_gpu(bottom, top);
+            // OpenCL
+            #elif defined USE_OPENCL
+                Forward_ocl(bottom, top);
+            // CPU
+            #else
+                Forward_cpu(bottom, top);
+            #endif
         }
         catch (const std::exception& e)
         {

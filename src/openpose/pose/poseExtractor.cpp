@@ -92,6 +92,19 @@ namespace op
         }
     }
 
+    Array<long long> PoseExtractor::getPoseIds() const
+    {
+        try
+        {
+            return spPoseExtractorNet->getPoseIds();
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return Array<long long>{};
+        }
+    }
+
     Array<float> PoseExtractor::getPoseScores() const
     {
         try
