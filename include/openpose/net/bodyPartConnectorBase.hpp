@@ -22,6 +22,11 @@ namespace op
         const unsigned int* const bodyPartPairsGpuPtr = nullptr, const unsigned int* const mapIdxGpuPtr = nullptr,
         const T* const peaksGpuPtr = nullptr);
 
+    template <typename T>
+    void tafScoreGPU(const op::Array<T>& poseKeypoints, const op::Array<T>& trackletKeypoints,
+                     const std::shared_ptr<caffe::Blob<T>> heatMapsBlob, op::Array<T>& tafScores,
+                     const std::vector<int> tafPartPairs, int* &tafPartPairsGpuPtr, int tafChannelStart);
+
     // Private functions used by the 2 above functions
     template <typename T>
     std::vector<std::pair<std::vector<int>, T>> createPeopleVector(

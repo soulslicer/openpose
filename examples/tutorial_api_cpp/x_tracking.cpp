@@ -12,13 +12,20 @@
 // OpenPose dependencies
 #include <caffe/caffe.hpp>
 #include <openpose/gpu/cuda.hpp>
+#include <openpose/net/bodyPartConnectorBase.hpp>
 #include <dirent.h>
 
 #include <x_util.h>
 
+#include <chrono>
+#include <thread>
+
 // Custom OpenPose flags
 // Producer
-DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn/000017_bonn/",
+//../../video_datasets/posetrack_data/images/bonn_5sec/022688_mpii/*.jpg
+//DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn/000017_bonn/",
+//              "Process an image. Read all standard formats (jpg, png, bmp, etc.).");
+DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn_mpii_test_v2_5sec/12834_mpii/",
               "Process an image. Read all standard formats (jpg, png, bmp, etc.).");
 
 #define MODEL_PATH "/home/raaj/openpose/tracker/"
@@ -28,7 +35,7 @@ DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/imag
 #define FLAGS_resolution 368
 #define FLAGS_model_pose "BODY_21A"
 #define FLAGS_alpha_pose 0.6
-#define FLAGS_scale_gap 0.25
+#define FLAGS_scale_gap 0.5
 #define FLAGS_scale_number 1
 #define FLAGS_render_threshold 0.05
 #define FLAGS_num_gpu_start 0
@@ -53,12 +60,18 @@ struct Tracklet{
     bool valid;
 };
 
+bool pair_sort(const std::pair<int, int>& struct1, const std::pair<int, int>& struct2)
+{
+    return (struct1.first < struct2.first);
+}
+
 class Tracker{
 public:
     const float render_threshold = FLAGS_render_threshold;
-    std::vector<int> taf_part_pairs = {1,8, 9,10, 10,11, 8,9, 8,12, 12,13, 13,14, 1,2, 2,3, 3,4, 2,17, 1,5, 5,6, 6,7, 5,18, 1,0, 0,15, 0,16, 15,17, 16,18, 1,19, 19,20};
+    std::vector<int> taf_part_pairs = {1,8, 9,10, 10,11, 8,9, 8,12, 12,13, 13,14, 1,2, 2,3, 3,4, 2,17, 1,5, 5,6, 6,7, 5,18, 1,0, 0,15, 0,16, 15,17, 16,18, 1,19, 19,20, 5,12, 2,9};
     // for heatmaps offset = 22+48 --- i*(48) + [j*2 + k]
 
+    int* gpu_taf_part_pairs_ptr = nullptr;
 
     std::map<int, Tracklet> tracklets_internal;
     int frame_count = -1;
@@ -78,6 +91,7 @@ public:
         tracklets_internal[id].kp_hitcount = frame_count;
         tracklets_internal[id].kp_count = 0;
         tracklets_internal[id].valid = true;
+        return id;
     }
 
     void update_tracklet(int tid, op::Array<float>& person_kp){
@@ -92,51 +106,209 @@ public:
         tracklets_internal.clear();
     }
 
-    std::vector<int> compute_track_score(op::Array<float>& pose_keypoints, int pid, op::Array<float>& taf_scores){
+    std::vector<int> compute_track_score(op::Array<float>& pose_keypoints, int pid, std::pair<op::Array<float>, std::map<int, int>>& taf_scores){
+
         op::Array<float> person_kp = get_person_no_copy(pose_keypoints, pid);
         std::vector<int> final_idxs(person_kp.getSize()[0], -1);
 
-        // Kp iterate on person
-        for(int j=0; j<person_kp.getSize()[0]; j++){
-            auto body_part = get_bp_no_copy(person_kp, j);
-            if(body_part[2] < render_threshold) continue;
+        //return final_idxs;
 
-            // Find best match
-            int best_cost = 1000000;
+//        // Kp iterate on person
+//        for(int j=0; j<person_kp.getSize()[0]; j++){
+//            auto body_part = get_bp_no_copy(person_kp, j);
+//            if(body_part[2] < render_threshold) continue;
+
+//            // Find best match
+//            int best_cost = 1000000;
+//            int best_tid = -1;
+
+//            // Iterate current tracklets
+//            for ( auto &trackletPair : tracklets_internal ) {
+//                Tracklet& tracklet = trackletPair.second;
+//                int tid = trackletPair.first;
+//                if(!tracklet.valid) continue;
+//                float tracklet_cost = 0;
+
+//                auto tracklet_body_part = get_bp_no_copy(tracklet.kp, j);
+//                if(tracklet_body_part[2] < render_threshold) continue;
+//                float l2Dist = l2(tracklet_body_part, body_part);
+//                if(l2Dist > 10) continue;
+//                tracklet_cost += l2Dist;
+
+//                if(tracklet_cost < best_cost){
+//                    best_cost = tracklet_cost;
+//                    best_tid = tid;
+//                }
+//            }
+
+//            // Set TID
+//            if(best_tid >= 0) final_idxs[j]=best_tid;
+//        }
+//        //return final_idxs;
+
+        for(int i=24; i<taf_part_pairs.size()/2; i++){
+            auto partA = taf_part_pairs[i*2];
+            auto partB = taf_part_pairs[i*2 + 1];
+
+            if(partA == 15 || partB == 15 ||
+                    partA == 16 || partB == 16 ||
+                    partA == 17 || partB == 17 ||
+                    partA == 18 || partB == 18) continue;
+
+            if(person_kp.at({partA, 2}) < render_threshold) continue;
+
+            //if(final_idxs[partA] >= 0) continue;
+
             int best_tid = -1;
+            int best_fscore = 0;
+            for ( auto &kv : taf_scores.second ){
+                int tid = kv.first;
+                int tid_map = kv.second;
+                Tracklet& tracklet = tracklets_internal[tid];
+                if(tracklet.kp.at({partB, 2}) < render_threshold) continue;
+                auto fscore = taf_scores.first.at({i, pid, tid_map});
 
-            // Iterate current tracklets
-            for ( auto &trackletPair : tracklets_internal ) {
-                Tracklet& tracklet = trackletPair.second;
-                int tid = trackletPair.first;
-                if(!tracklet.valid) continue;
-                float tracklet_cost = 0;
-
-                auto tracklet_body_part = get_bp_no_copy(tracklet.kp, j);
-                if(tracklet_body_part[2] < render_threshold) continue;
-                float l2Dist = l2(tracklet_body_part, body_part);
-                if(l2Dist > 1) continue;
-                tracklet_cost += l2Dist;
-
-                if(tracklet_cost < best_cost){
-                    best_cost = tracklet_cost;
+                if(fscore > best_fscore){
+                    best_fscore = fscore;
                     best_tid = tid;
                 }
             }
 
-            // Set TID
-            if(best_tid >= 0) final_idxs[j]=best_tid;
+            if(best_tid >= 0) final_idxs[partA]=best_tid;
+
         }
+
+//        std::cout << pid << std::endl;
+//        print_vector(final_idxs);
+
 
         return final_idxs;
     }
 
-    void run(op::Array<float>& pose_keypoints, std::shared_ptr<caffe::Blob<float>> heatMapsBlob, std::shared_ptr<caffe::Blob<float>> peaksBlob){
 
+
+    std::pair<op::Array<float>, std::map<int, int>> taf_kernel(op::Array<float>& pose_keypoints, std::shared_ptr<caffe::Blob<float>> heatMapsBlob){
+        // 1
+        std::map<int, int> tid_to_map;
+        op::Array<float> tracklet_keypoints({(int)tracklets_internal.size(), pose_keypoints.getSize(1), pose_keypoints.getSize(2)},0.0f);
+        int i=0;
+        for (auto& kv : tracklets_internal) {
+            for(int j=0; j<pose_keypoints.getSize(1); j++)
+                for(int k=0; k<pose_keypoints.getSize(2); k++)
+                    tracklet_keypoints.at({i,j,k}) = kv.second.kp.at({j,k});
+            tid_to_map[kv.first] = i;
+            i+=1;
+        }
+
+        op::Array<float> taf_scores;
+        op::tafScoreGPU(pose_keypoints, tracklet_keypoints, heatMapsBlob, taf_scores, taf_part_pairs, gpu_taf_part_pairs_ptr, 70);
+
+        return std::pair<op::Array<float>, std::map<int, int>>(taf_scores, tid_to_map);
+    }
+
+    void run(op::Array<float>& pose_keypoints, std::shared_ptr<caffe::Blob<float>> heatMapsBlob, std::shared_ptr<caffe::Blob<float>> peaksBlob, float scale){
+
+        //if(frame_count == 1) exit(-1);
+
+        if(!pose_keypoints.getSize(0)) return;
+
+        frame_count += 1;
+
+        // Scale Down
+        for(int i=0; i<pose_keypoints.getSize()[0]; i++){
+            op::Array<float> person_kp = get_person_no_copy(pose_keypoints, i);
+            rescale_kp(person_kp, scale);
+        }
+
+        // Update Params
+        auto to_update_set = std::map<int, std::vector<std::pair<int, int>>>();
+        auto tid_updated = std::vector<int>();
+        auto tid_added = std::vector<int>();
+
+        // Kernel goes here
+        // Need to convert my tracklets into op::Array
+        std::pair<op::Array<float>, std::map<int, int>> taf_scores = taf_kernel(pose_keypoints, heatMapsBlob);
+
+        // Iterate Pose Keypoints (Global Score)
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+        for(int i=0; i<pose_keypoints.getSize()[0]; i++){
+            op::Array<float> person_kp = get_person_no_copy(pose_keypoints, i);
+            // Score
+            auto final_idxs = compute_track_score(pose_keypoints, i, taf_scores);
+            auto mc = mostCommon(final_idxs);
+            auto mostCommonIdx = mc.first; auto mostCommonCount = mc.second;
+
+            if(mostCommonCount >= 5){
+                if(!to_update_set.count(mostCommonIdx)) to_update_set[mostCommonIdx] = {};
+                to_update_set[mostCommonIdx].emplace_back(std::pair<int, int>(mostCommonCount,i));
+            }else{
+                if(getValidKps(person_kp, render_threshold) <= 5) continue;
+                //if(frame_count < 2){
+                int new_id = add_new_tracklet(person_kp);
+                tid_added.emplace_back(new_id);
+                //}
+            }
+
+            //break;
+        }
+
+        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        float time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.;
+        std::cout << "A = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
+
+
+        // Global Update
+        for (auto& kv : to_update_set) {
+            auto mostCommonIdx = kv.first;
+            auto& item = kv.second;
+            if(item.size() > 1){
+                std::sort(item.begin(), item.end(), pair_sort);
+                auto best_item_index = item.back().second;
+                auto best_person_kp = get_person_no_copy(pose_keypoints, best_item_index);
+                update_tracklet(mostCommonIdx, best_person_kp);
+                //std::cout << "Update : " << best_item_index << " into tracklet " << mostCommonIdx << std::endl;
+                tid_updated.emplace_back(mostCommonIdx);
+
+                item.pop_back();
+                for(auto& remain_item : item){
+                    auto person_kp = get_person_no_copy(pose_keypoints, remain_item.second);
+                    if(getValidKps(person_kp, render_threshold) <= 5) continue;
+                    int new_id = add_new_tracklet(person_kp);
+                    //std::cout << "Add : " << new_id << std::endl;
+                    tid_added.emplace_back(new_id);
+                }
+            }else{
+                auto best_person_kp = get_person_no_copy(pose_keypoints, item[0].second);
+                update_tracklet(mostCommonIdx, best_person_kp);
+                //std::cout << "Update : " << item[0].second << " into tracklet " << mostCommonIdx << std::endl;
+                tid_updated.emplace_back(mostCommonIdx);
+            }
+        }
+
+        // Deletion
+        std::vector<int> to_delete;
+        for (auto& kv : tracklets_internal) {
+            auto tidx = kv.first;
+            auto& tracklet = kv.second;
+            if(tracklet.kp_hitcount - frame_count < 0) {
+                to_delete.emplace_back(tidx);
+                //std::cout << "Delete : " << tidx << std::endl;
+            }
+        }
+        for(auto to_del : to_delete) tracklets_internal.erase(tracklets_internal.find(to_del));
+
+        std::cout << frame_count << std::endl;
     }
 
     Tracker(){
 
+        // Make TAF Part pairs in my cross linked formulation so double
+        int tpp_size = taf_part_pairs.size()/2;
+        for(int i=0; i<tpp_size; i++){
+            taf_part_pairs.emplace_back(taf_part_pairs[i*2 + 1]);
+            taf_part_pairs.emplace_back(taf_part_pairs[i*2 + 0]);
+        }
     }
 
 };
@@ -170,6 +342,7 @@ public:
     std::vector<float> scales;
     bool first_frame = true;
     double scaleInputToOutput;
+    float pointScale;
     op::Point<int> outputResolution;
     std::map<std::string, int> COCO21_MAPPING;
     std::vector<std::vector<int>> colors;
@@ -252,7 +425,8 @@ public:
     //    }
 
     void reset(){
-
+        first_frame = true;
+        tracker.tracklets_internal.clear();
     }
 
 
@@ -308,13 +482,15 @@ public:
 
     }
 
-    void run(const cv::Mat& image){
+    float run(const cv::Mat& image){
 
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
         //std::vector<caffe::Blob<float>> blobsForNet;
         std::vector<cv::Mat> imagesOrig;
         process_frames(image, imagesOrig);
+
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
 
         std::vector<boost::shared_ptr<caffe::Blob<float>>> caffeNetOutputBlob;
 
@@ -358,22 +534,23 @@ public:
 
             }else{
 
-                // Copy state
-                gpu_copy(netSet.netB->blob_by_name("last_paf"), netSet.pafMem);
-                gpu_copy(netSet.netB->blob_by_name("last_hm"), netSet.hmMem);
-                gpu_copy(netSet.netB->blob_by_name("last_fm"), netSet.fmMem);
+                for(int s=0; s<1;s++){
+                    // Copy state
+                    gpu_copy(netSet.netB->blob_by_name("last_paf"), netSet.pafMem);
+                    gpu_copy(netSet.netB->blob_by_name("last_hm"), netSet.hmMem);
+                    gpu_copy(netSet.netB->blob_by_name("last_fm"), netSet.fmMem);
 
-                // Forward Net
-                op::uCharCvMatToFloatPtr(netSet.netVGG->blob_by_name("image")->mutable_cpu_data(), imageForNet, 1);
-                netSet.netVGG->Forward();
-                gpu_copy(netSet.netB->blob_by_name("conv4_4_CPM"), netSet.netVGG->blob_by_name("conv4_4_CPM"));
-                netSet.netB->Forward();
+                    // Forward Net
+                    op::uCharCvMatToFloatPtr(netSet.netVGG->blob_by_name("image")->mutable_cpu_data(), imageForNet, 1);
+                    netSet.netVGG->Forward();
+                    gpu_copy(netSet.netB->blob_by_name("conv4_4_CPM"), netSet.netVGG->blob_by_name("conv4_4_CPM"));
+                    netSet.netB->Forward();
 
-                // Copy Mem
-                gpu_copy(netSet.pafMem, netSet.netB->blob_by_name("Mconv7_stage3_L2_cont2"));
-                gpu_copy(netSet.hmMem, netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2"));
-                gpu_copy(netSet.fmMem, netSet.netVGG->blob_by_name("conv4_4_CPM"));
-
+                    // Copy Mem
+                    gpu_copy(netSet.pafMem, netSet.netB->blob_by_name("Mconv7_stage3_L2_cont2"));
+                    gpu_copy(netSet.hmMem, netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2"));
+                    gpu_copy(netSet.fmMem, netSet.netVGG->blob_by_name("conv4_4_CPM"));
+                }
                 caffeNetOutputBlob.emplace_back(netSet.netB->blob_by_name("net_output"));
 
                 //visualize_hm(imageForNet,netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2")->mutable_cpu_data(),netSet.netB->blob_by_name("Mconv7_stage4_L1_cont2")->shape(), 0, 21);
@@ -403,7 +580,7 @@ public:
             nmsCaffe->setThreshold((float)poseExtractorCaffe->get(op::PoseProperty::NMSThreshold));
 
             float mScaleNetToOutput = 1./scaleInputToNetInputs[0];
-            float pointScale = mScaleNetToOutput;
+            pointScale = mScaleNetToOutput;
             bodyPartConnectorCaffe->setScaleNetToOutput(mScaleNetToOutput);
             bodyPartConnectorCaffe->setInterMinAboveThreshold(
                         (float)poseExtractorCaffe->get(op::PoseProperty::ConnectInterMinAboveThreshold)
@@ -427,26 +604,62 @@ public:
 
         // TAF Score calculator?
 
-        std::cout << mPoseKeypoints.printSize() << std::endl;
-        std::cout << peaksBlobs.back()->shape_string() << std::endl;
+        //std::cout << mPoseKeypoints.printSize() << std::endl;
+        //std::cout << peaksBlobs.back()->shape_string() << std::endl;
 
+
+        tracker.run(mPoseKeypoints, heatMapsBlob, peaksBlob, 1./pointScale);
 
         cudaDeviceSynchronize();
-
-        //visualize_hm(imagesOrig[0],heatMapsBlobs.back()->mutable_cpu_data(),heatMapsBlobs.back()->shape(), 0, 21);
-        cv::Mat drawImage = image.clone();
-        draw_lines_coco_21(drawImage, mPoseKeypoints, std::vector<int>(mPoseKeypoints.getSize()[0], 0), COCO21_MAPPING, colors);
-
-
         std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+        float time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.;
         std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
 
 
+
+
+
+        //visualize_hm(imagesOrig[0],heatMapsBlobs.back()->mutable_cpu_data(),heatMapsBlobs.back()->shape(), 0, 21);
+        cv::Mat drawImage = image.clone();
+        //cv::Mat otherImage = image.clone();
+        for (auto& kv : tracker.tracklets_internal) {
+            auto tidx = kv.first;
+            auto& tracklet = kv.second;
+            //cv::putText(drawImage,"P"+std::to_string(tidx), (int(rect[0]), int(rect[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, colors[tidx  % len(colors)], 2)
+
+            cv::Point xx(tracklet.kp.at({0,0})*pointScale, tracklet.kp.at({0,1})*pointScale);
+            cv::Scalar color(colors[tidx % colors.size()][0], colors[tidx % colors.size()][1], colors[tidx % colors.size()][2]);
+
+            cv::putText(drawImage,"T"+std::to_string(tidx), xx, cv::FONT_HERSHEY_SIMPLEX, 1, color, 2);
+
+
+            draw_lines_coco_21(drawImage, tracklet.kp, tidx, COCO21_MAPPING, colors, pointScale);
+            //if(tracklet.kp_hitcount - frame_count < 0) to_delete.emplace_back(tidx);
+        }
+
+
+
+//        //std::cout << frame_
+//        cv::putText(drawImage,"F"+std::to_string(tracker.frame_count), cv::Point(20,20), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(100), 2);
+
         cv::imshow("win", drawImage);
-        cv::waitKey(15);
+//       // cv::imshow("other", otherImage);
+        int key = cv::waitKey(2);
+////        if(tracker.frame_count == 25){
+////            while(1){
+////            cv::imshow("win", drawImage);
+////            cv::imshow("other", otherImage);
+////            int key = cv::waitKey(15);
+////            }
+////        }
+//        //std::this_thread::sleep_for(std::chrono::milliseconds(x));
+
+
 
 
         if(first_frame) first_frame = false;
+
+        return time;
 
         //        cv::imshow("win", image);
         //        cv::waitKey(15);
@@ -516,6 +729,7 @@ std::vector<std::string> filesFromFolder(std::string folder){
 
 int main(int argc, char *argv[])
 {
+
 //    op::Array<float> xx; xx.reset({3, 21, 3}, 1);
 
 //    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -544,14 +758,63 @@ int main(int argc, char *argv[])
 
     TrackingNet t = TrackingNet();
 
-    // Load images from folder
-    std::vector<std::string> imagePaths = filesFromFolder(FLAGS_image_path);
-    for(auto imagePath : imagePaths){
-        cv::Mat img = cv::imread(FLAGS_image_path+imagePath);
 
-        t.run(img);
+    cv::VideoCapture cap;
+    // open the default camera, use something different from 0 otherwise;
+    // Check VideoCapture documentation.
+    if(!cap.open(0))
+        return 0;
+
+    cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+    cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
+
+    for(;;)
+    {
+          cv::Mat frame;
+          cap >> frame;
+          if( frame.empty() ) break; // end of video stream
+          t.run(frame);
+
+    }
+    // the camera will be closed automatically upon exit
+    // cap.close();
+
+//    // Load images from folder
+//    std::vector<std::string> imagePaths = filesFromFolder(FLAGS_image_path);
+//    for(auto imagePath : imagePaths){
+//        cv::Mat img = cv::imread(FLAGS_image_path+imagePath);
+
+//        t.run(img);
+//    }
+
+    std::string folder = "/home/raaj/Downloads/detectron/1/";
+    std::vector<std::string> imagePaths = filesFromFolder(folder);
+
+    std::vector<float> times;
+    for(auto imagePath : imagePaths){
+        cv::Mat img = cv::imread(folder+imagePath);
+
+        cv::resize(img, img, cv::Size(656,368));
+
+        for(int i=0; i<100; i++){
+            float time = t.run(img);
+            times.emplace_back(time);
+        }
+        t.reset();
     }
 
+
+    float sum=0.;
+    for(auto time : times) sum+=time;
+    std::cout << sum/(float)(times.size()) << std::endl;
+
+    // 100 - 39.8ms
+    // 38 - 36ms
+    // 20 - 33.5ms
+    // 15 - 33.3ms
+    // 10 - 32.3
+    // 5 - 32.2
+    // 1 - 32.0
 
 
 

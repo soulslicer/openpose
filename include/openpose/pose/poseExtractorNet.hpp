@@ -58,6 +58,7 @@ namespace op
         Point<int> mNetOutputSize;
         Array<float> mPoseKeypoints;
         Array<float> mPoseScores;
+        Array<long long> mPoseIds; // new
         float mScaleNetToOutput;
 
         void checkThread() const;
