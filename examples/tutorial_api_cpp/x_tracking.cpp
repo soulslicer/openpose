@@ -23,10 +23,10 @@
 // Custom OpenPose flags
 // Producer
 //../../video_datasets/posetrack_data/images/bonn_5sec/022688_mpii/*.jpg
-//DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn/000017_bonn/",
-//              "Process an image. Read all standard formats (jpg, png, bmp, etc.).");
-DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn_mpii_test_v2_5sec/12834_mpii/",
+DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn/000017_bonn/",
               "Process an image. Read all standard formats (jpg, png, bmp, etc.).");
+//DEFINE_string(image_path, "/home/raaj/Storage/video_datasets/posetrack_data/images/bonn_mpii_test_v2_5sec/12834_mpii/",
+//              "Process an image. Read all standard formats (jpg, png, bmp, etc.).");
 
 #define MODEL_PATH "/home/raaj/openpose/tracker/"
 #define FLAGS_logging_level 3
@@ -107,7 +107,6 @@ public:
     }
 
     std::vector<int> compute_track_score(op::Array<float>& pose_keypoints, int pid, std::pair<op::Array<float>, std::map<int, int>>& taf_scores){
-
         op::Array<float> person_kp = get_person_no_copy(pose_keypoints, pid);
         std::vector<int> final_idxs(person_kp.getSize()[0], -1);
 
@@ -167,7 +166,6 @@ public:
                 Tracklet& tracklet = tracklets_internal[tid];
                 if(tracklet.kp.at({partB, 2}) < render_threshold) continue;
                 auto fscore = taf_scores.first.at({i, pid, tid_map});
-
                 if(fscore > best_fscore){
                     best_fscore = fscore;
                     best_tid = tid;
@@ -177,10 +175,6 @@ public:
             if(best_tid >= 0) final_idxs[partA]=best_tid;
 
         }
-
-//        std::cout << pid << std::endl;
-//        print_vector(final_idxs);
-
 
         return final_idxs;
     }
@@ -207,9 +201,6 @@ public:
     }
 
     void run(op::Array<float>& pose_keypoints, std::shared_ptr<caffe::Blob<float>> heatMapsBlob, std::shared_ptr<caffe::Blob<float>> peaksBlob, float scale){
-
-        //if(frame_count == 1) exit(-1);
-
         if(!pose_keypoints.getSize(0)) return;
 
         frame_count += 1;
@@ -226,12 +217,9 @@ public:
         auto tid_added = std::vector<int>();
 
         // Kernel goes here
-        // Need to convert my tracklets into op::Array
         std::pair<op::Array<float>, std::map<int, int>> taf_scores = taf_kernel(pose_keypoints, heatMapsBlob);
 
         // Iterate Pose Keypoints (Global Score)
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
         for(int i=0; i<pose_keypoints.getSize()[0]; i++){
             op::Array<float> person_kp = get_person_no_copy(pose_keypoints, i);
             // Score
@@ -252,11 +240,6 @@ public:
 
             //break;
         }
-
-        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-        float time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.;
-        std::cout << "A = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
-
 
         // Global Update
         for (auto& kv : to_update_set) {
@@ -608,15 +591,19 @@ public:
         //std::cout << peaksBlobs.back()->shape_string() << std::endl;
 
 
+
         tracker.run(mPoseKeypoints, heatMapsBlob, peaksBlob, 1./pointScale);
 
+
+
         cudaDeviceSynchronize();
+        //std::cout << heatMapsBlob.get()->shape_string() << std::endl;
         std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
         float time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.;
         std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
 
 
-
+        begin = std::chrono::steady_clock::now();
 
 
         //visualize_hm(imagesOrig[0],heatMapsBlobs.back()->mutable_cpu_data(),heatMapsBlobs.back()->shape(), 0, 21);
@@ -639,21 +626,12 @@ public:
 
 
 
-//        //std::cout << frame_
-//        cv::putText(drawImage,"F"+std::to_string(tracker.frame_count), cv::Point(20,20), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(100), 2);
-
         cv::imshow("win", drawImage);
-//       // cv::imshow("other", otherImage);
         int key = cv::waitKey(2);
-////        if(tracker.frame_count == 25){
-////            while(1){
-////            cv::imshow("win", drawImage);
-////            cv::imshow("other", otherImage);
-////            int key = cv::waitKey(15);
-////            }
-////        }
-//        //std::this_thread::sleep_for(std::chrono::milliseconds(x));
 
+        end= std::chrono::steady_clock::now();
+        time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.;
+        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
 
 
 
@@ -751,16 +729,22 @@ int main(int argc, char *argv[])
     for(;;)
     {
 
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
           cv::Mat frame;
           cap >> frame;
           if( frame.empty() ) break; // end of video stream
 
-          skip++;
-          if(skip < 3){
-              continue;
-          }
-          skip = 0;
+          std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+          float time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.;
+          std::cout << "Frame difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000. <<std::endl;
+
+
+//          skip++;
+//          if(skip < 3){
+//              continue;
+//          }
+//          skip = 0;
 
           t.run(frame);
 
