@@ -219,26 +219,26 @@ namespace op
                         const auto thicknessLine = fastMax(1, intRound(thicknessRatio * thicknessLineRatioWRTCircle));
                         const auto radius = thicknessRatio / 2;
 
-                        // Draw lines
-                        for (auto pair = 0u ; pair < pairs.size() ; pair+=2)
-                        {
-                            const auto index1 = (person * numberKeypoints + pairs[pair]) * keypoints.getSize(2);
-                            const auto index2 = (person * numberKeypoints + pairs[pair+1]) * keypoints.getSize(2);
-                            if (keypoints[index1+2] > threshold && keypoints[index2+2] > threshold)
-                            {
-                                const auto thicknessLineScaled = intRound(
-                                    thicknessLine * poseScales[pairs[pair+1] % numberScales]);
-                                const auto colorIndex = pairs[pair+1]*3; // Before: colorIndex = pair/2*3;
-                                const cv::Scalar color{
-                                    colors[(colorIndex+2) % numberColors],
-                                    colors[(colorIndex+1) % numberColors],
-                                    colors[colorIndex % numberColors]
-                                };
-                                const cv::Point keypoint1{intRound(keypoints[index1]), intRound(keypoints[index1+1])};
-                                const cv::Point keypoint2{intRound(keypoints[index2]), intRound(keypoints[index2+1])};
-                                cv::line(frameBGR, keypoint1, keypoint2, color, thicknessLineScaled, lineType, shift);
-                            }
-                        }
+//                        // Draw lines
+//                        for (auto pair = 0u ; pair < pairs.size() ; pair+=2)
+//                        {
+//                            const auto index1 = (person * numberKeypoints + pairs[pair]) * keypoints.getSize(2);
+//                            const auto index2 = (person * numberKeypoints + pairs[pair+1]) * keypoints.getSize(2);
+//                            if (keypoints[index1+2] > threshold && keypoints[index2+2] > threshold)
+//                            {
+//                                const auto thicknessLineScaled = intRound(
+//                                    thicknessLine * poseScales[pairs[pair+1] % numberScales]);
+//                                const auto colorIndex = pairs[pair+1]*3; // Before: colorIndex = pair/2*3;
+//                                const cv::Scalar color{
+//                                    colors[(colorIndex+2) % numberColors],
+//                                    colors[(colorIndex+1) % numberColors],
+//                                    colors[colorIndex % numberColors]
+//                                };
+//                                const cv::Point keypoint1{intRound(keypoints[index1]), intRound(keypoints[index1+1])};
+//                                const cv::Point keypoint2{intRound(keypoints[index2]), intRound(keypoints[index2+1])};
+//                                cv::line(frameBGR, keypoint1, keypoint2, color, thicknessLineScaled, lineType, shift);
+//                            }
+//                        }
 
                         // Draw circles
                         for (auto part = 0 ; part < numberKeypoints ; part++)

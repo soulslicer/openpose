@@ -618,6 +618,17 @@ namespace op
                 const auto peopleJsonSaver = std::make_shared<PeopleJsonSaver>(writeJsonCleaned);
                 outputWs.emplace_back(std::make_shared<WPeopleJsonSaver<TDatumsSP>>(peopleJsonSaver));
             }
+            // Add frame information for GUI
+            const bool guiEnabled = (wrapperStructGui.displayMode != DisplayMode::NoDisplay);
+            // If this WGuiInfoAdder instance is placed before the WImageSaver or WVideoSaver, then the resulting
+            // recorded frames will look exactly as the final displayed image by the GUI
+            if (wrapperStructGui.guiVerbose && (guiEnabled || !userOutputWs.empty()
+                                                || threadManagerMode == ThreadManagerMode::Asynchronous
+                                                || threadManagerMode == ThreadManagerMode::AsynchronousOut))
+            {
+                const auto guiInfoAdder = std::make_shared<GuiInfoAdder>(numberThreads, guiEnabled);
+                outputWs.emplace_back(std::make_shared<WGuiInfoAdder<TDatumsSP>>(guiInfoAdder));
+            }
             // Write people pose data on disk (COCO validation json format)
             if (!wrapperStructOutput.writeCocoJson.empty())
             {
@@ -687,17 +698,6 @@ namespace op
                 const auto heatMapSaver = std::make_shared<HeatMapSaver>(writeHeatMapsCleaned,
                                                                          wrapperStructOutput.writeHeatMapsFormat);
                 outputWs.emplace_back(std::make_shared<WHeatMapSaver<TDatumsSP>>(heatMapSaver));
-            }
-            // Add frame information for GUI
-            const bool guiEnabled = (wrapperStructGui.displayMode != DisplayMode::NoDisplay);
-            // If this WGuiInfoAdder instance is placed before the WImageSaver or WVideoSaver, then the resulting
-            // recorded frames will look exactly as the final displayed image by the GUI
-            if (wrapperStructGui.guiVerbose && (guiEnabled || !userOutputWs.empty()
-                                                || threadManagerMode == ThreadManagerMode::Asynchronous
-                                                || threadManagerMode == ThreadManagerMode::AsynchronousOut))
-            {
-                const auto guiInfoAdder = std::make_shared<GuiInfoAdder>(numberThreads, guiEnabled);
-                outputWs.emplace_back(std::make_shared<WGuiInfoAdder<TDatumsSP>>(guiInfoAdder));
             }
             // Minimal graphical user interface (GUI)
             guiW = nullptr;

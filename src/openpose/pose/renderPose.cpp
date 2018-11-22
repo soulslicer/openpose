@@ -101,10 +101,6 @@ namespace op
                 const auto& pairs = getPoseBodyPartPairsRender(poseModel);
                 const auto& poseScales = getPoseScales(poseModel);
 
-                // Render keypoints
-                renderKeypointsCpu(frameArray, poseKeypoints, pairs, getPoseColors(poseModel), thicknessCircleRatio,
-                                   thicknessLineRatioWRTCircle, poseScales, renderThreshold);
-
                 // My stuff
                 if(poseModel == PoseModel::BODY_21A){
                     // Mapping
@@ -125,6 +121,10 @@ namespace op
 
                     draw_lines_coco_21(frameBGR, poseKeypoints, mid, COCO21_MAPPING, colors);
                 }
+
+                // Render keypoints
+                renderKeypointsCpu(frameArray, poseKeypoints, pairs, getPoseColors(poseModel), thicknessCircleRatio,
+                                   thicknessLineRatioWRTCircle, poseScales, renderThreshold);
             }
         }
         catch (const std::exception& e)

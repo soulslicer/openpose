@@ -146,10 +146,10 @@ namespace op
                 auto partA = taf_part_pairs[i*2];
                 auto partB = taf_part_pairs[i*2 + 1];
 
-//                if(partA == 15 || partB == 15 ||
-//                        partA == 16 || partB == 16 ||
-//                        partA == 17 || partB == 17 ||
-//                        partA == 18 || partB == 18) continue;
+                if(partA == 15 || partB == 15 ||
+                        partA == 16 || partB == 16 ||
+                        partA == 17 || partB == 17 ||
+                        partA == 18 || partB == 18) continue;
 
                 if(person_kp.at({partA, 2}) < render_threshold) continue;
 
