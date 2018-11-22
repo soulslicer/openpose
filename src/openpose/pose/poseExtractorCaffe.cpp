@@ -146,10 +146,10 @@ namespace op
                 auto partA = taf_part_pairs[i*2];
                 auto partB = taf_part_pairs[i*2 + 1];
 
-                if(partA == 15 || partB == 15 ||
-                        partA == 16 || partB == 16 ||
-                        partA == 17 || partB == 17 ||
-                        partA == 18 || partB == 18) continue;
+//                if(partA == 15 || partB == 15 ||
+//                        partA == 16 || partB == 16 ||
+//                        partA == 17 || partB == 17 ||
+//                        partA == 18 || partB == 18) continue;
 
                 if(person_kp.at({partA, 2}) < render_threshold) continue;
 
@@ -275,8 +275,14 @@ namespace op
                     to_delete.emplace_back(tidx);
                     //std::cout << "Delete : " << tidx << std::endl;
                 }
+
+                if(tracklet.kp.getSize(1) == 0) std::cout << "SHIT" << std::endl;
+
             }
             for(auto to_del : to_delete) tracklets_internal.erase(tracklets_internal.find(to_del));
+
+            // Sanity Check
+
         }
 
         Tracker(){
@@ -697,7 +703,7 @@ namespace op
                 }
 
                 // Set Poses
-                op::Array<float> tracklet_keypoints({(int)upImpl->tracker.tracklets_internal.size(), mPoseKeypoints.getSize(1), mPoseKeypoints.getSize(2)},0.0f);
+                op::Array<float> tracklet_keypoints({(int)upImpl->tracker.tracklets_internal.size(), 21, 3},0.0f);
                 int i=0;
                 for (auto& kv : upImpl->tracker.tracklets_internal) {
                     for(int j=0; j<mPoseKeypoints.getSize(1); j++)

@@ -20,7 +20,8 @@ namespace op
     std::pair<int, std::string> PoseCpuRenderer::renderPose(Array<float>& outputData,
                                                             const Array<float>& poseKeypoints,
                                                             const float scaleInputToOutput,
-                                                            const float scaleNetToOutput)
+                                                            const float scaleNetToOutput,
+                                                            Array<long long> poseIds)
     {
         try
         {
@@ -38,7 +39,7 @@ namespace op
                 scaleKeypoints(poseKeypointsRescaled, scaleInputToOutput);
                 // Render keypoints
                 renderPoseKeypointsCpu(outputData, poseKeypointsRescaled, mPoseModel, mRenderThreshold,
-                                       mBlendOriginalFrame);
+                                       mBlendOriginalFrame, poseIds);
             }
             // Draw heat maps / PAFs
             else

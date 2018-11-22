@@ -23,6 +23,7 @@ namespace op
                 {
                     set(CV_CAP_PROP_FRAME_WIDTH, mResolution.x);
                     set(CV_CAP_PROP_FRAME_HEIGHT, mResolution.y);
+                    set(CV_CAP_PROP_FPS, 20);
                     if ((int)get(CV_CAP_PROP_FRAME_WIDTH) != mResolution.x
                         || (int)get(CV_CAP_PROP_FRAME_HEIGHT) != mResolution.y)
                     {
@@ -173,12 +174,13 @@ namespace op
             // Retrieve frame from buffer
             cv::Mat cvMat;
             auto cvMatRetrieved = false;
+            int x=0;
             while (!cvMatRetrieved)
             {
                 // Retrieve frame
                 std::unique_lock<std::mutex> lock{mBufferMutex};
                 if (!mBuffer.empty())
-                {
+                {                    
                     std::swap(cvMat, mBuffer);
                     cvMatRetrieved = true;
                 }
