@@ -348,6 +348,13 @@ namespace op
             0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,
             38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63
         },
+        // BODY_19E
+        std::vector<unsigned int>{
+            // Minimum spanning tree
+            0,1,   2,3,   4,5,   6,7,   8,9,  10,11,  12,13, 14,15, 16,17, 18,19, 20,21, 22,23, 24,25, 26,27, 28,29, 30,31, 32,33, 34,35, 36,37,
+            // Redundant ones
+            38,39, 40,41, 42,43, 44,45, 46,47, 48,49, 50,51, 52,53, 54,55, 56,57, 58,59, 60,61
+        },
         // BODY_21
         std::vector<unsigned int>{
             0,1, 14,15, 22,23, 16,17, 18,19, 24,25, 26,27, 6,7, 2,3, 4,5, 8,9, 10,11, 12,13, 30,31, 32,33, 36,37, 34,35, 38,39, 20,21, 28,29, 40,41, 42,43
@@ -364,7 +371,7 @@ namespace op
         POSE_BODY_25_BODY_PARTS,POSE_COCO_BODY_PARTS,   POSE_MPI_BODY_PARTS,    POSE_MPI_BODY_PARTS,
         POSE_BODY_19_BODY_PARTS,POSE_BODY_19_BODY_PARTS,POSE_BODY_59_BODY_PARTS,POSE_BODY_19_BODY_PARTS,
         POSE_BODY_25_BODY_PARTS,POSE_BODY_25_BODY_PARTS,POSE_BODY_65_BODY_PARTS,POSE_CAR_12_PARTS,
-        POSE_BODY_25_BODY_PARTS,POSE_BODY_23_BODY_PARTS,POSE_CAR_22_PARTS,
+        POSE_BODY_25_BODY_PARTS,POSE_BODY_23_BODY_PARTS,POSE_CAR_22_PARTS,      POSE_BODY_19_BODY_PARTS,
         POSE_BODY_21_BODY_PARTS,POSE_BODY_21_BODY_PARTS
     };
 
@@ -384,6 +391,7 @@ namespace op
         "pose/body_25d/pose_deploy.prototxt",
         "pose/body_23/pose_deploy.prototxt",
         "car/car_22/pose_deploy.prototxt",
+        "pose/body_19e/pose_deploy.prototxt",
         "pose/body_21/pose_deploy.prototxt",
         "pose/body_21a/pose_deploy.prototxt",
     };
@@ -403,6 +411,7 @@ namespace op
         "pose/body_25d/pose_iter_XXXXXX.caffemodel",
         "pose/body_23/pose_iter_XXXXXX.caffemodel",
         "car/car_22/pose_iter_XXXXXX.caffemodel",
+        "pose/body_19e/pose_iter_XXXXXX.caffemodel",
         "pose/body_21/pose_iter_XXXXXX.caffemodel",
         "pose/body_21a/pose_iter_XXXXXX.caffemodel",
     };
@@ -410,7 +419,7 @@ namespace op
     // Constant Array Parameters
     // POSE_NUMBER_BODY_PARTS equivalent to size of std::map POSE_BODY_XX_BODY_PARTS - 1 (removing background)
     const std::array<unsigned int, (int)PoseModel::Size> POSE_NUMBER_BODY_PARTS{
-        25, 18, 15, 15, 19, 19, 59, 19, 25, 25, 65, 12, 25, 23, 22, 21, 21
+        25, 18, 15, 15, 19, 19, 59, 19, 25, 25, 65, 12, 25, 23, 22, 19, 21, 21
     };
     const std::array<std::vector<unsigned int>, (int)PoseModel::Size> POSE_BODY_PART_PAIRS{
         // BODY_25
@@ -486,6 +495,14 @@ namespace op
         //            Back                  Vertical         Back-light replacement
             16,18,17,18,16,19,17,19,   0,7,3,17,6,12,16,14,   6,21,7,20,3,21,20,14
         },
+        // BODY_19E
+        std::vector<unsigned int>{
+            // Minimum spanning tree
+            1,8,   1,2, 2,3, 3,4,   1,5, 5,6, 6,7,   8,9, 9,10, 10,11,   8,12, 12,13, 13,14,   1,0, 0,15, 15,17, 0,16, 16,18,
+            // Redundant ones
+            // Ears-shoulders, shoulders-hips, shoulders-wrists, hips-ankles, wrists,  ankles, wrists-hips, small toes-ankles)
+                 2,17, 5,18,        2,9, 5,12,      2,4, 5,7,    9,11, 12,14,   4,7,   11,14,   4,9, 7,12//,   11,23, 14,20
+        },
         // BODY_21
         std::vector<unsigned int>{
             1,8,   1,2,   1,5,   2,3,   3,4,   5,6,   6,7,   8,9,   9,10,  10,11, 8,12,  12,13, 13,14,  1,0,   0,15, 15,17,  0,16, 16,18,   2,17,  5,18, 1,19, 19,20
@@ -512,6 +529,7 @@ namespace op
         8.f,    // BODY_25D
         8.f,    // BODY_23
         8.f,    // CAR_22
+        8.f,    // BODY_19E
         8.f,    // BODY_21
         8.f,    // BODY_21A
     };
