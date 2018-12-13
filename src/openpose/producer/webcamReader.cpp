@@ -22,7 +22,7 @@ namespace op
                 {
                     set(CV_CAP_PROP_FRAME_WIDTH, mResolution.x);
                     set(CV_CAP_PROP_FRAME_HEIGHT, mResolution.y);
-                    set(CV_CAP_PROP_FPS, 20);
+                    //set(CV_CAP_PROP_FPS, 10);
                     if ((int)get(CV_CAP_PROP_FRAME_WIDTH) != mResolution.x
                         || (int)get(CV_CAP_PROP_FRAME_HEIGHT) != mResolution.y)
                     {
