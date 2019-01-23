@@ -50,10 +50,10 @@ The Python API requires python-dev, Numpy (for array management), and OpenCV (fo
 
 ```
 # Python 2
-sudo apt-get install python-dev
+sudo apt-get install python-dev #(Ubuntu Only)
 sudo pip install numpy opencv-python
 # Python 3 (recommended)
-sudo apt-get install python3-dev
+sudo apt-get install python3-dev #(Ubuntu Only)
 sudo pip3 install numpy opencv-python
 ```
 
