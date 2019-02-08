@@ -10,6 +10,7 @@ TEST_2017_DEV=$(pwd)/val2017
 RESULTS_FOLDER=$(pwd)/testing_results
 TESTSET=test-val2017
 ALGORITHM=OpenPose
+MODEL=BODY_25B
 echo " "
 
 echo "Fix parameters"
@@ -35,6 +36,7 @@ cd $OPENPOSE_FOLDER
 # Processing
 if [ ${PERFORM_1_SCALE} = "YES" ]; then
     ./build/examples/openpose/openpose.bin \
+        --model_pose $MODEL \
         --image_dir $TEST_2017_DEV \
         --write_coco_json $TEMPORARY_JSON_FILE1 \
         --render_pose 0 --display 0
@@ -65,7 +67,8 @@ fi
 echo " "
 
 # Run Test
-python eval.py
+cd ..
+python eval_coco.py
 
 echo "Finished! Exiting script..."
 echo " "
