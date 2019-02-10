@@ -4,6 +4,7 @@
 
 rm -rf posetrack_results
 mkdir posetrack_results
+mkdir posetrack_results/op_output
 
 OPENPOSE_FOLDER=$(pwd)/../
 POSETRACK_FOLDER=$(pwd)/posetrack/images/val
@@ -28,7 +29,7 @@ for folder in $POSETRACK_FOLDER/* ; do
     ./build/examples/openpose/openpose.bin \
         --model_pose BODY_25B \
         --image_dir $folder \
-        --write_json eval/posetrack_results/$filename \
+        --write_json eval/posetrack_results/op_output/$filename \
         --render_pose 0 --display 0 &
 
     # sleep 1 &
