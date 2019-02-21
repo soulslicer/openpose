@@ -53,7 +53,7 @@ namespace op
 
         const float* getPoseGpuConstPtr() const;
 
-    private:
+    protected:
         // Used when increasing spNets
         const PoseModel mPoseModel;
         const int mGpuId;
