@@ -8,21 +8,22 @@ mkdir posetrack_results/op_output
 
 OPENPOSE_FOLDER=$(pwd)/../
 POSETRACK_FOLDER=$(pwd)/posetrack/images/val
-
-# for file in $POSETRACK_FOLDER/* ; do 
-#   echo "$file"
-# done
+POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/val_json
 
 # Not coded for Multi GPU Yet
 
 N=1
 (
-for folder in $POSETRACK_FOLDER/* ; do 
+for folder in $POSETRACK_JSON_FOLDER/* ; do 
+
+  # Setup name
+  filename="${folder##*/}"
+  filename="${filename%.*}"
+  folder=$POSETRACK_FOLDER/$filename
+
   if [[ -d "$folder" && ! -L "$folder" ]]; then
     ((i=i%N)); ((i++==0)) && wait
     process=$((i%N));
-
-    filename="${folder##*/}"
 
     # Operation
     cd $OPENPOSE_FOLDER;
