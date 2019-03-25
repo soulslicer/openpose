@@ -23,18 +23,19 @@ namespace op
          */
         explicit CocoJsonSaver(
             const std::string& filePathToSave, const PoseModel poseModel, const bool humanReadable = true,
-            const CocoJsonFormat cocoJsonFormat = CocoJsonFormat::Body, const int mCocoJsonVariant = 0);
+            const int cocoJsonVariants = 1, const CocoJsonFormat cocoJsonFormat = CocoJsonFormat::Body,
+            const int cocoJsonVariant = 0);
 
         virtual ~CocoJsonSaver();
 
-        void record(const Array<float>& poseKeypoints, const Array<float>& poseScores, const std::string& imageName);
+        void record(
+            const Array<float>& poseKeypoints, const Array<float>& poseScores, const std::string& imageName,
+            const unsigned long long frameNumber);
 
     private:
         const PoseModel mPoseModel;
-        const CocoJsonFormat mCocoJsonFormat;
         const int mCocoJsonVariant;
-        JsonOfstream mJsonOfstream;
-        bool mFirstElementAdded;
+        std::vector<std::tuple<JsonOfstream, CocoJsonFormat, bool>> mJsonOfstreams;
 
         DELETE_COPY(CocoJsonSaver);
     };
