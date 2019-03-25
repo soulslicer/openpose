@@ -39,3 +39,5 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
   fi; 
 done
 )
+
+echo "DONE"
