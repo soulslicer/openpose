@@ -18,7 +18,13 @@ namespace op
 
         void forwardPass(const Array<float>& inputNetData) const;
 
+        void reshape(const std::vector<int>& dimensions, std::string name, bool reshape=0) const;
+
+        const std::vector<int> shape(std::string name) const;
+
         std::shared_ptr<ArrayCpuGpu<float>> getOutputBlobArray() const;
+
+        std::shared_ptr<ArrayCpuGpu<float>> getBlobArray(std::string name) const;
 
     private:
         // PIMPL idiom
