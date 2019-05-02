@@ -16,18 +16,18 @@ namespace op
     template <typename T>
     inline __device__  T process(const T* bodyPartA, const T* bodyPartB, const T* mapX, const T* mapY,
                                  const int heatmapWidth, const int heatmapHeight, const T interThreshold,
-                                 const T interMinAboveThreshold)
+                                 const T interMinAboveThreshold, const T scale = 1.0)
     {
-        const auto vectorAToBX = bodyPartB[0] - bodyPartA[0];
-        const auto vectorAToBY = bodyPartB[1] - bodyPartA[1];
+        const auto vectorAToBX = (bodyPartB[0] - bodyPartA[0])*scale;
+        const auto vectorAToBY = (bodyPartB[1] - bodyPartA[1])*scale;
         const auto vectorAToBMax = max(abs(vectorAToBX), abs(vectorAToBY));
         const auto numberPointsInLine = max(5, min(25, intRoundGPU(sqrt(5*vectorAToBMax))));
         const auto vectorNorm = T(sqrt(vectorAToBX*vectorAToBX + vectorAToBY*vectorAToBY));
 
         if (vectorNorm > 1e-6)
         {
-            const auto sX = bodyPartA[0];
-            const auto sY = bodyPartA[1];
+            const auto sX = bodyPartA[0]*scale;
+            const auto sY = bodyPartA[1]*scale;
             const auto vectorAToBNormX = vectorAToBX/vectorNorm;
             const auto vectorAToBNormY = vectorAToBY/vectorNorm;
 
@@ -58,6 +58,7 @@ namespace op
                 //     1. It will consider very close keypoints (where the PAF is 0)
                 //     2. But it will not automatically connect them (case PAF score = 1), or real PAF might got
                 //        missing
+                return -1;
                 const auto l2Dist = sqrtf(vectorAToBX*vectorAToBX + vectorAToBY*vectorAToBY);
                 const auto threshold = sqrtf(heatmapWidth*heatmapHeight)/150; // 3.3 for 368x656, 6.6 for 2x resolution
                 if (l2Dist < threshold)
@@ -103,6 +104,103 @@ namespace op
             }
             else
                 pairScoresPtr[outputIndex] = -1;
+        }
+    }
+
+    template <typename T>
+    __global__ void tafScoreKernel(T* tafScoresPtr, const T* const heatMapPtr, const T* const posePtr,
+                                   const T* const trackletPtr, const int* const tafPartPairsPtr,
+                                   const int totalPose, const int totalTracklet,
+                                   const int numberBodyParts, const int tafHeatmapOffset,
+                                   const int heatmapWidth, const int heatmapHeight, const T interThreshold,
+                                   const T interMinAboveThreshold, const T scale)
+    {
+        const auto pairIndex = (blockIdx.x * blockDim.x) + threadIdx.x;
+        const auto pid = (blockIdx.y * blockDim.y) + threadIdx.y;
+        const auto tid = (blockIdx.z * blockDim.z) + threadIdx.z;
+
+        if(pid >= totalPose || tid >= totalTracklet) return;
+
+        const auto partA = tafPartPairsPtr[pairIndex*2 + 0];
+        const auto partB = tafPartPairsPtr[pairIndex*2 + 1];
+
+        const T* tafMapPtr = heatMapPtr + tafHeatmapOffset*(heatmapWidth*heatmapHeight);
+        const T* mapX = tafMapPtr + (2*pairIndex + 0)*(heatmapWidth*heatmapHeight);
+        const T* mapY = tafMapPtr + (2*pairIndex + 1)*(heatmapWidth*heatmapHeight);
+
+        const T* bodyPartA = posePtr + (pid * numberBodyParts * 3) + (partA * 3);
+        const T* bodyPartB = trackletPtr + (tid * numberBodyParts * 3) + (partB * 3);
+
+        const auto outputIndex = (pairIndex*totalPose*totalTracklet) + (pid*totalTracklet) + tid;
+
+        if(bodyPartA[2] < interThreshold || bodyPartB[2] < interThreshold){
+            tafScoresPtr[outputIndex] = -1;
+        }else{
+            tafScoresPtr[outputIndex] = process(
+                bodyPartB, bodyPartA, mapX, mapY, heatmapWidth, heatmapHeight, interThreshold,
+                interMinAboveThreshold, scale);
+
+//            if(pairIndex == 0){
+//                printf("%d %d %f\n", pid, tid, tafScoresPtr[outputIndex]);
+//            }
+        }
+    }
+
+    template <typename T>
+    void tafScoreGPU(const op::Array<T>& poseKeypoints, const op::Array<T>& trackletKeypoints,
+                     const std::shared_ptr<ArrayCpuGpu<T>> heatMapsBlob, op::Array<T>& tafScores,
+                     const std::vector<int> tafPartPairs, int* &tafPartPairsGpuPtr, int tafChannelStart, T scale)
+    {
+        try
+        {
+            // Copy both to GPU
+            T* poseGpuPtr;
+            T* trackletGpuPtr;
+            cudaMalloc((void **)&poseGpuPtr, poseKeypoints.getVolume() * sizeof(T));
+            cudaMemcpy(poseGpuPtr, poseKeypoints.getConstPtr(), poseKeypoints.getVolume() * sizeof(T),
+                       cudaMemcpyHostToDevice);
+            cudaMalloc((void **)&trackletGpuPtr, trackletKeypoints.getVolume() * sizeof(T));
+            cudaMemcpy(trackletGpuPtr, trackletKeypoints.getConstPtr(), trackletKeypoints.getVolume() * sizeof(T),
+                       cudaMemcpyHostToDevice);
+
+            // Score Data
+            int totalPairs = (tafPartPairs.size()/2);
+            int totalPosePeople = poseKeypoints.getSize(0);
+            int totalTrackletPeople = trackletKeypoints.getSize(0);
+            int totalComputations = totalPairs * totalPosePeople * totalTrackletPeople;
+            T* tafScoreGpuPtr;
+            cudaMalloc((void **)&tafScoreGpuPtr, totalComputations * sizeof(T));
+
+            // Kernel
+            const T* heatMapPtr = (T*)heatMapsBlob->gpu_data();
+            //const T* heatMapPtr = nullptr;
+            int totalBodyParts = poseKeypoints.getSize(1);
+            T interThreshold = 0.05;
+            T interMinAboveThreshold = 0.95;
+            const dim3 numBlocks{
+                op::getNumberCudaBlocks(totalPairs, THREADS_PER_BLOCK.x),
+                op::getNumberCudaBlocks(op::POSE_MAX_PEOPLE, THREADS_PER_BLOCK.y),
+                op::getNumberCudaBlocks(op::TRACK_MAX_PEOPLE, THREADS_PER_BLOCK.z)};
+
+            // Call Kernel
+            tafScoreKernel<<<numBlocks, THREADS_PER_BLOCK>>>(
+                tafScoreGpuPtr, heatMapPtr, poseGpuPtr, trackletGpuPtr, tafPartPairsGpuPtr,
+                totalPosePeople, totalTrackletPeople,
+                totalBodyParts, tafChannelStart, (int)heatMapsBlob->shape(3), (int)heatMapsBlob->shape(2), interThreshold, interMinAboveThreshold, scale);
+
+            // Get Data
+            tafScores.reset({totalPairs, totalPosePeople, totalTrackletPeople});
+            cudaMemcpy(tafScores.getPtr(), tafScoreGpuPtr, totalComputations * sizeof(T),
+                       cudaMemcpyDeviceToHost);
+
+            // Free memory (Better way to do this?)
+            cudaFree(tafScoreGpuPtr);
+            cudaFree(poseGpuPtr);
+            cudaFree(trackletGpuPtr);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
         }
     }
 
@@ -197,4 +295,11 @@ namespace op
         const double minSubsetScore, const double scaleFactor, const bool maximizePositives,
         Array<double> pairScoresCpu, double* pairScoresGpuPtr, const unsigned int* const bodyPartPairsGpuPtr,
         const unsigned int* const mapIdxGpuPtr, const double* const peaksGpuPtr);
+
+    template void tafScoreGPU(const op::Array<float>& poseKeypoints, const op::Array<float>& trackletKeypoints,
+    const std::shared_ptr<ArrayCpuGpu<float>> heatMapsBlob, op::Array<float>& tafScores,
+    const std::vector<int> tafPartPairs, int* &tafPartPairsGpuPtr, int tafChannelStart, float scale);
+    template void tafScoreGPU(const op::Array<double>& poseKeypoints, const op::Array<double>& trackletKeypoints,
+    const std::shared_ptr<ArrayCpuGpu<double>> heatMapsBlob, op::Array<double>& tafScores,
+    const std::vector<int> tafPartPairs, int* &tafPartPairsGpuPtr, int tafChannelStart, double scale);
 }

@@ -10,7 +10,8 @@ namespace op
 {
     OP_API void renderPoseKeypointsCpu(Array<float>& frameArray, const Array<float>& poseKeypoints,
                                        const PoseModel poseModel, const float renderThreshold,
-                                       const bool blendOriginalFrame = true);
+                                       const bool blendOriginalFrame = true,
+                                       Array<long long> poseIds = op::Array<long long>(0));
 
     void renderPoseKeypointsGpu(float* framePtr, const PoseModel poseModel, const int numberPeople,
                                 const Point<int>& frameSize, const float* const posePtr,

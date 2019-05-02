@@ -39,6 +39,8 @@ namespace op
 
         Array<float> getPoseScores() const;
 
+        Array<long long> getPoseIds() const;
+
         float getScaleNetToOutput() const;
 
         // KeepTopNPeople functions

@@ -10,6 +10,7 @@
 // #include <openpose/net/resizeAndMergeCaffe.hpp>
 // #include <openpose/pose/enumClasses.hpp>
 #include <openpose/pose/poseExtractorCaffe.hpp>
+#include <openpose/pose/poseTracker.hpp>
 
 namespace op
 {
@@ -43,41 +44,19 @@ namespace op
             const std::vector<double>& scaleInputToNetInputs = {1.f},
             const Array<float>& poseNetOutput = Array<float>{});
 
-        // // Inherited from PoseExtractorCaffe
-        // const float* getCandidatesCpuConstPtr() const;
-        // const float* getCandidatesGpuConstPtr() const;
-        // const float* getHeatMapCpuConstPtr() const;
-        // const float* getHeatMapGpuConstPtr() const;
-        // std::vector<int> getHeatMapSize() const;
-        // const float* getPoseGpuConstPtr() const;
-
-        // NOTE: Make protected any of the variables from PoseExtractorCaffe that you might need. They are:
-        // // Used when increasing spNets
-        // const PoseModel mPoseModel;
-        // const int mGpuId;
-        // const std::string mModelFolder;
-        // const std::string mProtoTxtPath;
-        // const std::string mCaffeModelPath;
-        // const float mUpsamplingRatio;
-        // const bool mEnableNet;
-        // const bool mEnableGoogleLogging;
-        // // General parameters
-        // std::vector<std::shared_ptr<Net>> spNets;
-        // std::shared_ptr<ResizeAndMergeCaffe<float>> spResizeAndMergeCaffe;
-        // std::shared_ptr<NmsCaffe<float>> spNmsCaffe;
-        // std::shared_ptr<BodyPartConnectorCaffe<float>> spBodyPartConnectorCaffe;
-        // std::shared_ptr<MaximumCaffe<float>> spMaximumCaffe;
-        // std::vector<std::vector<int>> mNetInput4DSizes;
-        // // Init with thread
-        // std::vector<std::shared_ptr<ArrayCpuGpu<float>>> spCaffeNetOutputBlobs;
-        // std::shared_ptr<ArrayCpuGpu<float>> spHeatMapsBlob;
-        // std::shared_ptr<ArrayCpuGpu<float>> spPeaksBlob;
-        // std::shared_ptr<ArrayCpuGpu<float>> spMaximumPeaksBlob;
+        std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mCurrPafBlobs;
+        std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mCurrHmBlobs;
+        std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mCurrTafBlobs;
+        std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mCurrFmBlobs;
 
         std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mLastPafBlobs;
         std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mLastHmBlobs;
         std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mLastTafBlobs;
         std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mLastFmBlobs;
+
+        std::shared_ptr<ArrayCpuGpu<float>> spTafsBlob;
+
+        std::unique_ptr<PoseTracker> mPoseTracker;
 
         DELETE_COPY(PoseExtractorCaffeStaf);
     };

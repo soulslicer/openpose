@@ -63,10 +63,13 @@ namespace op
     std::pair<int, std::string> PoseGpuRenderer::renderPose(Array<float>& outputData,
                                                             const Array<float>& poseKeypoints,
                                                             const float scaleInputToOutput,
-                                                            const float scaleNetToOutput)
+                                                            const float scaleNetToOutput,
+                                                            Array<long long> poseIds)
     {
         try
         {
+            // PoseIds
+            if(poseIds.getSize(0)) error("GPU Rendering of poseIds not supported", __LINE__, __FUNCTION__, __FILE__);
             // Sanity check
             if (outputData.empty())
                 error("Empty Array<float> outputData.", __LINE__, __FUNCTION__, __FILE__);

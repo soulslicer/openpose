@@ -414,7 +414,7 @@ namespace op
                32,33, 34,35, 36,37,   38,39, 40,41, 42,43,  44,45, 46,47,
             // Redundant ones
             // MPII redundant, ears, ears-shoulders, shoulders-wrists, wrists, wrists-hips, hips, ankles)
-                48,49, 50,51, 52,53,  54,55, 56,57,    58,59, 60,61,   62,63, 64,65, 66,67, 68,69, 70,71
+                48,49, 50,51, 52,53,  54,55, 56,57,    58,59, 60,61,   /*62,63, 64,65, 66,67,*/ 68,69, 70,71
         },
         // BODY_95
         std::vector<unsigned int>{
@@ -623,7 +623,7 @@ namespace op
                15,19, 19,20, 15,21,   16,22, 22,23, 16,24,   5,17, 5,18,
             // Redundant ones
             // MPII redundant, ears, ears-shoulders, shoulders-wrists, wrists, wrists-hips, hips, ankles)
-                 6,17, 6,18,   3,4,     3,5, 4,6,        5,9, 6,10,     9,10,  9,11, 10,12, 11,12, 15,16
+                 6,17, 6,18,   3,4,     3,5, 4,6,        5,9, 6,10,    /* 9,10,  9,11, 10,12,*/ 11,12, 15,16
         },
         // BODY_95
         std::vector<unsigned int>{
@@ -704,6 +704,27 @@ namespace op
                F135+36,F135+68, F135+39,F135+68, F135+42,F135+69, F135+45,F135+69
         }
     };
+
+    const std::array<std::vector<int>, 1> TAF_PART_PAIRS{
+        std::vector<int>{
+            0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7, 8,8, 9,9, 10,10, 11,11, 12,12, 13,13, 14,14, 15,15, 16,16, 17,17, 18,18, 19,19, 20,20, 21,21, 22,22, 23,23, 24,24,
+            //0,1, 0,2, 1,3, 2,4, 0,5, 0,6, 5,7, 6,8, 7,9, 8,10, 5,11, 6,12, 11,13, 12,14, 13,15, 14,16, 15,19, 19,20, 15,21, 16,22, 22,23, 16,24, 5,17, 5,18, 6,17, 6,18
+              1,0, 2,0, 3,1, 4,2, 5,0, 6,0, 7,5, 8,6, 9,7, 10,8, 11,5, 12,6, 13,11, 14,12, 15,13, 16,14, 19,15, 20,19, 21,15, 22,16, 23,22, 24,16, 17,5, 18,5, 17,6, 18,6
+        },
+    };
+
+    const std::vector<int>& getTafPartMapping(const int tafModel)
+    {
+        try
+        {
+            return TAF_PART_PAIRS.at(tafModel);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return std::vector<int>();
+        }
+    }
 
     const std::map<unsigned int, std::string>& getPoseBodyPartMapping(const PoseModel poseModel)
     {

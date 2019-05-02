@@ -6,7 +6,7 @@
 namespace op
 {
     void renderPoseKeypointsCpu(Array<float>& frameArray, const Array<float>& poseKeypoints, const PoseModel poseModel,
-                                const float renderThreshold, const bool blendOriginalFrame)
+                                const float renderThreshold, const bool blendOriginalFrame, Array<long long> poseIds)
     {
         try
         {
@@ -22,9 +22,13 @@ namespace op
                 const auto& pairs = getPoseBodyPartPairsRender(poseModel);
                 const auto& poseScales = getPoseScales(poseModel);
 
+//                for(int i=0; i<poseIds.getSize(0); i++) op::log(std::to_string(poseIds.at(i)));
+//                op::log("**");
+//                op::log(std::to_string(poseIds.getSize(0)));
+
                 // Render keypoints
                 renderKeypointsCpu(frameArray, poseKeypoints, pairs, getPoseColors(poseModel), thicknessCircleRatio,
-                                   thicknessLineRatioWRTCircle, poseScales, renderThreshold);
+                                   thicknessLineRatioWRTCircle, poseScales, renderThreshold, poseIds);
             }
         }
         catch (const std::exception& e)

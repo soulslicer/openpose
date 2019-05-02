@@ -12,8 +12,10 @@ namespace op
     // POSE_MAX_PEOPLE = 32n - 1
     // For OpenCL-NMS in Windows, it must be by 64, so 64n - 1
     const auto POSE_MAX_PEOPLE = 127u;
+    const auto TRACK_MAX_PEOPLE = POSE_MAX_PEOPLE;
 
     // Model functions
+    OP_API const std::vector<int>& getTafPartMapping(const int tafModel);
     OP_API const std::map<unsigned int, std::string>& getPoseBodyPartMapping(const PoseModel poseModel);
     OP_API const std::string& getPoseProtoTxt(const PoseModel poseModel);
     OP_API const std::string& getPoseTrainedModel(const PoseModel poseModel);

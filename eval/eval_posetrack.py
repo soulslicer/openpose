@@ -29,7 +29,7 @@ def get_anno_gt(frame_data):
     img_name = frame_data["image"]["name"]
     imgnum = frame_data["imgnum"]
     is_labeled = frame_data["is_labeled"]
-    img = cv2.imread(POSETRACK_PATH + img_name)
+    #img = cv2.imread(POSETRACK_PATH + img_name)
 
     if is_labeled:
         annorects = frame_data["annorect"]
@@ -157,7 +157,7 @@ def get_anno_op(frame_data, frame_op_data):
     img_name = frame_data["image"]["name"]
     imgnum = frame_data["imgnum"]
     is_labeled = frame_data["is_labeled"]
-    img = cv2.imread(POSETRACK_PATH + img_name)
+    #img = cv2.imread(POSETRACK_PATH + img_name)
 
     if is_labeled:
         annorects = frame_data["annorect"]

@@ -293,6 +293,20 @@ namespace op
         }
     }
 
+    Array<long long> PoseExtractorNet::getPoseIds() const
+    {
+        try
+        {
+            checkThread();
+            return mPoseIds;
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return Array<long long>{};
+        }
+    }
+
     float PoseExtractorNet::getScaleNetToOutput() const
     {
         try

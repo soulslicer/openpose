@@ -23,7 +23,8 @@ namespace op
     template <typename T>
     void renderKeypointsCpu(Array<T>& frameArray, const Array<T>& keypoints, const std::vector<unsigned int>& pairs,
                             const std::vector<T> colors, const T thicknessCircleRatio,
-                            const T thicknessLineRatioWRTCircle, const std::vector<T>& poseScales, const T threshold);
+                            const T thicknessLineRatioWRTCircle, const std::vector<T>& poseScales, const T threshold,
+                            Array<long long> poseIds = op::Array<long long>(0));
 
     template <typename T>
     Rectangle<T> getKeypointsRectangle(const Array<T>& keypoints, const int person, const T threshold);

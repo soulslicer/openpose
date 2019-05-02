@@ -8,6 +8,7 @@ set(SOURCES_OP_POSE
     poseGpuRenderer.cpp
     poseParameters.cpp
     poseParametersRender.cpp
+    poseTracker.cpp
     poseRenderer.cpp
     renderPose.cpp
     renderPose.cu)

@@ -79,6 +79,7 @@ namespace op
                     tDatumPtr->poseHeatMaps = spPoseExtractorNet->getHeatMapsCopy();
                     tDatumPtr->poseKeypoints = spPoseExtractorNet->getPoseKeypoints().clone();
                     tDatumPtr->poseScores = spPoseExtractorNet->getPoseScores().clone();
+                    tDatumPtr->poseIds = spPoseExtractorNet->getPoseIds().clone();
                     tDatumPtr->scaleNetToOutput = spPoseExtractorNet->getScaleNetToOutput();
                 }
                 // Profiling speed

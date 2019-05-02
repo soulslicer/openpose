@@ -173,10 +173,13 @@ namespace op
         Array<double>& keypoints, const double scaleX, const double scaleY, const double offsetX,
         const double offsetY);
 
+    std::vector<std::vector<int>> colorsTracking = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,255,0},{0,128,255},{128,0,255},{128,0,0},{0,128,0},{0,0,128},{50,50,0},{50,50,0},{0,50,128},{0,100,128},{100,30,128},{0,50,255},{50,255,128},{100,90,128},{0,90,255},{50,90,128},{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,255,0},{0,128,255},{128,0,255},{128,0,0},{0,128,0},{0,0,128},{50,50,0},{50,50,0},{0,50,128},{0,100,128},{100,30,128},{0,50,255},{50,255,128},{100,90,128},{0,90,255},{50,90,128}};
+
     template <typename T>
     void renderKeypointsCpu(Array<T>& frameArray, const Array<T>& keypoints, const std::vector<unsigned int>& pairs,
                             const std::vector<T> colors, const T thicknessCircleRatio,
-                            const T thicknessLineRatioWRTCircle, const std::vector<T>& poseScales, const T threshold)
+                            const T thicknessLineRatioWRTCircle, const std::vector<T>& poseScales, const T threshold,
+                            Array<long long> poseIds)
     {
         try
         {
@@ -206,6 +209,8 @@ namespace op
                 // Keypoints
                 for (auto person = 0 ; person < keypoints.getSize(0) ; person++)
                 {
+                    int trackid = -1;
+                    if(poseIds.getSize(0))trackid = poseIds.at(person);
                     const auto personRectangle = getKeypointsRectangle(keypoints, person, thresholdRectangle);
                     if (personRectangle.area() > 0)
                     {
@@ -220,6 +225,12 @@ namespace op
                             1, positiveIntRound(thicknessRatio * thicknessLineRatioWRTCircle));
                         const auto radius = thicknessRatio / 2;
 
+                        cv::Scalar color(0,0,0);
+                        if(trackid >= 0)
+                            color = cv::Scalar(colorsTracking[trackid % colorsTracking.size()][0],
+                                              colorsTracking[trackid % colorsTracking.size()][1],
+                                              colorsTracking[trackid % colorsTracking.size()][2]);
+
                         // Draw lines
                         for (auto pair = 0u ; pair < pairs.size() ; pair+=2)
                         {
@@ -230,11 +241,12 @@ namespace op
                                 const auto thicknessLineScaled = positiveIntRound(
                                     thicknessLine * poseScales[pairs[pair+1] % numberScales]);
                                 const auto colorIndex = pairs[pair+1]*3; // Before: colorIndex = pair/2*3;
-                                const cv::Scalar color{
-                                    colors[(colorIndex+2) % numberColors],
-                                    colors[(colorIndex+1) % numberColors],
-                                    colors[colorIndex % numberColors]
-                                };
+                                if(trackid < 0)
+                                    color = cv::Scalar{
+                                        colors[(colorIndex+2) % numberColors],
+                                        colors[(colorIndex+1) % numberColors],
+                                        colors[colorIndex % numberColors]
+                                    };
                                 const cv::Point keypoint1{
                                     positiveIntRound(keypoints[index1]), positiveIntRound(keypoints[index1+1])};
                                 const cv::Point keypoint2{
@@ -276,11 +288,11 @@ namespace op
     template OP_API void renderKeypointsCpu(
         Array<float>& frameArray, const Array<float>& keypoints, const std::vector<unsigned int>& pairs,
         const std::vector<float> colors, const float thicknessCircleRatio, const float thicknessLineRatioWRTCircle,
-        const std::vector<float>& poseScales, const float threshold);
+        const std::vector<float>& poseScales, const float threshold, Array<long long>);
     template OP_API void renderKeypointsCpu(
         Array<double>& frameArray, const Array<double>& keypoints, const std::vector<unsigned int>& pairs,
         const std::vector<double> colors, const double thicknessCircleRatio, const double thicknessLineRatioWRTCircle,
-        const std::vector<double>& poseScales, const double threshold);
+        const std::vector<double>& poseScales, const double threshold, Array<long long>);
 
     template <typename T>
     Rectangle<T> getKeypointsRectangle(const Array<T>& keypoints, const int person, const T threshold)

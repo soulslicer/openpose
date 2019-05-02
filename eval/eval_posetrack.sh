@@ -10,6 +10,8 @@ OPENPOSE_FOLDER=$(pwd)/../
 POSETRACK_FOLDER=$(pwd)/posetrack/images/val
 POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/val_json
 
+MODE=$1
+
 # Not coded for Multi GPU Yet
 
 N=1
@@ -25,13 +27,28 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
     ((i=i%N)); ((i++==0)) && wait
     process=$((i%N));
 
-    # Operation
-    cd $OPENPOSE_FOLDER;
-    ./build/examples/openpose/openpose.bin \
-        --model_pose BODY_25B \
-        --image_dir $folder \
-        --write_json eval/posetrack_results/op_output/$filename \
-        --render_pose 0 --display 0 &
+    if [ "$MODE" = "tracking" ]; then 
+
+      # Operation
+      cd $OPENPOSE_FOLDER;
+      ./build/examples/openpose/openpose.bin \
+          --model_pose BODY_25B \
+          --tracking 1 \
+          --image_dir $folder \
+          --write_json eval/posetrack_results/op_output/$filename \
+          --render_pose 0 --display 0 > output.txt &
+
+    else
+
+      # Operation
+      cd $OPENPOSE_FOLDER;
+      ./build/examples/openpose/openpose.bin \
+          --model_pose BODY_25B \
+          --image_dir $folder \
+          --write_json eval/posetrack_results/op_output/$filename \
+          --render_pose 0 --display 0 > output.txt &
+
+    fi
 
     # sleep 1 &
     # echo "$folder $var is a directory" & 
@@ -40,4 +57,13 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
 done
 )
 
-echo "DONE"
+
+if [ "$MODE" = "tracking" ]; then 
+  python eval_posetrack.py
+else
+  python eval_posetrack.py
+fi
+
+# I need a script that makes it easy to automatically copy into OP to test given the name and model directory
+# Video training is messing up completely..why? (appears to mess up with Posetrack Video datasets) - WHY!!?
+# Test - Dont give Posetrack video, just give regular image?

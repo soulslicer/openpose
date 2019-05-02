@@ -87,11 +87,12 @@ namespace op
                     // Keep desired top N people
                     spPoseExtractor->keepTopPeople(tDatumPtr->poseKeypoints, tDatumPtr->poseScores);
                     // ID extractor (experimental)
-                    tDatumPtr->poseIds = spPoseExtractor->extractIdsLockThread(
-                        tDatumPtr->poseKeypoints, tDatumPtr->cvInputData, i, tDatumPtr->id);
+                    tDatumPtr->poseIds = spPoseExtractor->getPoseIds().clone();
+                    //tDatumPtr->poseIds = spPoseExtractor->extractIdsLockThread(
+                    //    tDatumPtr->poseKeypoints, tDatumPtr->cvInputData, i, tDatumPtr->id);
                     // Tracking (experimental)
-                    spPoseExtractor->trackLockThread(
-                        tDatumPtr->poseKeypoints, tDatumPtr->poseIds, tDatumPtr->cvInputData, i, tDatumPtr->id);
+                    //spPoseExtractor->trackLockThread(
+                    //    tDatumPtr->poseKeypoints, tDatumPtr->poseIds, tDatumPtr->cvInputData, i, tDatumPtr->id);
                 }
                 // Profiling speed
                 Profiler::timerEnd(profilerKey);

@@ -96,7 +96,7 @@ namespace op
         inline void reshapeNetCaffe(caffe::Net<float>* caffeNet, const std::vector<int>& dimensions)
         {
             try
-            {
+            {                
                 caffeNet->blobs()[0]->Reshape(dimensions);
                 caffeNet->Reshape();
                 #ifdef USE_CUDA
