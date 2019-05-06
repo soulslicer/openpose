@@ -5,9 +5,16 @@
 #endif
 #include <openpose/pose/poseTracker.hpp>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 
 namespace op
 {
+    cv::Mat mat_from_blob3(std::shared_ptr<ArrayCpuGpu<float>> src, int channel)
+    {
+        cv::Mat m(src->shape()[2], src->shape()[3], CV_32FC1, (float*)(src->cpu_data() + channel*src->shape()[2]*src->shape()[3]));
+        return m;
+    }
+
     int getValidKps(op::Array<float>& person_kp, float render_threshold){
         int valid = 0;
         for(int i=0; i<person_kp.getSize(0); i++){
@@ -73,37 +80,47 @@ namespace op
         op::Array<float> personKp = getPerson(poseKeypoints, pid);
         std::vector<int> finalIdxs(personKp.getSize()[0], -1);
 
-        std::cout << "HACK STAF PAF TAF" << std::endl;
+        //std::cout << "HACK STAF PAF TAF" << std::endl;
 
+        //for(int i=25; i<mTafPartPairs.size()/2; i++){
+        //for(int i=0; i<25; i++){
         for(int i=0; i<mTafPartPairs.size()/2; i++){
             auto partA = mTafPartPairs[i*2];
             auto partB = mTafPartPairs[i*2 + 1];
 
-//            // Ignore Foot?
-//            if(partA == 19 || partB == 19 ||
-//               partA == 20 || partB == 20 ||
-//                partA == 21 || partB == 21 ||
-//                partA == 22 || partB == 22 ||
-//                partA == 23 || partB == 23 ||
-//                partA == 24 || partB == 24) continue;
+            // Ignore Foot?
+            if(partA == 19 || partB == 19 ||
+               partA == 20 || partB == 20 ||
+                partA == 21 || partB == 21 ||
+                partA == 22 || partB == 22 ||
+                partA == 23 || partB == 23 ||
+                partA == 24 || partB == 24) continue;
 
             if(personKp.at({partA, 2}) < mRenderThreshold) continue;
 
             int best_tid = -1;
-            int best_fscore = 0;
+            float best_fscore = 0;
             for ( auto &kv : tafScores.second ){
                 int tid = kv.first;
                 int tid_map = kv.second;
                 Tracklet& tracklet = mTracklets[tid];
                 if(tracklet.kp.at({partB, 2}) < mRenderThreshold) continue;
                 auto fscore = tafScores.first.at({i, pid, tid_map});
+
+//                if(i==1){
+//                    std::cout << " compare pid " << pid << " tid " << tid << " " << fscore << " cbfscoer " << best_fscore << std::endl;
+//                }
+
                 if(fscore > best_fscore){
                     best_fscore = fscore;
                     best_tid = tid;
                 }
             }
 
-            if(best_tid >= 0) finalIdxs[partA]=best_tid;
+            if(best_tid >= 0){
+                //if(i==1) std::cout << "  set " << best_fscore << " " << best_tid << std::endl;
+                finalIdxs[partA]=best_tid;
+            }
 
         }
 
@@ -123,7 +140,7 @@ namespace op
             i+=1;
         }
 
-        op::Array<float> tafScores;
+        op::Array<float> tafScores; // pairs/ pose/ tracklet
         op::tafScoreGPU(poseKeypoints, trackletKeypoints, tafsBlob, tafScores, mTafPartPairs, mGpuTafPartPairsPtr, 0, scale);
 
         return std::pair<op::Array<float>, std::map<int, int>>(tafScores, tidToMap);
@@ -133,6 +150,35 @@ namespace op
              const std::shared_ptr<ArrayCpuGpu<float>> tafsBlob,
              float scale)
     {
+        bool debug=false;
+        if(mFrameCount > 1000) debug=true;
+
+        // VIZ
+//        std::cout << poseKeypoints << std::endl;
+//        std::cout << getPoseKeypoints() << std::endl;
+
+        if(debug){
+            int mindex = 36;
+            cv::Mat hm = cv::abs(mat_from_blob3(tafsBlob, mindex*2)) + cv::abs(mat_from_blob3(tafsBlob, mindex*2 + 1));
+            cv::cvtColor(hm, hm, cv::COLOR_GRAY2BGR);
+
+            cv::Mat fx = mat_from_blob3(tafsBlob, mindex*2);
+            cv::Mat fy = mat_from_blob3(tafsBlob, mindex*2 + 1);
+            for(int u=0; u<fx.size().width; u+=10){
+                for(int v=0; v<fx.size().height; v+=10){
+                    cv::Point2f p1(u,v);
+                    cv::Point2i currP(u,v);
+                    cv::Point2f p2(u + 20*fx.at<float>(currP), v + 20*fy.at<float>(currP));
+                    cv::line(hm, p1, p2, cv::Scalar(0,1,0));
+                }
+            }
+
+            cv::imshow("win", hm);
+            cv::waitKey(15);
+        }
+
+        /////////////////
+
         if(!poseKeypoints.getSize(0)) return;
         mFrameCount += 1;
 
@@ -143,7 +189,6 @@ namespace op
 //        }
 
         //std::cout << "I HACKED BODY PARTS CONNECTOR THRESHOLD DISTANCE --start--" << std::endl;
-        // WE COULD DO THE SCALING IN THE KERNEL?? FASTER??
 
         // Update Params
         auto to_update_set = std::map<int, std::vector<std::pair<int, int>>>();
@@ -153,14 +198,28 @@ namespace op
         // Kernel goes here
         std::pair<op::Array<float>, std::map<int, int>> tafScores = tafKernel(poseKeypoints, tafsBlob, scale);
 
+        /////////////////190503
+
+        /*
+         * Iterate each detected person against each tracklet
+         * Within that, compte the score. For each keypoint, we add the highest score or 0 if none
+         *  divide that with the number of keypoints detected to normalize, or 0
+         * For each pid, link it to best tid and remove from list to check again
+         */
+
+
+        /////////////////
+
         // Iterate Pose Keypoints (Global Score)
         for(int i=0; i<poseKeypoints.getSize()[0]; i++){
             op::Array<float> personKp = getPerson(poseKeypoints, i);
             // Score
             auto finalIdxs = computeTrackScore(poseKeypoints, i, tafScores);
 
+            if(debug){
             for(auto item : finalIdxs) std::cout << item << " ";
             std::cout << std::endl;
+            }
 
             auto mc = mostCommon(finalIdxs);
             auto mostCommonIdx = mc.first; auto mostCommonCount = mc.second;
@@ -168,7 +227,7 @@ namespace op
             if(mostCommonCount >= 5){
                 if(!to_update_set.count(mostCommonIdx)) to_update_set[mostCommonIdx] = {};
                 to_update_set[mostCommonIdx].emplace_back(std::pair<int, int>(mostCommonCount,i));
-                std::cout << "Set: " << mostCommonIdx << " c: " << mostCommonCount << " i: " << i << std::endl;
+                //if(debug) std::cout << "Set: " << mostCommonIdx << " c: " << mostCommonCount << " i: " << i << std::endl;
             }else{
                 if(getValidKps(personKp, mRenderThreshold) <= 5) continue;
                 //if(frame_count < 2){
@@ -188,7 +247,7 @@ namespace op
                 auto best_item_index = item.back().second;
                 auto best_person_kp = getPerson(poseKeypoints, best_item_index);
                 updateTracklet(mostCommonIdx, best_person_kp);
-                std::cout << "Update : " << best_item_index << " into tracklet " << mostCommonIdx << std::endl;
+                //if(debug) std::cout << "Update : " << best_item_index << " into tracklet " << mostCommonIdx << std::endl;
                 tid_updated.emplace_back(mostCommonIdx);
 
                 item.pop_back();
@@ -202,7 +261,7 @@ namespace op
             }else{
                 auto best_person_kp = getPerson(poseKeypoints, item[0].second);
                 updateTracklet(mostCommonIdx, best_person_kp);
-                std::cout << "Update : " << item[0].second << " into tracklet " << mostCommonIdx << std::endl;
+                //if(debug) std::cout << "Update : " << item[0].second << " into tracklet " << mostCommonIdx << std::endl;
                 tid_updated.emplace_back(mostCommonIdx);
             }
         }
@@ -214,16 +273,17 @@ namespace op
             auto& tracklet = kv.second;
             if(tracklet.kp_hitcount - mFrameCount < 0) {
                 to_delete.emplace_back(tidx);
-                std::cout << "Delete : " << tidx << std::endl;
+                if(debug) std::cout << "Delete : " << tidx << std::endl;
             }
             if(tracklet.kp.getSize(1) == 0) throw std::runtime_error("Track Error");
         }
         for(auto to_del : to_delete) mTracklets.erase(mTracklets.find(to_del));
 
-        std::cout << mFrameCount << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        //std::cout << mFrameCount << std::endl;
+        //if(debug)
+        //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-        std::cout << "---" << std::endl;
+        //std::cout << "---" << std::endl;
 
 //        // Scale Up
 //        for(int i=0; i<poseKeypoints.getSize()[0]; i++){
