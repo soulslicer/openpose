@@ -26,12 +26,15 @@ namespace op
         std::pair<int, std::string> renderPose(Array<float>& outputData, const Array<float>& poseKeypoints,
                                                const float scaleInputToOutput,
                                                const float scaleNetToOutput = -1.f,
-                                               Array<long long> poseIds = op::Array<long long>(0));
+                                               const Array<long long>& poseIds = op::Array<long long>(0));
 
     private:
         const std::shared_ptr<PoseExtractorNet> spPoseExtractorNet;
         // Init with thread
         float* pGpuPose; // GPU aux memory
+        float* pMaxPtr; // GPU aux memory
+        float* pMinPtr; // GPU aux memory
+        float* pScalePtr; // GPU aux memory
 
         DELETE_COPY(PoseGpuRenderer);
     };
