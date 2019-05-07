@@ -129,20 +129,20 @@ namespace op
                         // if (elementRendered == numberBodyPartsPlusBkg+1)
                         {
                             elementRenderedName = "Heatmaps";
-                            renderPoseHeatMapsGpu(*spGpuMemory, mPoseModel, frameSize,
-                                                  spPoseExtractorNet->getHeatMapGpuConstPtr(),
-                                                  heatMapSize, scaleNetToOutput * scaleInputToOutput,
-                                                  (mBlendOriginalFrame ? getAlphaHeatMap() : 1.f));
+                            renderPoseHeatMapsGpu(
+                                *spGpuMemory, mPoseModel, frameSize, spPoseExtractorNet->getHeatMapGpuConstPtr(),
+                                heatMapSize, scaleNetToOutput * scaleInputToOutput,
+                                (mBlendOriginalFrame ? getAlphaHeatMap() : 1.f));
                         }
                         // Draw PAFs (Part Affinity Fields)
                         else if (elementRendered == 3)
                         // else if (elementRendered == numberBodyPartsPlusBkg+2)
                         {
                             elementRenderedName = "PAFs (Part Affinity Fields)";
-                            renderPosePAFsGpu(*spGpuMemory, mPoseModel, frameSize,
-                                              spPoseExtractorNet->getHeatMapGpuConstPtr(),
-                                              heatMapSize, scaleNetToOutput * scaleInputToOutput,
-                                              (mBlendOriginalFrame ? getAlphaHeatMap() : 1.f));
+                            renderPosePAFsGpu(
+                                *spGpuMemory, mPoseModel, frameSize, spPoseExtractorNet->getHeatMapGpuConstPtr(),
+                                heatMapSize, scaleNetToOutput * scaleInputToOutput,
+                                (mBlendOriginalFrame ? getAlphaHeatMap() : 1.f));
                         }
                         // Draw specific body part or background
                         else if (elementRendered <= numberBodyPartsPlusBkg+2)
@@ -164,10 +164,10 @@ namespace op
                                                           + getPoseMapIndex(mPoseModel).at(affinityPart);
                             elementRenderedName = mPartIndexToName.at(affinityPartMapped);
                             elementRenderedName = elementRenderedName.substr(0, elementRenderedName.find("("));
-                            renderPosePAFGpu(*spGpuMemory, mPoseModel, frameSize,
-                                             spPoseExtractorNet->getHeatMapGpuConstPtr(),
-                                             heatMapSize, scaleNetToOutput * scaleInputToOutput, affinityPartMapped,
-                                             (mBlendOriginalFrame ? getAlphaHeatMap() : 1.f));
+                            renderPosePAFGpu(
+                                *spGpuMemory, mPoseModel, frameSize, spPoseExtractorNet->getHeatMapGpuConstPtr(),
+                                heatMapSize, scaleNetToOutput * scaleInputToOutput, affinityPartMapped,
+                                (mBlendOriginalFrame ? getAlphaHeatMap() : 1.f));
                         }
                         // Draw neck-part distance channel
                         else
