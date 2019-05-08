@@ -15,6 +15,7 @@ namespace op
     __constant__ const unsigned int BODY_23_PAIRS_GPU[] = {POSE_BODY_23_PAIRS_RENDER_GPU};
     __constant__ const unsigned int BODY_25B_PAIRS_GPU[] = {POSE_BODY_25B_PAIRS_RENDER_GPU};
     __constant__ const unsigned int BODY_135_PAIRS_GPU[] = {POSE_BODY_135_PAIRS_RENDER_GPU};
+    __constant__ const unsigned int BODY_21A_PAIRS_GPU[] = {POSE_BODY_21A_PAIRS_RENDER_GPU};
     __constant__ const unsigned int MPI_PAIRS_GPU[] = {POSE_MPI_PAIRS_RENDER_GPU};
     __constant__ const unsigned int CAR_12_PAIRS_GPU[] = {POSE_CAR_12_PAIRS_RENDER_GPU};
     __constant__ const unsigned int CAR_22_PAIRS_GPU[] = {POSE_CAR_22_PAIRS_RENDER_GPU};
@@ -25,6 +26,7 @@ namespace op
     __constant__ const float BODY_23_SCALES[] = {POSE_BODY_23_SCALES_RENDER_GPU};
     __constant__ const float BODY_25B_SCALES[] = {POSE_BODY_25B_SCALES_RENDER_GPU};
     __constant__ const float BODY_135_SCALES[] = {POSE_BODY_135_SCALES_RENDER_GPU};
+    __constant__ const float BODY_21A_SCALES[] = {POSE_BODY_21A_SCALES_RENDER_GPU};
     __constant__ const float MPI_SCALES[] = {POSE_MPI_SCALES_RENDER_GPU};
     __constant__ const float CAR_12_SCALES[] = {POSE_CAR_12_SCALES_RENDER_GPU};
     __constant__ const float CAR_22_SCALES[] = {POSE_CAR_22_SCALES_RENDER_GPU};
@@ -35,6 +37,7 @@ namespace op
     __constant__ const float BODY_23_COLORS[] = {POSE_BODY_23_COLORS_RENDER_GPU};
     __constant__ const float BODY_25B_COLORS[] = {POSE_BODY_25B_COLORS_RENDER_GPU};
     __constant__ const float BODY_135_COLORS[] = {POSE_BODY_135_COLORS_RENDER_GPU};
+    __constant__ const float BODY_21A_COLORS[] = {POSE_BODY_21A_COLORS_RENDER_GPU};
     __constant__ const float MPI_COLORS[] = {POSE_MPI_COLORS_RENDER_GPU};
     __constant__ const float CAR_12_COLORS[] = {POSE_CAR_12_COLORS_RENDER_GPU};
     __constant__ const float CAR_22_COLORS[] = {POSE_CAR_22_COLORS_RENDER_GPU};
@@ -446,6 +449,35 @@ namespace op
             (googlyEyes ? 6 : -1), (googlyEyes ? 7 : -1));
     }
 
+    __global__ void renderPoseBody21A(
+        float* targetPtr, float* minPtr, float* maxPtr, float* scalePtr, const int targetWidth, const int targetHeight,
+        const float* const posePtr, const int numberPeople, const float threshold, const bool googlyEyes,
+        const bool blendOriginalFrame, const float alphaColorToAdd)
+    {
+        const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
+        const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+        const auto globalIdx = threadIdx.y * blockDim.x + threadIdx.x;
+
+        // Shared parameters
+        __shared__ float sharedMins[2*POSE_MAX_PEOPLE];
+        __shared__ float sharedMaxs[2*POSE_MAX_PEOPLE];
+        __shared__ float sharedScaleF[POSE_MAX_PEOPLE];
+
+        // Other parameters
+        const auto numberPartPairs = sizeof(BODY_21A_PAIRS_GPU) / (2*sizeof(BODY_21A_PAIRS_GPU[0]));
+        const auto numberScales = sizeof(BODY_21A_SCALES) / sizeof(BODY_21A_SCALES[0]);
+        const auto numberColors = sizeof(BODY_21A_COLORS) / (3*sizeof(BODY_21A_COLORS[0]));
+        const auto radius = fastMinCuda(targetWidth, targetHeight) / 100.f;
+        const auto lineWidth = fastMinCuda(targetWidth, targetHeight) / 120.f;
+
+        // Render key points
+        renderKeypoints(
+            targetPtr, sharedMaxs, sharedMins, sharedScaleF, maxPtr, minPtr, scalePtr, globalIdx, x, y, targetWidth,
+            targetHeight, posePtr, BODY_21A_PAIRS_GPU, numberPeople, 21, numberPartPairs, BODY_21A_COLORS,
+            numberColors, radius, lineWidth, BODY_21A_SCALES, numberScales, threshold, alphaColorToAdd,
+            blendOriginalFrame, (googlyEyes ? 1 : -1), (googlyEyes ? 2 : -1));
+    }
+
     __global__ void renderBodyPartHeatMaps(float* targetPtr, const int targetWidth, const int targetHeight,
                                            const float* const heatMapPtr, const int widthHeatMap,
                                            const int heightHeatMap, const float scaleToKeepRatio,
@@ -761,6 +793,11 @@ namespace op
                     );
                 else if (poseModel == PoseModel::CAR_22)
                     renderPoseCar22<<<threadsPerBlock, numBlocks>>>(
+                        framePtr, minPtr, maxPtr, scalePtr, frameSize.x, frameSize.y, posePtr, numberPeople,
+                        renderThreshold, googlyEyes, blendOriginalFrame, alphaBlending
+                    );
+                else if (poseModel == PoseModel::BODY_21A)
+                    renderPoseBody21A<<<threadsPerBlock, numBlocks>>>(
                         framePtr, minPtr, maxPtr, scalePtr, frameSize.x, frameSize.y, posePtr, numberPeople,
                         renderThreshold, googlyEyes, blendOriginalFrame, alphaBlending
                     );

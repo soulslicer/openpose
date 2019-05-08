@@ -57,6 +57,8 @@ namespace op
                 return PoseModel::BODY_25E;
             else if (poseModeString == "BODY_135")
                 return PoseModel::BODY_135;
+            else if (poseModeString == "BODY_21A")
+                return PoseModel::BODY_21A;
             // Car pose
             else if (poseModeString == "CAR_12")
                 return PoseModel::CAR_12;

@@ -350,9 +350,9 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
             spResizeAndMergeCaffe->Forward(caffeTafBlobs, {spTafsBlob.get()});
 
             // Run Tracker
-            mPoseTracker->run(mPoseKeypoints, spTafsBlob, 1./mScaleNetToOutput);
-            mPoseIds = mPoseTracker->getPoseIds();
-            mPoseKeypoints = mPoseTracker->getPoseKeypoints();
+            //mPoseTracker->run(mPoseKeypoints, spTafsBlob, 1./mScaleNetToOutput);
+            //mPoseIds = mPoseTracker->getPoseIds();
+            //mPoseKeypoints = mPoseTracker->getPoseKeypoints();
 
 //            // Set IDS
 //            std::vector<long long> ids;

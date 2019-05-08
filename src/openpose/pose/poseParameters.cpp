@@ -250,6 +250,30 @@ namespace op
         {21, "BRCorner"},
         {22, "Background"},
     };
+    const std::map<unsigned int, std::string> POSE_BODY_21_BODY_PARTS {
+        {0,  "Nose"},
+        {1,  "Neck"},
+        {2,  "RShoulder"},
+        {3,  "RElbow"},
+        {4,  "RWrist"},
+        {5,  "LShoulder"},
+        {6,  "LElbow"},
+        {7,  "LWrist"},
+        {8,  "LowerAbs"},
+        {9,  "RHip"},
+        {10, "RKnee"},
+        {11, "RAnkle"},
+        {12, "LHip"},
+        {13, "LKnee"},
+        {14, "LAnkle"},
+        {15, "REye"},
+        {16, "LEye"},
+        {17, "REar"},
+        {18, "LEar"},
+        {19, "RealNeck"},
+        {20, "Top"},
+        {21, "Background"}
+    };
     const std::array<std::vector<unsigned int>, (int)PoseModel::Size> POSE_MAP_INDEX{
         // BODY_25
         std::vector<unsigned int>{
@@ -364,13 +388,18 @@ namespace op
             // Eyes-Pupils
                296,297, 298,299, 300,301, 302,303
         },
+        // BODY_21A
+        std::vector<unsigned int>{
+            // Minimum spanning tree
+            0,1,   2,3,   4,5,   6,7,   8,9,  10,11,  12,13, 14,15, 16,17, 18,19, 20,21, 22,23, 24,25, 26,27, 28,29, 30,31, 32,33, 34,35, 36,37, 38,39, 40,41, 42,43, 44,45, 46,47
+        },
     };
     // POSE_BODY_PART_MAPPING on HPP crashes on Windows at dynamic initialization if it's on hpp
     const std::array<std::map<unsigned int, std::string>, (int)PoseModel::Size> POSE_BODY_PART_MAPPING{
         POSE_BODY_25_BODY_PARTS,POSE_COCO_BODY_PARTS,   POSE_MPI_BODY_PARTS,    POSE_MPI_BODY_PARTS,
         POSE_BODY_19_BODY_PARTS,POSE_BODY_19_BODY_PARTS,POSE_BODY_19_BODY_PARTS,POSE_BODY_25_BODY_PARTS,
         POSE_CAR_12_PARTS,      POSE_BODY_25_BODY_PARTS,POSE_BODY_23_BODY_PARTS,POSE_CAR_22_PARTS,
-        POSE_BODY_19_BODY_PARTS,POSE_BODY_25B_BODY_PARTS,POSE_BODY_135_BODY_PARTS
+        POSE_BODY_19_BODY_PARTS,POSE_BODY_25B_BODY_PARTS,POSE_BODY_135_BODY_PARTS,POSE_BODY_21_BODY_PARTS
     };
 
     const std::array<std::string, (int)PoseModel::Size> POSE_PROTOTXT{
@@ -389,6 +418,7 @@ namespace op
         "pose/body_19e/pose_deploy.prototxt",
         "pose/body_25b/pose_deploy.prototxt",
         "pose/body_135/pose_deploy.prototxt",
+        "pose/body_21a/pose_deploy.prototxt",
     };
     const std::array<std::string, (int)PoseModel::Size> POSE_TRAINED_MODEL{
         "pose/body_25/pose_iter_584000.caffemodel",
@@ -406,12 +436,13 @@ namespace op
         "pose/body_19e/pose_iter_XXXXXX.caffemodel",
         "pose/body_25b/pose_iter_XXXXXX.caffemodel",
         "pose/body_135/pose_iter_XXXXXX.caffemodel",
+        "pose/body_21a/pose_iter_XXXXXX.caffemodel",
     };
 
     // Constant Array Parameters
     // POSE_NUMBER_BODY_PARTS equivalent to size of std::map POSE_BODY_XX_BODY_PARTS - 1 (removing background)
     const std::array<unsigned int, (int)PoseModel::Size> POSE_NUMBER_BODY_PARTS{
-        25, 18, 15, 15, 19, 19, 19, 25, 12, 25, 23, 22, 19, 25, 135
+        25, 18, 15, 15, 19, 19, 19, 25, 12, 25, 23, 22, 19, 25, 135, 21
     };
     const std::array<std::vector<unsigned int>, (int)PoseModel::Size> POSE_BODY_PART_PAIRS{
         // BODY_25
@@ -533,7 +564,11 @@ namespace op
                F135+65,F135+66, F135+66,F135+67,
             // Eyes-Pupils
                F135+36,F135+68, F135+39,F135+68, F135+42,F135+69, F135+45,F135+69
-        }
+        },
+        // BODY_21A
+        std::vector<unsigned int>{
+            1,8,   9,10,    10,11,  8,9,    8,12,   12,13,  13,14,  1,2,    2,3,    3,4,    2,17,   1,5,    5,6,    6,7,    5,18,   1,0,    0,15,   0,16,   15,17,  16,18,  1,19,   19,20,  5,12,   2,9
+        },
     };
 
     const std::array<std::vector<int>, 1> TAF_PART_PAIRS{

@@ -21,7 +21,7 @@ namespace op
                                                             const Array<float>& poseKeypoints,
                                                             const float scaleInputToOutput,
                                                             const float scaleNetToOutput,
-                                                            Array<long long> poseIds)
+                                                            const Array<long long>& poseIds)
     {
         try
         {
