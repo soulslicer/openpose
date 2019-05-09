@@ -8,7 +8,7 @@ mkdir posetrack_results/op_output
 
 OPENPOSE_FOLDER=$(pwd)/../
 POSETRACK_FOLDER=$(pwd)/posetrack/images/val
-POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/val_json
+POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/val_json/
 
 #POSETRACK_FOLDER=$(pwd)/posetrack/images/val
 #POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/test_json/
