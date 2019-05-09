@@ -45,32 +45,65 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
 
     void PoseExtractorCaffeStaf::addCaffeNetOnThread()
     {
-        // Tracker
-        this->mPoseTracker = std::unique_ptr<PoseTracker>(new PoseTracker(mPoseModel, 0));
+        if(mPoseModel == PoseModel::BODY_25B)
+        {
+            // Tracker
+            this->mPoseTracker = std::unique_ptr<PoseTracker>(new PoseTracker(mPoseModel, 0));
 
-        // Net
-        this->spNets.emplace_back(
-            std::make_shared<NetCaffe>(
-                this->mModelFolder + "pose/body_25b_video/pose_deploy.prototxt",
-                this->mModelFolder + "pose/body_25b_video/pose_iter_XXXXXX.caffemodel",
-                this->mGpuId, this->mEnableGoogleLogging));
+            // Net
+            this->spNets.emplace_back(
+                std::make_shared<NetCaffe>(
+                    this->mModelFolder + "pose/body_25b_video/pose_deploy.prototxt",
+                    this->mModelFolder + "pose/body_25b_video/pose_iter_XXXXXX.caffemodel",
+                    this->mGpuId, this->mEnableGoogleLogging));
 
-        // Initialize
-        this->spNets.back()->initializationOnThread();
+            // Initialize
+            this->spNets.back()->initializationOnThread();
 
-        // Output in OP Format
-        this->spCaffeNetOutputBlobs.emplace_back((this->spNets.back().get())->getOutputBlobArray());
+            // Output in OP Format
+            this->spCaffeNetOutputBlobs.emplace_back((this->spNets.back().get())->getOutputBlobArray());
 
-        // Add curr outputs as reference
-        this->mCurrPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage1_L2"));
-        this->mCurrHmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage2_L1"));
-        this->mCurrTafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage3_L4"));
-        this->mCurrFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("conv4_4_CPM"));
-        // Add last outputs as reference
-        this->mLastPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_paf"));
-        this->mLastHmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_hm"));
-        this->mLastTafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_taf"));
-        this->mLastFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_fm"));
+            // Add curr outputs as reference
+            this->mCurrPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage1_L2"));
+            this->mCurrHmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage2_L1"));
+            this->mCurrTafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage3_L4"));
+            this->mCurrFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("conv4_4_CPM"));
+            // Add last outputs as reference
+            this->mLastPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_paf"));
+            this->mLastHmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_hm"));
+            this->mLastTafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_taf"));
+            this->mLastFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_fm"));
+
+        }
+        else if(mPoseModel == PoseModel::BODY_21A)
+        {
+            // Tracker
+            this->mPoseTracker = std::unique_ptr<PoseTracker>(new PoseTracker(mPoseModel, 1));
+
+            // Net
+            this->spNets.emplace_back(
+                std::make_shared<NetCaffe>(
+                    this->mModelFolder + "pose/body_21a_video/pose_deploy.prototxt",
+                    this->mModelFolder + "pose/body_21a_video/pose_iter_264000.caffemodel",
+                    this->mGpuId, this->mEnableGoogleLogging));
+
+            // Initialize
+            this->spNets.back()->initializationOnThread();
+
+            // Output in OP Format
+            this->spCaffeNetOutputBlobs.emplace_back((this->spNets.back().get())->getOutputBlobArray());
+
+            // Add curr outputs as reference
+            this->mCurrPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage3_L2_cont2"));
+            this->mCurrHmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage4_L1_cont2"));
+            this->mCurrTafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("output_taf"));
+            this->mCurrFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("conv4_4_CPM"));
+            // Add last outputs as reference
+            this->mLastPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_paf"));
+            this->mLastHmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_hm"));
+            //this->mLastTafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_taf"));
+            this->mLastFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("last_fm"));
+        }
     }
 
     void PoseExtractorCaffeStaf::netInitializationOnThread()
@@ -146,13 +179,16 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
             bodyPartConnectorCaffe->Reshape({heatMapsBlob.get(), peaksBlob.get()}, gpuId);
 
             // TAF Resize
-            float netFactor = netDescreaseFactor;
-            float scaleFactor = 1.f/scaleInputToNetInput;
-            const auto tafOutputBlobs = arraySharedToPtr2(caffeTafBlobsShared);
-            auto topShape = tafOutputBlobs.at(0)->shape();
-            topShape[2] = (int)std::round((topShape[2]*netFactor - 1.f) * scaleFactor) + 1;
-            topShape[3] = (int)std::round((topShape[3]*netFactor - 1.f) * scaleFactor) + 1;
-            tafsBlob->Reshape(topShape);
+            if(caffeTafBlobsShared.size())
+            {
+                float netFactor = netDescreaseFactor;
+                float scaleFactor = 1.f/scaleInputToNetInput;
+                const auto tafOutputBlobs = arraySharedToPtr2(caffeTafBlobsShared);
+                auto topShape = tafOutputBlobs.at(0)->shape();
+                topShape[2] = (int)std::round((topShape[2]*netFactor - 1.f) * scaleFactor) + 1;
+                topShape[3] = (int)std::round((topShape[3]*netFactor - 1.f) * scaleFactor) + 1;
+                tafsBlob->Reshape(topShape);
+            }
 
             // Cuda check
             #ifdef USE_CUDA
@@ -222,7 +258,7 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
                     spNets.at(i)->reshape(inputNetData[i].getSize(), "image", 0);
                     spNets.at(i)->reshape(reduceSize(spNets.at(i)->shape("last_paf"), inputSize), "last_paf", 0);
                     spNets.at(i)->reshape(reduceSize(spNets.at(i)->shape("last_hm"), inputSize), "last_hm", 0);
-                    spNets.at(i)->reshape(reduceSize(spNets.at(i)->shape("last_taf"), inputSize), "last_taf", 0);
+                    if((this->mLastTafBlobs.size())) spNets.at(i)->reshape(reduceSize(spNets.at(i)->shape("last_taf"), inputSize), "last_taf", 0);
                     spNets.at(i)->reshape(reduceSize(spNets.at(i)->shape("last_fm"), inputSize), "last_fm", 1);
 
                     // Reshape Other
@@ -251,67 +287,11 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
                     // dst, src
                     gpu_copy(this->mLastHmBlobs.at(i), this->mCurrHmBlobs.at(i));
                     gpu_copy(this->mLastPafBlobs.at(i), this->mCurrPafBlobs.at(i));
-                    gpu_copy(this->mLastTafBlobs.at(i), this->mCurrTafBlobs.at(i));
+                    if((this->mLastTafBlobs.size())) gpu_copy(this->mLastTafBlobs.at(i), this->mCurrTafBlobs.at(i));
                     gpu_copy(this->mLastFmBlobs.at(i), this->mCurrFmBlobs.at(i));
                 }
             }
             
-
-
-            //IN THE TRAINING OF STAF, DID YOU USE THE RIGHT STEP SIZE
-
-//            //std::cout << this->mCurrTafBlobs.at(0) << std::endl;
-//            cv::Mat mx = mat_from_blob(this->mCurrTafBlobs.at(0), 64);
-//            mx = cv::abs(mx);
-//            cv::resize(mx, mx, cv::Size(0,0), 8,8, cv::INTER_CUBIC);
-//            cv::Mat my = mat_from_blob(this->mCurrTafBlobs.at(0), 65);
-//            my = cv::abs(my);
-//            cv::resize(my, my, cv::Size(0,0), 8,8, cv::INTER_CUBIC);
-//            cv::Mat m = mx+my;
-//            cv::imshow("win", m);
-//            cv::waitKey(15);
-////            //VISUALIZE THE TAF SEE IF IT IS WORKING
-///
-///
-
-//            //std::cout << this->mCurrTafBlobs.at(0) << std::endl;
-//            cv::Mat mx = mat_from_blob(this->mCurrPafBlobs.at(0), 116-102);
-//            mx = cv::abs(mx);
-//            cv::resize(mx, mx, cv::Size(0,0), 8,8, cv::INTER_CUBIC);
-//            cv::Mat my = mat_from_blob(this->mCurrPafBlobs.at(0), 117-102);
-//            my = cv::abs(my);
-//            cv::resize(my, my, cv::Size(0,0), 8,8, cv::INTER_CUBIC);
-//            cv::Mat m = mx+my;
-//            cv::imshow("win", m);
-//            cv::waitKey(15);
-
-//            //std::cout << this->mCurrTafBlobs.at(0) << std::endl;
-//            cv::Mat mx = mat_from_blob(spHeatMapsBlob, 116-102+25);
-//            mx = cv::abs(mx);
-//            cv::resize(mx, mx, cv::Size(0,0), 1,1, cv::INTER_CUBIC);
-//            cv::Mat my = mat_from_blob(spHeatMapsBlob, 117-102+25);
-//            my = cv::abs(my);
-//            cv::resize(my, my, cv::Size(0,0), 1,1, cv::INTER_CUBIC);
-//            cv::Mat m = mx+my;
-//            cv::imshow("win", m);
-//            cv::waitKey(15);
-
-
-//            const std::array<std::vector<int>, NUMBER_MODELS> TAF_MAP_A{
-//                std::vector<int>{},
-//                std::vector<int>{10,6},
-//                std::vector<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
-//                                0,0,1,2,   0,0,   5,6,   7, 8,    5, 6,   11,12,   13,14,   15,19,15,  16,22,16,    5,5,   6,6
-//                                },
-//            };
-//            const std::array<std::vector<int>, NUMBER_MODELS> TAF_MAP_B{
-//                std::vector<int>{},
-//                std::vector<int>{10,6},
-//                std::vector<int>{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,
-//                                1,2,3,4,   5,6,   7,8,   9,10,   11,12,   13,14,   15,16,   19,20,21,  22,23,24,   17,18,   17,18
-//                                },
-//            };
-
             // Processing
             // 2. Resize heat maps + merge different scales
             // ~5ms (GPU) / ~20ms (CPU)
@@ -350,9 +330,9 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
             spResizeAndMergeCaffe->Forward(caffeTafBlobs, {spTafsBlob.get()});
 
             // Run Tracker
-            //mPoseTracker->run(mPoseKeypoints, spTafsBlob, 1./mScaleNetToOutput);
-            //mPoseIds = mPoseTracker->getPoseIds();
-            //mPoseKeypoints = mPoseTracker->getPoseKeypoints();
+            mPoseTracker->run(mPoseKeypoints, spTafsBlob, 1./mScaleNetToOutput);
+            mPoseIds = mPoseTracker->getPoseIds();
+            mPoseKeypoints = mPoseTracker->getPoseKeypoints();
 
 //            // Set IDS
 //            std::vector<long long> ids;

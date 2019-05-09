@@ -61,7 +61,8 @@ namespace op
         mPoseModel = poseModel;
         mTafModel = tafModel;
 
-        mTotalKeypoints = getPoseBodyPartMapping(poseModel).size();
+        mTotalKeypoints = getPoseBodyPartMapping(poseModel).size()-1;
+        if(poseModel == PoseModel::BODY_25B) mTotalKeypoints+=1;
 
         mTafPartPairs = getTafPartMapping(mTafModel);
 
@@ -182,14 +183,6 @@ namespace op
         if(!poseKeypoints.getSize(0)) return;
         mFrameCount += 1;
 
-//        // Scale Down
-//        for(int i=0; i<poseKeypoints.getSize()[0]; i++){
-//            op::Array<float> personKp = getPerson(poseKeypoints, i);
-//            rescaleKp(personKp, scale);
-//        }
-
-        //std::cout << "I HACKED BODY PARTS CONNECTOR THRESHOLD DISTANCE --start--" << std::endl;
-
         // Update Params
         auto to_update_set = std::map<int, std::vector<std::pair<int, int>>>();
         auto tid_updated = std::vector<int>();
@@ -278,18 +271,6 @@ namespace op
             if(tracklet.kp.getSize(1) == 0) throw std::runtime_error("Track Error");
         }
         for(auto to_del : to_delete) mTracklets.erase(mTracklets.find(to_del));
-
-        //std::cout << mFrameCount << std::endl;
-        //if(debug)
-        //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-        //std::cout << "---" << std::endl;
-
-//        // Scale Up
-//        for(int i=0; i<poseKeypoints.getSize()[0]; i++){
-//            op::Array<float> personKp = getPerson(poseKeypoints, i);
-//            rescaleKp(personKp, 1./scale);
-//        }
     }
 
 }

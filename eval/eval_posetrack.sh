@@ -9,11 +9,16 @@ mkdir posetrack_results/op_output
 OPENPOSE_FOLDER=$(pwd)/../
 POSETRACK_FOLDER=$(pwd)/posetrack/images/val
 POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/val_json
+#POSETRACK_FOLDER=$(pwd)/posetrack/images/val
+#POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/test_json/
 
 MODE=$1
+MODEL="BODY_25B"
+if [ -n "$2" ]; then
+  MODEL=$2
+fi
 
 # Not coded for Multi GPU Yet
-
 N=1
 (
 for folder in $POSETRACK_JSON_FOLDER/* ; do 
@@ -32,18 +37,19 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
       # Operation
       cd $OPENPOSE_FOLDER;
       ./build/examples/openpose/openpose.bin \
-          --model_pose BODY_25B \
+          --model_pose $MODEL --num_gpu 1 --num_gpu_start $process \
           --tracking 1 \
           --image_dir $folder \
           --write_json eval/posetrack_results/op_output/$filename \
           --render_pose 0 --display 0 > output.txt &
-
+          #--render_pose 1 > output.txt &
+          
     else
 
       # Operation
       cd $OPENPOSE_FOLDER;
       ./build/examples/openpose/openpose.bin \
-          --model_pose BODY_25B \
+          --model_pose $MODEL --num_gpu 1 --num_gpu_start $process \
           --image_dir $folder \
           --write_json eval/posetrack_results/op_output/$filename \
           --render_pose 0 --display 0 > output.txt &
@@ -57,11 +63,12 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
 done
 )
 
+sleep 10
 
 if [ "$MODE" = "tracking" ]; then 
-  python eval_posetrack.py
+  python eval_posetrack.py $POSETRACK_JSON_FOLDER 1 $MODEL
 else
-  python eval_posetrack.py
+  python eval_posetrack.py $POSETRACK_JSON_FOLDER 0 $MODEL
 fi
 
 # I need a script that makes it easy to automatically copy into OP to test given the name and model directory
