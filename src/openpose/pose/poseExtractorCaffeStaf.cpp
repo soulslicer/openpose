@@ -14,6 +14,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <caffe/caffe.hpp>
+
 namespace op
 {
     void gpu_copy(std::shared_ptr<ArrayCpuGpu<float>> dst, std::shared_ptr<ArrayCpuGpu<float>> src)
@@ -333,6 +335,9 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
             mPoseTracker->run(mPoseKeypoints, spTafsBlob, 1./mScaleNetToOutput);
             mPoseIds = mPoseTracker->getPoseIds();
             mPoseKeypoints = mPoseTracker->getPoseKeypoints();
+            return;
+
+
 
 //            // Set IDS
 //            std::vector<long long> ids;

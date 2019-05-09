@@ -343,7 +343,7 @@ namespace op
             tafScoresPtr[outputIndex] = -1;
         }else{
             tafScoresPtr[outputIndex] = process(
-                bodyPartA, bodyPartB, mapX, mapY, heatmapWidth, heatmapHeight, interThreshold,
+                bodyPartB, bodyPartA, mapX, mapY, heatmapWidth, heatmapHeight, interThreshold,
                 interMinAboveThreshold, scale);
         }
     }

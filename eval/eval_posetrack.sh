@@ -9,6 +9,7 @@ mkdir posetrack_results/op_output
 OPENPOSE_FOLDER=$(pwd)/../
 POSETRACK_FOLDER=$(pwd)/posetrack/images/val
 POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/val_json
+
 #POSETRACK_FOLDER=$(pwd)/posetrack/images/val
 #POSETRACK_JSON_FOLDER=$(pwd)/posetrack/annotations/test_json/
 
@@ -34,6 +35,8 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
 
     if [ "$MODE" = "tracking" ]; then 
 
+      echo $folder
+
       # Operation
       cd $OPENPOSE_FOLDER;
       ./build/examples/openpose/openpose.bin \
@@ -43,6 +46,8 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
           --write_json eval/posetrack_results/op_output/$filename \
           --render_pose 0 --display 0 > output.txt &
           #--render_pose 1 > output.txt &
+          #
+          #
           
     else
 

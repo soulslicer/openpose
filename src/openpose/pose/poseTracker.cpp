@@ -80,11 +80,12 @@ namespace op
     {
         op::Array<float> personKp = getPerson(poseKeypoints, pid);
         std::vector<int> finalIdxs(personKp.getSize()[0], -1);
+        std::vector<float> finalScores(personKp.getSize()[0], -1);
 
         //std::cout << "HACK STAF PAF TAF" << std::endl;
 
         //for(int i=25; i<mTafPartPairs.size()/2; i++){
-        //for(int i=0; i<25; i++){
+        //for(int i=0; i<24; i++){
         for(int i=0; i<mTafPartPairs.size()/2; i++){
             auto partA = mTafPartPairs[i*2];
             auto partB = mTafPartPairs[i*2 + 1];
@@ -108,10 +109,6 @@ namespace op
                 if(tracklet.kp.at({partB, 2}) < mRenderThreshold) continue;
                 auto fscore = tafScores.first.at({i, pid, tid_map});
 
-//                if(i==1){
-//                    std::cout << " compare pid " << pid << " tid " << tid << " " << fscore << " cbfscoer " << best_fscore << std::endl;
-//                }
-
                 if(fscore > best_fscore){
                     best_fscore = fscore;
                     best_tid = tid;
@@ -119,8 +116,19 @@ namespace op
             }
 
             if(best_tid >= 0){
-                //if(i==1) std::cout << "  set " << best_fscore << " " << best_tid << std::endl;
-                finalIdxs[partA]=best_tid;
+                if(finalIdxs[partA] != -1){
+                    if(best_fscore > finalScores[partA]){
+                        finalIdxs[partA]=best_tid;
+                        finalScores[partA]=best_fscore;
+                    }
+                }else{
+                    finalIdxs[partA]=best_tid;
+                    finalScores[partA]=best_fscore;
+                }
+
+                //finalIdxs[partA]=best_tid;
+                //finalScores[partA]=best_fscore;
+
             }
 
         }

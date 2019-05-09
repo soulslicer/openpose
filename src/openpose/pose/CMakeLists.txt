@@ -4,6 +4,7 @@ set(SOURCES_OP_POSE
     poseExtractor.cpp
     poseExtractorCaffe.cpp
     poseExtractorCaffeStaf.cpp
+    poseExtractorCaffeOld.cpp
     poseExtractorNet.cpp
     poseGpuRenderer.cpp
     poseParameters.cpp
