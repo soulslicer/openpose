@@ -11,6 +11,7 @@
 #include <openpose/wrapper/wrapperStructOutput.hpp>
 #include <openpose/wrapper/wrapperStructPose.hpp>
 #include <openpose/wrapper/wrapperStructTracking.hpp>
+#include <openpose/pose/poseExtractorCaffeTaf.hpp>
 
 namespace op
 {
@@ -293,9 +294,20 @@ namespace op
                     // Pose estimators
                     for (auto gpuId = 0; gpuId < numberGpuThreads; gpuId++)
                     {
-                        if (wrapperStructTracking.tracking > -1)
+                        if (wrapperStructTracking.tracking == 1)
                         {
                             poseExtractorNets.emplace_back(std::make_shared<PoseExtractorCaffeStaf>(
+                                wrapperStructPose.poseModel, modelFolder, gpuId + gpuNumberStart,
+                                wrapperStructPose.heatMapTypes, wrapperStructPose.heatMapScaleMode,
+                                wrapperStructPose.addPartCandidates, wrapperStructPose.maximizePositives,
+                                wrapperStructPose.protoTxtPath, wrapperStructPose.caffeModelPath,
+                                wrapperStructPose.upsamplingRatio, wrapperStructPose.poseMode == PoseMode::Enabled,
+                                wrapperStructPose.enableGoogleLogging
+                            ));
+                        }
+                        else if (wrapperStructTracking.tracking == 2)
+                        {
+                            poseExtractorNets.emplace_back(std::make_shared<PoseExtractorCaffeTaf>(
                                 wrapperStructPose.poseModel, modelFolder, gpuId + gpuNumberStart,
                                 wrapperStructPose.heatMapTypes, wrapperStructPose.heatMapScaleMode,
                                 wrapperStructPose.addPartCandidates, wrapperStructPose.maximizePositives,

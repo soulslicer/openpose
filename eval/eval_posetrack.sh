@@ -20,7 +20,7 @@ if [ -n "$2" ]; then
 fi
 
 # Not coded for Multi GPU Yet
-N=1
+N=2
 (
 for folder in $POSETRACK_JSON_FOLDER/* ; do 
 
@@ -31,20 +31,22 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
 
   if [[ -d "$folder" && ! -L "$folder" ]]; then
     ((i=i%N)); ((i++==0)) && wait
-    process=$((i%N));
+    #process=$((i%N));
+    process=0
 
     if [ "$MODE" = "tracking" ]; then 
 
-      echo $folder
+      #echo $folder
 
       # Operation
+      sleep 1;
       cd $OPENPOSE_FOLDER;
       ./build/examples/openpose/openpose.bin \
           --model_pose $MODEL --num_gpu 1 --num_gpu_start $process \
           --tracking 1 \
           --image_dir $folder \
           --write_json eval/posetrack_results/op_output/$filename \
-          --render_pose 0 --display 0 > output.txt &
+          --render_pose 0 --display 0 > output.txt --disable_multi_thread &
           #--render_pose 1 > output.txt &
           #
           #
@@ -52,6 +54,7 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
     else
 
       # Operation
+      sleep 1;
       cd $OPENPOSE_FOLDER;
       ./build/examples/openpose/openpose.bin \
           --model_pose $MODEL --num_gpu 1 --num_gpu_start $process \
@@ -61,8 +64,8 @@ for folder in $POSETRACK_JSON_FOLDER/* ; do
 
     fi
 
-    # sleep 1 &
-    # echo "$folder $var is a directory" & 
+    #sleep 1 &
+    #echo "$folder $var is a directory" & 
 
   fi; 
 done

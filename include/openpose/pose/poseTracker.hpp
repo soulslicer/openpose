@@ -13,7 +13,8 @@
 namespace op
 {
     struct Tracklet{
-        op::Array<float> kp, kp_prev;
+        op::Array<float> kp, kp_prev, kp_vel;
+        std::vector<op::Array<float>> kp_queue;
         int kp_hitcount;
         int kp_count;
         bool valid;
@@ -30,6 +31,7 @@ namespace op
         PoseModel mPoseModel;
         int mTafModel;
         int mTotalKeypoints;
+        bool mTrackVelocity = false;
 
         PoseTracker(PoseModel poseModel, int tafModel);
 
@@ -44,6 +46,7 @@ namespace op
             Array<long long> mPoseIds;
             std::vector<long long> ids;
             for (auto& kv : mTracklets) {
+                if(!kv.second.valid) continue;
                 ids.emplace_back(kv.first);
             }
             mPoseIds.reset(ids.size());
@@ -53,11 +56,20 @@ namespace op
             return mPoseIds;
         }
 
+        int getValidTrackletsCount()
+        {
+            int validCount = 0;
+            for (auto& kv : mTracklets)
+                if(kv.second.valid) validCount+=1;
+            return validCount;
+        }
+
         Array<float> getPoseKeypoints()
         {
-            op::Array<float> poseKeypoints({(int)mTracklets.size(), mTotalKeypoints, 3},0.0f);
+            op::Array<float> poseKeypoints({getValidTrackletsCount(), mTotalKeypoints, 3},0.0f);
             int i=0;
             for (auto& kv : mTracklets) {
+                if(!kv.second.valid) continue;
                 for(int j=0; j<poseKeypoints.getSize(1); j++)
                     for(int k=0; k<poseKeypoints.getSize(2); k++)
                         poseKeypoints.at({i,j,k}) = kv.second.kp.at({j,k});
@@ -97,6 +109,57 @@ namespace op
             mTracklets[tid].kp = personKp.clone();
             mTracklets[tid].kp_hitcount += 1;
             mTracklets[tid].kp_count += 1;
+
+            if(mTrackVelocity)
+            {
+                mTracklets[tid].kp_queue.emplace_back(mTracklets[tid].kp);
+                if(mTracklets[tid].kp_queue.size() >= 5)
+                    mTracklets[tid].kp_queue.pop_back();
+                computeVelocity(mTracklets[tid]);
+            }
+        }
+
+        void computeVelocity(Tracklet& tracklet){
+            tracklet.kp_vel.reset(tracklet.kp.getSize(), 0.);
+
+            if(tracklet.kp_queue.size() < 2) return;
+
+            for(int i=0; i<tracklet.kp_vel.getSize(0); i++){
+                int validCount = 0;
+
+                for(int j=1; j<tracklet.kp_queue.size(); j++){
+                    const auto& prevTrack = tracklet.kp_queue[j-1];
+                    const auto& currTrack = tracklet.kp_queue[j];
+
+                    if(prevTrack.at({i, 2}) < 0.05 || currTrack.at({i, 2}) < 0.05)
+                        continue;
+                    else
+                        validCount += 1;
+
+                    tracklet.kp_vel.at({i,0}) += currTrack.at({i,0}) - prevTrack.at({i,0});
+                    tracklet.kp_vel.at({i,0}) += currTrack.at({i,1}) - prevTrack.at({i,1});
+                }
+
+                if(validCount){
+                    tracklet.kp_vel.at({i,0}) /= (float)validCount;
+                    tracklet.kp_vel.at({i,1}) /= (float)validCount;
+                    tracklet.kp_vel.at({i,2}) = 1;
+                }else{
+                    tracklet.kp_vel.at({i,0}) = 0;
+                    tracklet.kp_vel.at({i,1}) = 0;
+                    tracklet.kp_vel.at({i,2}) = 0;
+                }
+            }
+
+//            // Predict
+//            for(int i=0; i<tracklet.kp_vel.getSize(0); i++){
+//                if(tracklet.kp_vel.at({i,2}) < 0.05) continue;
+
+//                // I need to update
+//                tracklet.kp_pred.at({i,0}) = tracklet. tracklet.kp_vel.at({i,0});
+//                tracklet.kp_pred.at({i,0}) += tracklet.kp_vel.at({i,0});
+//            }
+
         }
 
         void reset(){

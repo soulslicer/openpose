@@ -55,9 +55,14 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
             // Net
             this->spNets.emplace_back(
                 std::make_shared<NetCaffe>(
-                    this->mModelFolder + "pose/body_25b_video/pose_deploy.prototxt",
-                    this->mModelFolder + "pose/body_25b_video/pose_iter_XXXXXX.caffemodel",
+                    this->mModelFolder + "pose/body_25b_video3/pose_deploy.prototxt",
+                    this->mModelFolder + "pose/body_25b_video3/pose_iter_XXXXXX.caffemodel",
                     this->mGpuId, this->mEnableGoogleLogging));
+//            this->spNets.emplace_back(
+//                std::make_shared<NetCaffe>(
+//                    this->mModelFolder + "pose/body_25b_video2/pose_deploy.prototxt",
+//                    this->mModelFolder + "pose/body_25b_video2/pose_iter_2000.caffemodel",
+//                    this->mGpuId, this->mEnableGoogleLogging));
 
             // Initialize
             this->spNets.back()->initializationOnThread();
@@ -331,11 +336,25 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
             const auto caffeTafBlobs = arraySharedToPtr2(mCurrTafBlobs);
             spResizeAndMergeCaffe->Forward(caffeTafBlobs, {spTafsBlob.get()});
 
+            //return;
+
             // Run Tracker
             mPoseTracker->run(mPoseKeypoints, spTafsBlob, 1./mScaleNetToOutput);
             mPoseIds = mPoseTracker->getPoseIds();
             mPoseKeypoints = mPoseTracker->getPoseKeypoints();
+
+//            cv::Mat mx = mat_from_blob(spTafsBlob, 0);
+//            mx = cv::abs(mx);
+//            cv::Mat my = mat_from_blob(spTafsBlob, 1);
+//            my = cv::abs(my);
+//            cv::Mat m = mx+my;
+//            cv::imshow("win", m);
+//            cv::waitKey(15);
+
+
             return;
+
+
 
 
 
@@ -366,23 +385,7 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
 //            }
 
 
-//            cv::Mat mx = mat_from_blob(spTafsBlob, 64);
-//            mx = cv::abs(mx);
-//            cv::Mat my = mat_from_blob(spTafsBlob, 65);
-//            my = cv::abs(my);
-//            cv::Mat m = mx+my;
-//            cv::imshow("win", m);
-//            cv::waitKey(15);
 
-            //            mx = cv::abs(mx);
-            //            cv::resize(mx, mx, cv::Size(0,0), 8,8, cv::INTER_CUBIC);
-            //            cv::Mat my = mat_from_blob(this->mCurrTafBlobs.at(0), 1);
-            //            my = cv::abs(my);
-            //            cv::resize(my, my, cv::Size(0,0), 8,8, cv::INTER_CUBIC);
-            //            cv::Mat m = mx+my;
-            //            cv::imshow("win", m);
-            //            cv::waitKey(15);
-            ////            //VISUALIZE THE
 
             //std::cout << mCurrHmBlobs.at(0)->shape_string() << std::endl;
             //std::cout << spHeatMapsBlob->shape_string() << std::endl;

@@ -70,6 +70,7 @@ namespace op
         cudaMemcpy(mGpuTafPartPairsPtr, &mTafPartPairs[0], mTafPartPairs.size() * sizeof(int),
                    cudaMemcpyHostToDevice);
 
+        mTrackVelocity = true;
     }
 
     PoseTracker::~PoseTracker()
@@ -85,7 +86,7 @@ namespace op
         //std::cout << "HACK STAF PAF TAF" << std::endl;
 
         //for(int i=25; i<mTafPartPairs.size()/2; i++){
-        //for(int i=0; i<24; i++){
+        //for(int i=0; i<25; i++){
         for(int i=0; i<mTafPartPairs.size()/2; i++){
             auto partA = mTafPartPairs[i*2];
             auto partB = mTafPartPairs[i*2 + 1];
@@ -106,6 +107,7 @@ namespace op
                 int tid = kv.first;
                 int tid_map = kv.second;
                 Tracklet& tracklet = mTracklets[tid];
+                if(tracklet.valid == false) throw std::runtime_error("Should not go here");
                 if(tracklet.kp.at({partB, 2}) < mRenderThreshold) continue;
                 auto fscore = tafScores.first.at({i, pid, tid_map});
 
@@ -139,9 +141,10 @@ namespace op
     std::pair<op::Array<float>, std::map<int, int>> PoseTracker::tafKernel(op::Array<float>& poseKeypoints, const std::shared_ptr<ArrayCpuGpu<float>> tafsBlob, float scale)
     {
         std::map<int, int> tidToMap;
-        op::Array<float> trackletKeypoints({(int)mTracklets.size(), poseKeypoints.getSize(1), poseKeypoints.getSize(2)},0.0f);
+        op::Array<float> trackletKeypoints({getValidTrackletsCount(), poseKeypoints.getSize(1), poseKeypoints.getSize(2)},0.0f);
         int i=0;
         for (auto& kv : mTracklets) {
+            if(!kv.second.valid) continue;
             for(int j=0; j<poseKeypoints.getSize(1); j++)
                 for(int k=0; k<poseKeypoints.getSize(2); k++)
                     trackletKeypoints.at({i,j,k}) = kv.second.kp.at({j,k});
@@ -166,25 +169,25 @@ namespace op
 //        std::cout << poseKeypoints << std::endl;
 //        std::cout << getPoseKeypoints() << std::endl;
 
-        if(debug){
-            int mindex = 36;
-            cv::Mat hm = cv::abs(mat_from_blob3(tafsBlob, mindex*2)) + cv::abs(mat_from_blob3(tafsBlob, mindex*2 + 1));
-            cv::cvtColor(hm, hm, cv::COLOR_GRAY2BGR);
+//        if(debug){
+//            int mindex = 36;
+//            cv::Mat hm = cv::abs(mat_from_blob3(tafsBlob, mindex*2)) + cv::abs(mat_from_blob3(tafsBlob, mindex*2 + 1));
+//            cv::cvtColor(hm, hm, cv::COLOR_GRAY2BGR);
 
-            cv::Mat fx = mat_from_blob3(tafsBlob, mindex*2);
-            cv::Mat fy = mat_from_blob3(tafsBlob, mindex*2 + 1);
-            for(int u=0; u<fx.size().width; u+=10){
-                for(int v=0; v<fx.size().height; v+=10){
-                    cv::Point2f p1(u,v);
-                    cv::Point2i currP(u,v);
-                    cv::Point2f p2(u + 20*fx.at<float>(currP), v + 20*fy.at<float>(currP));
-                    cv::line(hm, p1, p2, cv::Scalar(0,1,0));
-                }
-            }
+//            cv::Mat fx = mat_from_blob3(tafsBlob, mindex*2);
+//            cv::Mat fy = mat_from_blob3(tafsBlob, mindex*2 + 1);
+//            for(int u=0; u<fx.size().width; u+=10){
+//                for(int v=0; v<fx.size().height; v+=10){
+//                    cv::Point2f p1(u,v);
+//                    cv::Point2i currP(u,v);
+//                    cv::Point2f p2(u + 20*fx.at<float>(currP), v + 20*fy.at<float>(currP));
+//                    cv::line(hm, p1, p2, cv::Scalar(0,1,0));
+//                }
+//            }
 
-            cv::imshow("win", hm);
-            cv::waitKey(15);
-        }
+//            cv::imshow("win", hm);
+//            cv::waitKey(15);
+//        }
 
         /////////////////
 
@@ -198,18 +201,6 @@ namespace op
 
         // Kernel goes here
         std::pair<op::Array<float>, std::map<int, int>> tafScores = tafKernel(poseKeypoints, tafsBlob, scale);
-
-        /////////////////190503
-
-        /*
-         * Iterate each detected person against each tracklet
-         * Within that, compte the score. For each keypoint, we add the highest score or 0 if none
-         *  divide that with the number of keypoints detected to normalize, or 0
-         * For each pid, link it to best tid and remove from list to check again
-         */
-
-
-        /////////////////
 
         // Iterate Pose Keypoints (Global Score)
         for(int i=0; i<poseKeypoints.getSize()[0]; i++){
@@ -273,9 +264,13 @@ namespace op
             auto tidx = kv.first;
             auto& tracklet = kv.second;
             if(tracklet.kp_hitcount - mFrameCount < 0) {
+                tracklet.valid = false;
                 to_delete.emplace_back(tidx);
-                if(debug) std::cout << "Delete : " << tidx << std::endl;
+                //if(debug) std::cout << "Delete : " << tidx << std::endl;
             }
+            //if(tracklet.kp_hitcount - mFrameCount < -5) {
+            //    to_delete.emplace_back(tidx);
+            //}
             if(tracklet.kp.getSize(1) == 0) throw std::runtime_error("Track Error");
         }
         for(auto to_del : to_delete) mTracklets.erase(mTracklets.find(to_del));

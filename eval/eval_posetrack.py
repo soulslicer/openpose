@@ -14,6 +14,8 @@ POSETRACK_PATH = dir_path + "posetrack/"
 TRACKING = int(sys.argv[2])
 MODEL = sys.argv[3]
 
+#TRACKING = False
+
 def load_json(path):
     if path.endswith(".json"):
         with open(path) as json_data:

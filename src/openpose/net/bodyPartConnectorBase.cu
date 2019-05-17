@@ -56,7 +56,7 @@ namespace op
                 //     1. It will consider very close keypoints (where the PAF is 0)
                 //     2. But it will not automatically connect them (case PAF score = 1), or real PAF might got
                 //        missing
-                //return -1;
+                // return -1;
                 const auto l2Dist = sqrtf(vectorAToBX*vectorAToBX + vectorAToBY*vectorAToBY);
                 const auto threshold = sqrtf(heatmapWidth*heatmapHeight)/150; // 3.3 for 368x656, 6.6 for 2x resolution
                 if (l2Dist < threshold)
@@ -343,7 +343,7 @@ namespace op
             tafScoresPtr[outputIndex] = -1;
         }else{
             tafScoresPtr[outputIndex] = process(
-                bodyPartB, bodyPartA, mapX, mapY, heatmapWidth, heatmapHeight, interThreshold,
+                bodyPartA, bodyPartB, mapX, mapY, heatmapWidth, heatmapHeight, interThreshold,
                 interMinAboveThreshold, scale);
         }
     }
