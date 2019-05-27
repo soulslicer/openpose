@@ -18,6 +18,8 @@ namespace op
 
         void forwardPass(const Array<float>& inputNetData) const;
 
+        void forwardPass() const;
+
         void reshape(const std::vector<int>& dimensions, std::string name, bool reshape=0) const;
 
         const std::vector<int> shape(std::string name) const;

@@ -16,6 +16,12 @@ namespace op
 {
     const bool TOP_DOWN_REFINEMENT = false; // Note: +5% acc 1 scale, -2% max acc setting
 
+    void gpu_copy2(std::shared_ptr<ArrayCpuGpu<float>> dst, std::shared_ptr<ArrayCpuGpu<float>> src)
+    {
+        size_t size = sizeof(float)*src->shape()[1]*src->shape()[2]*src->shape()[3];
+        cudaMemcpy(dst->mutable_gpu_data(), src->gpu_data(), size, cudaMemcpyDeviceToDevice);
+    }
+
     #ifdef USE_CAFFE
         std::vector<ArrayCpuGpu<float>*> arraySharedToPtr3(
             const std::vector<std::shared_ptr<ArrayCpuGpu<float>>>& caffeNetOutputBlob)
@@ -125,7 +131,7 @@ namespace op
                 this->spNetsTrack.back()->initializationOnThread();
 
                 // Add curr outputs as reference
-                this->mCurrPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage4_L2"));
+                this->mCurrPafBlobs.emplace_back((this->spNets.back().get())->getBlobArray("Mconv7_stage1_L2"));
                 this->mCurrFmBlobs.emplace_back((this->spNets.back().get())->getBlobArray("conv4_4_CPM"));
                 // Add last outputs as reference
                 this->mTrackCurrTafBlobs.emplace_back((this->spNetsTrack.back().get())->getBlobArray("Mconv7_stage0_L4"));
@@ -393,15 +399,17 @@ namespace op
                 for(int j = 0; j<iterations; j++){
                     for (auto i = 0u ; i < inputNetData.size(); i++)
                     {
-//                        spNets.at(i)->forwardPass(inputNetData[i]);
-
-//                        // dst, src
-//                        gpu_copy(this->mLastHmBlobs.at(i), this->mCurrHmBlobs.at(i));
-//                        gpu_copy(this->mLastPafBlobs.at(i), this->mCurrPafBlobs.at(i));
-//                        if((this->mLastTafBlobs.size())) gpu_copy(this->mLastTafBlobs.at(i), this->mCurrTafBlobs.at(i));
-//                        gpu_copy(this->mLastFmBlobs.at(i), this->mCurrFmBlobs.at(i));
+                        gpu_copy2(this->mTrackLastTafBlobs.at(i), this->mTrackCurrTafBlobs.at(i));
+                        gpu_copy2(this->mTrackLastFmBlobs.at(i), this->mTrackCurrFmBlobs.at(i));
+                        gpu_copy2(this->mTrackCurrFmBlobs.at(i), this->mCurrFmBlobs.at(i));
+                        gpu_copy2(this->mTrackLastPafBlobs.at(i), this->mTrackCurrPafBlobs.at(i));
+                        gpu_copy2(this->mTrackCurrPafBlobs.at(i), this->mCurrPafBlobs.at(i));
+                        spNetsTrack.at(i)->forwardPass();
                     }
                 }
+
+                const auto caffeTafBlobs = arraySharedToPtr3(mTrackCurrTafBlobs);
+                spResizeAndMergeCaffe->Forward(caffeTafBlobs, {spTafsBlob.get()});
 
                 // 5. CUDA sanity check
                 #ifdef USE_CUDA

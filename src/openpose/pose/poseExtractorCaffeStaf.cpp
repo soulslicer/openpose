@@ -16,6 +16,8 @@
 
 #include <caffe/caffe.hpp>
 
+//#include <openpose/flags.hpp>
+
 namespace op
 {
     void gpu_copy(std::shared_ptr<ArrayCpuGpu<float>> dst, std::shared_ptr<ArrayCpuGpu<float>> src)
@@ -350,6 +352,8 @@ log("RUNNING PoseExtractorCaffeStaf::PoseExtractorCaffeStaf");
 //            cv::Mat m = mx+my;
 //            cv::imshow("win", m);
 //            cv::waitKey(15);
+
+            //std::cout << FLAGS_image_dir << std::endl;
 
 
             return;

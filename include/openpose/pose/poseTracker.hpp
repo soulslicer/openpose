@@ -31,7 +31,7 @@ namespace op
         PoseModel mPoseModel;
         int mTafModel;
         int mTotalKeypoints;
-        bool mTrackVelocity = false;
+        bool mTrackVelocity = true;
 
         PoseTracker(PoseModel poseModel, int tafModel);
 

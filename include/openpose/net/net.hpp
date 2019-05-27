@@ -14,6 +14,8 @@ namespace op
 
         virtual void forwardPass(const Array<float>& inputData) const = 0;
 
+        virtual void forwardPass() const = 0;
+
         virtual void reshape(const std::vector<int>& dimensions, std::string name, bool reshape=0) const = 0;
 
         virtual const std::vector<int> shape(std::string name) const = 0;

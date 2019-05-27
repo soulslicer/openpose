@@ -164,6 +164,7 @@ namespace op
     {
         bool debug=false;
         if(mFrameCount > 1000) debug=true;
+        if(debug) std::this_thread::sleep_for (std::chrono::seconds(1));
 
         // VIZ
 //        std::cout << poseKeypoints << std::endl;
@@ -239,7 +240,7 @@ namespace op
                 auto best_item_index = item.back().second;
                 auto best_person_kp = getPerson(poseKeypoints, best_item_index);
                 updateTracklet(mostCommonIdx, best_person_kp);
-                //if(debug) std::cout << "Update : " << best_item_index << " into tracklet " << mostCommonIdx << std::endl;
+                if(debug) std::cout << "Update : " << best_item_index << " into tracklet " << mostCommonIdx << std::endl;
                 tid_updated.emplace_back(mostCommonIdx);
 
                 item.pop_back();

@@ -268,6 +268,26 @@ namespace op
         }
     }
 
+    void NetCaffe::forwardPass() const
+    {
+        try
+        {
+            #ifdef USE_CAFFE
+                upImpl->upCaffeNet->ForwardFrom(0);
+                // Cuda checks
+                #ifdef USE_CUDA
+                    cudaCheck(__LINE__, __FUNCTION__, __FILE__);
+                #endif
+            #else
+                UNUSED(inputData);
+            #endif
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
     std::shared_ptr<ArrayCpuGpu<float>> NetCaffe::getOutputBlobArray() const
     {
         try
