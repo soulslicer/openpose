@@ -5,9 +5,9 @@ from shutil import copyfile
 import time
 
 HOME_MODEL = "/home/raaj/openpose_staf/models/pose/body_25b_video3/"
-V100_MODEL = "/home/raaj/v100server2/openpose_train/training_results_gines_new/pose_video3/modely/"
+V100_MODEL = "/home/raaj/v100server2/openpose_train/training_results_gines_new/pose_video3/model/"
 
-for i in range(400, 2000, 100):
+for i in [300000]:
 
     while 1:
         pfile = "pose_iter_%d.caffemodel" % i
@@ -18,6 +18,8 @@ for i in range(400, 2000, 100):
         except:
             print("No File")
             time.sleep(1)
+
+    #stop
 
     print(pfile)
     output = os.system("bash eval_posetrack.sh tracking BODY_25B")
