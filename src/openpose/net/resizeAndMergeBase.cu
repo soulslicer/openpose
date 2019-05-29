@@ -4,7 +4,17 @@
 
 namespace op
 {
+    const auto THREADS_PER_BLOCK = 256u;
     const auto THREADS_PER_BLOCK_1D = 16u;
+
+    template <typename T>
+    __global__ void fillKernel(
+        T* targetPtr, const T* const sourcePtr, const int N)
+    {
+        const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
+        if (x < N)
+            targetPtr[x] = sourcePtr[x];
+    }
 
     // template <typename T>
     // __global__ void resizeKernelOld(
@@ -30,14 +40,13 @@ namespace op
         const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
         const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
         const auto channel = (blockIdx.z * blockDim.z) + threadIdx.z;
-
         if (x < widthTarget && y < heightTarget)
         {
             const auto sourceArea = widthSource * heightSource;
             const auto targetArea = widthTarget * heightTarget;
             const T xSource = (x + T(0.5f)) * widthSource / T(widthTarget) - T(0.5f);
             const T ySource = (y + T(0.5f)) * heightSource / T(heightTarget) - T(0.5f);
-            const T* sourcePtrChannel = sourcePtr + channel * sourceArea;
+            const T* const sourcePtrChannel = sourcePtr + channel * sourceArea;
             targetPtr[channel * targetArea + y*widthTarget+x] = bicubicInterpolate(
                 sourcePtrChannel, xSource, ySource, widthSource, heightSource, widthSource);
         }
@@ -51,7 +60,6 @@ namespace op
         const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
         const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
         const auto channel = (blockIdx.z * blockDim.z) + threadIdx.z;
-
         if (x < widthTarget && y < heightTarget)
         {
             const auto targetArea = widthTarget * heightTarget;
@@ -60,7 +68,7 @@ namespace op
                 const auto sourceArea = widthSource * heightSource;
                 const T xSource = (x + T(0.5f)) / T(rescaleFactor) - T(0.5f);
                 const T ySource = (y + T(0.5f)) / T(rescaleFactor) - T(0.5f);
-                const T* sourcePtrChannel = sourcePtr + channel * sourceArea;
+                const T* const sourcePtrChannel = sourcePtr + channel * sourceArea;
                 targetPtr[channel * targetArea + y*widthTarget+x] = bicubicInterpolate(
                     sourcePtrChannel, xSource, ySource, widthSource, heightSource, widthSource);
             }
@@ -77,7 +85,6 @@ namespace op
         const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
         const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
         const auto channel = (blockIdx.z * blockDim.z) + threadIdx.z;
-
         if (x < widthTarget && y < heightTarget)
         {
             const auto targetArea = widthTarget * heightTarget;
@@ -116,7 +123,7 @@ namespace op
                 const auto targetArea = widthTarget * heightTarget;
                 const T xSource = (x + T(0.5f)) / T(rescaleFactor) - T(0.5f);
                 const T ySource = (y + T(0.5f)) / T(rescaleFactor) - T(0.5f);
-                const T* sourcePtrChannel = sourcePtr + channel * sourceArea;
+                const T* const sourcePtrChannel = sourcePtr + channel * sourceArea;
                 targetPtr[channel * targetArea + y*widthTarget+x] = bicubicInterpolate(
                     sourcePtrChannel, xSource, ySource, widthSource, heightSource, widthSource);
                 return;
@@ -155,58 +162,114 @@ namespace op
     }
 
     template <typename T>
-    __global__ void resizeKernelAndAdd(
-        T* targetPtr, const T* const sourcePtr, const T scaleWidth, const T scaleHeight, const int widthSource,
-        const int heightSource, const int widthTarget, const int heightTarget)
+    __global__ void resizeAndAddAndAverageKernel(
+        T* targetPtr, const int counter, const T* const scaleWidths, const T* const scaleHeights,
+        const int* const widthSources, const int* const heightSources, const int widthTarget, const int heightTarget,
+        const T* const sourcePtr0, const T* const sourcePtr1, const T* const sourcePtr2, const T* const sourcePtr3,
+        const T* const sourcePtr4, const T* const sourcePtr5, const T* const sourcePtr6, const T* const sourcePtr7)
     {
         const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
         const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
-
+        const auto channel = (blockIdx.z * blockDim.z) + threadIdx.z;
+        // For each pixel
         if (x < widthTarget && y < heightTarget)
         {
-            const T xSource = (x + T(0.5f)) / scaleWidth - T(0.5f);
-            const T ySource = (y + T(0.5f)) / scaleHeight - T(0.5f);
-            targetPtr[y*widthTarget+x] += bicubicInterpolate(
-                sourcePtr, xSource, ySource, widthSource, heightSource, widthSource);
+            // Local variable for higher speed
+            T interpolated = T(0.f);
+            // For each input source pointer
+            for (auto i = 0 ; i < counter ; ++i)
+            {
+                const auto sourceArea = widthSources[i] * heightSources[i];
+                const T xSource = (x + T(0.5f)) / scaleWidths[i] - T(0.5f);
+                const T ySource = (y + T(0.5f)) / scaleHeights[i] - T(0.5f);
+                const T* const sourcePtr = (
+                    i == 0 ? sourcePtr0 : i == 1 ? sourcePtr1 : i == 2 ? sourcePtr2 : i == 3 ? sourcePtr3
+                        : i == 4 ? sourcePtr4 : i == 5 ? sourcePtr5 : i == 6 ? sourcePtr6 : sourcePtr7);
+                const T* const sourcePtrChannel = sourcePtr + channel * sourceArea;
+                interpolated += bicubicInterpolate(
+                    sourcePtrChannel, xSource, ySource, widthSources[i], heightSources[i], widthSources[i]);
+            }
+            // Save into memory
+            const auto targetArea = widthTarget * heightTarget;
+            targetPtr[channel * targetArea + y*widthTarget+x] = interpolated / T(counter);
         }
     }
 
-    template <typename T>
-    __global__ void resizeKernelAndAverage(
-        T* targetPtr, const T* const sourcePtr, const T scaleWidth, const T scaleHeight, const int widthSource,
-        const int heightSource, const int widthTarget, const int heightTarget, const int counter)
-    {
-        const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
-        const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    // template <typename T>
+    // __global__ void resizeAndAddKernel(
+    //     T* targetPtr, const T* const sourcePtr, const T scaleWidth, const T scaleHeight, const int widthSource,
+    //     const int heightSource, const int widthTarget, const int heightTarget)
+    // {
+    //     const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    //     const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    //     const auto channel = (blockIdx.z * blockDim.z) + threadIdx.z;
+    //     if (x < widthTarget && y < heightTarget)
+    //     {
+    //         const auto sourceArea = widthSource * heightSource;
+    //         const auto targetArea = widthTarget * heightTarget;
+    //         const T xSource = (x + T(0.5f)) * widthSource / T(widthTarget) - T(0.5f);
+    //         const T ySource = (y + T(0.5f)) * heightSource / T(heightTarget) - T(0.5f);
+    //         const T* const sourcePtrChannel = sourcePtr + channel * sourceArea;
+    //         targetPtr[channel * targetArea + y*widthTarget+x] += bicubicInterpolate(
+    //             sourcePtrChannel, xSource, ySource, widthSource, heightSource, widthSource);
+    //     }
+    // }
 
-        if (x < widthTarget && y < heightTarget)
-        {
-            const T xSource = (x + T(0.5f)) / scaleWidth - T(0.5f);
-            const T ySource = (y + T(0.5f)) / scaleHeight - T(0.5f);
-            const auto interpolated = bicubicInterpolate(
-                sourcePtr, xSource, ySource, widthSource, heightSource, widthSource);
-            auto& targetPixel = targetPtr[y*widthTarget+x];
-            targetPixel = (targetPixel + interpolated) / T(counter);
-        }
-    }
+    // template <typename T>
+    // __global__ void resizeAndAverageKernel(
+    //     T* targetPtr, const T* const sourcePtr, const T scaleWidth, const T scaleHeight, const int widthSource,
+    //     const int heightSource, const int widthTarget, const int heightTarget, const int counter)
+    // {
+    //     const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    //     const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    //     const auto channel = (blockIdx.z * blockDim.z) + threadIdx.z;
+    //     if (x < widthTarget && y < heightTarget)
+    //     {
+    //         const auto sourceArea = widthSource * heightSource;
+    //         const auto targetArea = widthTarget * heightTarget;
+    //         const T xSource = (x + T(0.5f)) / scaleWidth - T(0.5f);
+    //         const T ySource = (y + T(0.5f)) / scaleHeight - T(0.5f);
+    //         const T* const sourcePtrChannel = sourcePtr + channel * sourceArea;
+    //         const auto interpolated = bicubicInterpolate(
+    //             sourcePtrChannel, xSource, ySource, widthSource, heightSource, widthSource);
+    //         auto& targetPixel = targetPtr[channel * targetArea + y*widthTarget+x];
+    //         targetPixel = (targetPixel + interpolated) / T(counter);
+    //     }
+    // }
 
-    template <typename T>
-    __global__ void reorderAndCastKernel(
-        T* targetPtr, const unsigned char* const srcPtr, const int width, const int height)
-    {
-        const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
-        const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
-        const auto c = (blockIdx.z * blockDim.z) + threadIdx.z;
-        if (x < width && y < height)
-        {
-            const auto channels = 3;
-            const auto originFramePtrOffsetY = y * width;
-            const auto channelOffset = c * width * height;
-            const auto targetIndex = channelOffset + y * width + x;
-            const auto srcIndex = (originFramePtrOffsetY + x) * channels + c;
-            targetPtr[targetIndex] =  T(srcPtr[srcIndex]) * T(1/256.f) - T(0.5f);
-        }
-    }
+    // template <typename T>
+    // __global__ void resizeAndAddKernelOld(
+    //     T* targetPtr, const T* const sourcePtr, const T scaleWidth, const T scaleHeight, const int widthSource,
+    //     const int heightSource, const int widthTarget, const int heightTarget)
+    // {
+    //     const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    //     const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    //     if (x < widthTarget && y < heightTarget)
+    //     {
+    //         const T xSource = (x + T(0.5f)) / scaleWidth - T(0.5f);
+    //         const T ySource = (y + T(0.5f)) / scaleHeight - T(0.5f);
+    //         targetPtr[y*widthTarget+x] += bicubicInterpolate(
+    //             sourcePtr, xSource, ySource, widthSource, heightSource, widthSource);
+    //     }
+    // }
+
+    // template <typename T>
+    // __global__ void resizeAndAverageKernelOld(
+    //     T* targetPtr, const T* const sourcePtr, const T scaleWidth, const T scaleHeight, const int widthSource,
+    //     const int heightSource, const int widthTarget, const int heightTarget, const int counter)
+    // {
+    //     const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    //     const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    //     if (x < widthTarget && y < heightTarget)
+    //     {
+    //         const T xSource = (x + T(0.5f)) / scaleWidth - T(0.5f);
+    //         const T ySource = (y + T(0.5f)) / scaleHeight - T(0.5f);
+    //         const auto interpolated = bicubicInterpolate(
+    //             sourcePtr, xSource, ySource, widthSource, heightSource, widthSource);
+    //         auto& targetPixel = targetPtr[y*widthTarget+x];
+    //         targetPixel = (targetPixel + interpolated) / T(counter);
+    //     }
+    // }
 
     template <typename T>
     void resizeAndMergeGpu(
@@ -228,8 +291,9 @@ namespace op
             const auto heightTarget = targetSize[2];
             const auto widthTarget = targetSize[3];
             const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D};
-            const dim3 numBlocks{getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
-                                 getNumberCudaBlocks(heightTarget, threadsPerBlock.y)};
+            const dim3 numBlocks{
+                getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                getNumberCudaBlocks(heightTarget, threadsPerBlock.y)};
             const auto& sourceSize = sourceSizes[0];
             const auto heightSource = sourceSize[2];
             const auto widthSource = sourceSize[3];
@@ -265,27 +329,39 @@ namespace op
                     // // Optimized function for any resize size (suboptimal for 8x resize)
                     // OP_CUDA_PROFILE_INIT(REPS);
                     // const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
-                    // const dim3 numBlocks{getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
-                    //                      getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
-                    //                      getNumberCudaBlocks(num * channels, threadsPerBlock.z)};
+                    // const dim3 numBlocks{
+                    //     getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                    //     getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
+                    //     getNumberCudaBlocks(num * channels, threadsPerBlock.z)};
                     // resizeKernel<<<numBlocks, threadsPerBlock>>>(
                     //     targetPtr, sourcePtrs.at(0), widthSource, heightSource, widthTarget, heightTarget);
                     // OP_CUDA_PROFILE_END(timeNormalize2, 1e3, REPS);
 
                     // Optimized function for 8x resize
                     // OP_CUDA_PROFILE_INIT(REPS);
-                    if (widthTarget / widthSource != 8 || heightTarget / heightSource != 8)
-                        error("Kernel only implemented for 8x resize. Notify us if this error appears.",
-                            __LINE__, __FUNCTION__, __FILE__);
-                    const auto rescaleFactor = (unsigned int) std::ceil(heightTarget / (float)(heightSource));
-                    const dim3 threadsPerBlock{rescaleFactor, rescaleFactor, 1};
-                    const dim3 numBlocks{
-                        getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
-                        getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
-                        getNumberCudaBlocks(num * channels, threadsPerBlock.z)};
-                    resize8TimesKernel<<<numBlocks, threadsPerBlock>>>(
-                        targetPtr, sourcePtrs.at(0), widthSource, heightSource, widthTarget, heightTarget,
-                        rescaleFactor);
+                    if (widthTarget / widthSource == 1 && heightTarget / heightSource == 1)
+                    {
+                        const auto N = widthTarget * heightTarget * num * channels;
+                        const dim3 threadsPerBlock{THREADS_PER_BLOCK};
+                        const dim3 numBlocks{getNumberCudaBlocks(N, threadsPerBlock.x)};
+                        fillKernel<<<numBlocks, threadsPerBlock>>>(
+                            targetPtr, sourcePtrs.at(0), N);
+                    }
+                    else
+                    {
+                        if (widthTarget / widthSource != 8 || heightTarget / heightSource != 8)
+                            error("Kernel only implemented for 8x resize. Notify us if this error appears.",
+                                __LINE__, __FUNCTION__, __FILE__);
+                        const auto rescaleFactor = (unsigned int) std::ceil(heightTarget / (float)(heightSource));
+                        const dim3 threadsPerBlock{rescaleFactor, rescaleFactor, 1};
+                        const dim3 numBlocks{
+                            getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                            getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
+                            getNumberCudaBlocks(num * channels, threadsPerBlock.z)};
+                        resize8TimesKernel<<<numBlocks, threadsPerBlock>>>(
+                            targetPtr, sourcePtrs.at(0), widthSource, heightSource, widthTarget, heightTarget,
+                            rescaleFactor);
+                    }
                     // OP_CUDA_PROFILE_END(timeNormalize3, 1e3, REPS);
 
                     // // Profiling code
@@ -300,45 +376,147 @@ namespace op
             // Multi-scaling merging
             else
             {
-                const auto targetChannelOffset = widthTarget * heightTarget;
-                cudaMemset(targetPtr, 0, channels*targetChannelOffset * sizeof(T));
                 const auto scaleToMainScaleWidth = widthTarget / T(widthSource);
                 const auto scaleToMainScaleHeight = heightTarget / T(heightSource);
 
-                for (auto i = 0u ; i < sourceSizes.size(); i++)
+                // // Profiling code
+                // const auto REPS = 10;
+                // // const auto REPS = 100;
+                // double timeNormalize1 = 0.;
+                // double timeNormalize2 = 0.;
+                // double timeNormalize3 = 0.;
+                // // Non-optimized function
+                // OP_CUDA_PROFILE_INIT(REPS);
+                // const auto targetChannelOffset = widthTarget * heightTarget;
+                // cudaMemset(targetPtr, 0, channels*targetChannelOffset * sizeof(T));
+                // for (auto i = 0u ; i < sourceSizes.size(); ++i)
+                // {
+                //     const auto& currentSize = sourceSizes.at(i);
+                //     const auto currentHeight = currentSize[2];
+                //     const auto currentWidth = currentSize[3];
+                //     const auto sourceChannelOffset = currentHeight * currentWidth;
+                //     const auto scaleInputToNet = scaleInputToNetInputs[i] / scaleInputToNetInputs[0];
+                //     const auto scaleWidth = scaleToMainScaleWidth / scaleInputToNet;
+                //     const auto scaleHeight = scaleToMainScaleHeight / scaleInputToNet;
+                //     // All but last image --> add
+                //     if (i < sourceSizes.size() - 1)
+                //     {
+                //         for (auto c = 0 ; c < channels ; c++)
+                //         {
+                //             resizeAndAddKernelOld<<<numBlocks, threadsPerBlock>>>(
+                //                 targetPtr + c * targetChannelOffset, sourcePtrs[i] + c * sourceChannelOffset,
+                //                 scaleWidth, scaleHeight, currentWidth, currentHeight, widthTarget,
+                //                 heightTarget);
+                //         }
+                //     }
+                //     // Last image --> average all
+                //     else
+                //     {
+                //         for (auto c = 0 ; c < channels ; c++)
+                //         {
+                //             resizeAndAverageKernelOld<<<numBlocks, threadsPerBlock>>>(
+                //                 targetPtr + c * targetChannelOffset, sourcePtrs[i] + c * sourceChannelOffset,
+                //                 scaleWidth, scaleHeight, currentWidth, currentHeight, widthTarget,
+                //                 heightTarget, (int)sourceSizes.size());
+                //         }
+                //     }
+                // }
+                // OP_CUDA_PROFILE_END(timeNormalize1, 1e3, REPS);
+                // // Optimized function for any resize size (suboptimal for 8x resize)
+                // OP_CUDA_PROFILE_INIT(REPS);
+                // const auto targetChannelOffset = widthTarget * heightTarget;
+                // cudaMemset(targetPtr, 0, channels*targetChannelOffset * sizeof(T));
+                // const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
+                // const dim3 numBlocks{
+                //     getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                //     getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
+                //     getNumberCudaBlocks(channels, threadsPerBlock.z)};
+                // for (auto i = 0u ; i < sourceSizes.size(); ++i)
+                // {
+                //     const auto& currentSize = sourceSizes.at(i);
+                //     const auto currentHeight = currentSize[2];
+                //     const auto currentWidth = currentSize[3];
+                //     const auto scaleInputToNet = scaleInputToNetInputs[i] / scaleInputToNetInputs[0];
+                //     const auto scaleWidth = scaleToMainScaleWidth / scaleInputToNet;
+                //     const auto scaleHeight = scaleToMainScaleHeight / scaleInputToNet;
+                //     // All but last image --> add
+                //     if (i < sourceSizes.size() - 1)
+                //         resizeAndAddKernel<<<numBlocks, threadsPerBlock>>>(
+                //             targetPtr, sourcePtrs[i], scaleWidth, scaleHeight, currentWidth, currentHeight,
+                //             widthTarget, heightTarget);
+                //     // Last image --> average all
+                //     else
+                //         resizeAndAverageKernelOld<<<numBlocks, threadsPerBlock>>>(
+                //             targetPtr, sourcePtrs[i], scaleWidth, scaleHeight, currentWidth, currentHeight,
+                //             widthTarget, heightTarget, (int)sourceSizes.size());
+                // }
+                // OP_CUDA_PROFILE_END(timeNormalize2, 1e3, REPS);
+
+                // Super optimized function
+                // OP_CUDA_PROFILE_INIT(REPS);
+                if (sourcePtrs.size() > 8)
+                    error("More than 8 scales are not implemented (yet). Notify us to implement it.",
+                        __LINE__, __FUNCTION__, __FILE__);
+                const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
+                const dim3 numBlocks{
+                    getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                    getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
+                    getNumberCudaBlocks(channels, threadsPerBlock.z)};
+                // Fill auxiliary params
+                std::vector<int> widthSourcesCpu(sourceSizes.size());
+                std::vector<int> heightSourcesCpu(sourceSizes.size());
+                std::vector<T> scaleWidthsCpu(sourceSizes.size());
+                std::vector<T> scaleHeightsCpu(sourceSizes.size());
+                for (auto i = 0u ; i < sourceSizes.size(); ++i)
                 {
                     const auto& currentSize = sourceSizes.at(i);
-                    const auto currentHeight = currentSize[2];
-                    const auto currentWidth = currentSize[3];
-                    const auto sourceChannelOffset = currentHeight * currentWidth;
+                    heightSourcesCpu[i] = currentSize[2];
+                    widthSourcesCpu[i] = currentSize[3];
                     const auto scaleInputToNet = scaleInputToNetInputs[i] / scaleInputToNetInputs[0];
-                    const auto scaleWidth = scaleToMainScaleWidth / scaleInputToNet;
-                    const auto scaleHeight = scaleToMainScaleHeight / scaleInputToNet;
-                    // All but last image --> add
-                    if (i < sourceSizes.size() - 1)
-                    {
-                        for (auto c = 0 ; c < channels ; c++)
-                        {
-                            resizeKernelAndAdd<<<numBlocks, threadsPerBlock>>>(
-                                targetPtr + c * targetChannelOffset, sourcePtrs[i] + c * sourceChannelOffset,
-                                scaleWidth, scaleHeight, currentWidth, currentHeight, widthTarget,
-                                heightTarget
-                            );
-                        }
-                    }
-                    // Last image --> average all
-                    else
-                    {
-                        for (auto c = 0 ; c < channels ; c++)
-                        {
-                            resizeKernelAndAverage<<<numBlocks, threadsPerBlock>>>(
-                                targetPtr + c * targetChannelOffset, sourcePtrs[i] + c * sourceChannelOffset,
-                                scaleWidth, scaleHeight, currentWidth, currentHeight, widthTarget,
-                                heightTarget, (int)sourceSizes.size()
-                            );
-                        }
-                    }
+                    scaleWidthsCpu[i] = scaleToMainScaleWidth / scaleInputToNet;
+                    scaleHeightsCpu[i] = scaleToMainScaleHeight / scaleInputToNet;
                 }
+                // GPU params
+                int* widthSources;
+                cudaMalloc((void**)&widthSources, sizeof(int) * sourceSizes.size());
+                cudaMemcpy(
+                    widthSources, widthSourcesCpu.data(), sizeof(int) * sourceSizes.size(),
+                    cudaMemcpyHostToDevice);
+                int* heightSources;
+                cudaMalloc((void**)&heightSources, sizeof(int) * sourceSizes.size());
+                cudaMemcpy(
+                    heightSources, heightSourcesCpu.data(), sizeof(int) * sourceSizes.size(),
+                    cudaMemcpyHostToDevice);
+                T* scaleWidths;
+                cudaMalloc((void**)&scaleWidths, sizeof(T) * sourceSizes.size());
+                cudaMemcpy(
+                    scaleWidths, scaleWidthsCpu.data(), sizeof(T) * sourceSizes.size(),
+                    cudaMemcpyHostToDevice);
+                T* scaleHeights;
+                cudaMalloc((void**)&scaleHeights, sizeof(T) * sourceSizes.size());
+                cudaMemcpy(
+                    scaleHeights, scaleHeightsCpu.data(), sizeof(T) * sourceSizes.size(),
+                    cudaMemcpyHostToDevice);
+                // Resize each channel, add all, and get average
+                resizeAndAddAndAverageKernel<<<numBlocks, threadsPerBlock>>>(
+                    targetPtr, (int)sourceSizes.size(), scaleWidths, scaleHeights, widthSources, heightSources,
+                    widthTarget, heightTarget, sourcePtrs[0], sourcePtrs[1], sourcePtrs[2], sourcePtrs[3],
+                    sourcePtrs[4], sourcePtrs[5], sourcePtrs[6], sourcePtrs[7]);
+                // Free memory
+                if (widthSources != nullptr)
+                    cudaFree(widthSources);
+                if (heightSources != nullptr)
+                    cudaFree(heightSources);
+                if (scaleWidths != nullptr)
+                    cudaFree(scaleWidths);
+                if (scaleHeights != nullptr)
+                    cudaFree(scaleHeights);
+                // OP_CUDA_PROFILE_END(timeNormalize3, 1e3, REPS);
+
+                // // Profiling code
+                // log("  Res(orig)=" + std::to_string(timeNormalize1) + "ms");
+                // log("  Res(new4)=" + std::to_string(timeNormalize2) + "ms");
+                // log("  Res(new1)=" + std::to_string(timeNormalize3) + "ms");
             }
 
             cudaCheck(__LINE__, __FUNCTION__, __FILE__);
@@ -350,49 +528,48 @@ namespace op
     }
 
     template <typename T>
-    void reorderAndCast(
-        T* targetPtr, const unsigned char* const srcPtr, const int width, const int height, const int channels)
-    {
-        const dim3 threadsPerBlock{32, 1, 1};
-        const dim3 numBlocks{
-            getNumberCudaBlocks(width, threadsPerBlock.x),
-            getNumberCudaBlocks(height, threadsPerBlock.y),
-            getNumberCudaBlocks(channels, threadsPerBlock.z)};
-        reorderAndCastKernel<<<numBlocks, threadsPerBlock>>>(targetPtr, srcPtr, width, height);
-    }
-
-    template <typename T>
-    void resizeAndMergeRGBGPU(
+    void resizeAndPadRbgGpu(
         T* targetPtr, const T* const srcPtr, const int widthSource, const int heightSource,
         const int widthTarget, const int heightTarget, const T scaleFactor)
-
     {
-        const auto channels = 3;
-        const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
-        const dim3 numBlocks{
-            getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
-            getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
-            getNumberCudaBlocks(channels, threadsPerBlock.z)};
-
-        resizeAndPadKernel<<<numBlocks, threadsPerBlock>>>(
-            targetPtr, srcPtr, widthSource, heightSource, widthTarget, heightTarget, scaleFactor);
+        try
+        {
+            const auto channels = 3;
+            const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
+            const dim3 numBlocks{
+                getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
+                getNumberCudaBlocks(channels, threadsPerBlock.z)};
+            resizeAndPadKernel<<<numBlocks, threadsPerBlock>>>(
+                targetPtr, srcPtr, widthSource, heightSource, widthTarget, heightTarget, scaleFactor);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
     }
 
     template <typename T>
-    void resizeAndMergeRGBGPU(
+    void resizeAndPadRbgGpu(
         T* targetPtr, const unsigned char* const srcPtr, const int widthSource, const int heightSource,
         const int widthTarget, const int heightTarget, const T scaleFactor)
 
     {
-        const auto channels = 3;
-        const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
-        const dim3 numBlocks{
-            getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
-            getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
-            getNumberCudaBlocks(channels, threadsPerBlock.z)};
-
-        resizeAndPadKernel<<<numBlocks, threadsPerBlock>>>(
-            targetPtr, srcPtr, widthSource, heightSource, widthTarget, heightTarget, scaleFactor);
+        try
+        {
+            const auto channels = 3;
+            const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D, 1};
+            const dim3 numBlocks{
+                getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+                getNumberCudaBlocks(heightTarget, threadsPerBlock.y),
+                getNumberCudaBlocks(channels, threadsPerBlock.z)};
+            resizeAndPadKernel<<<numBlocks, threadsPerBlock>>>(
+                targetPtr, srcPtr, widthSource, heightSource, widthTarget, heightTarget, scaleFactor);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
     }
 
     template void resizeAndMergeGpu(
@@ -402,22 +579,17 @@ namespace op
         double* targetPtr, const std::vector<const double*>& sourcePtrs, const std::array<int, 4>& targetSize,
         const std::vector<std::array<int, 4>>& sourceSizes, const std::vector<double>& scaleInputToNetInputs);
 
-    template void reorderAndCast(
-        float* targetPtr, const unsigned char* const srcPtr, const int width, const int height, const int channels);
-    template void reorderAndCast(
-        double* targetPtr, const unsigned char* const srcPtr, const int width, const int height, const int channels);
-
-    template void resizeAndMergeRGBGPU(
+    template void resizeAndPadRbgGpu(
         float* targetPtr, const float* const srcPtr, const int widthSource, const int heightSource,
         const int widthTarget, const int heightTarget, const float scaleFactor);
-    template void resizeAndMergeRGBGPU(
+    template void resizeAndPadRbgGpu(
         double* targetPtr, const double* const srcPtr, const int widthSource, const int heightSource,
         const int widthTarget, const int heightTarget, const double scaleFactor);
 
-    template void resizeAndMergeRGBGPU(
+    template void resizeAndPadRbgGpu(
         float* targetPtr, const unsigned char* const srcPtr, const int widthSource, const int heightSource,
         const int widthTarget, const int heightTarget, const float scaleFactor);
-    template void resizeAndMergeRGBGPU(
+    template void resizeAndPadRbgGpu(
         double* targetPtr, const unsigned char* const srcPtr, const int widthSource, const int heightSource,
         const int widthTarget, const int heightTarget, const double scaleFactor);
 }

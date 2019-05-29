@@ -34,9 +34,23 @@ namespace op
                 if (mGpuResize)
                 {
                     // Free temporary memory
-                    cudaFree(pInputImageCuda);
-                    cudaFree(pOutputImageCuda);
-                    cudaFree(pInputImageReorderedCuda);
+                    cudaCheck(__LINE__, __FUNCTION__, __FILE__);
+                    if (pInputImageCuda != nullptr)
+                    {
+                        cudaFree(pInputImageCuda);
+                        pInputImageCuda = nullptr;
+                    }
+                    if (pOutputImageCuda != nullptr)
+                    {
+                        cudaFree(pOutputImageCuda);
+                        pOutputImageCuda = nullptr;
+                    }
+                    if (pInputImageReorderedCuda != nullptr)
+                    {
+                        cudaFree(pInputImageReorderedCuda);
+                        pInputImageReorderedCuda = nullptr;
+                    }
+                    cudaCheck(__LINE__, __FUNCTION__, __FILE__);
                 }
             #endif
         }
@@ -87,6 +101,9 @@ namespace op
                 // CUDA version (if #Gpus > n)
                 else
                 {
+                    // Note: This version reduces the global accuracy about 0.1%, so it is disabled for now
+                    error("This version reduces the global accuracy about 0.1%, so it is disabled for now.",
+                        __LINE__, __FUNCTION__, __FILE__);
                     #ifdef USE_CUDA
                         // (Re)Allocate temporary memory
                         const unsigned int inputImageSize = 3 * cvInputData.rows * cvInputData.cols;
@@ -114,8 +131,9 @@ namespace op
                             pInputImageCuda, cvInputData.data, sizeof(unsigned char) * inputImageSize,
                             cudaMemcpyHostToDevice);
                         // Resize image on GPU
-                        reorderAndCast(pInputImageReorderedCuda, pInputImageCuda, cvInputData.cols, cvInputData.rows, 3);
-                        resizeAndMergeRGBGPU(
+                        reorderAndNormalize(
+                            pInputImageReorderedCuda, pInputImageCuda, cvInputData.cols, cvInputData.rows, 3);
+                        resizeAndPadRbgGpu(
                             pOutputImageCuda, pInputImageReorderedCuda, cvInputData.cols, cvInputData.rows,
                             netInputSizes[i].x, netInputSizes[i].y, (float)scaleInputToNetInputs[i]);
                         // Copy back to CPU

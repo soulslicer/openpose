@@ -38,14 +38,24 @@ namespace op
                 if (mGpuResize)
                 {
                     // Free temporary memory
-                    cudaFree(pInputImageCuda);
-                    cudaFree(*spOutputImageCuda);
+                    cudaCheck(__LINE__, __FUNCTION__, __FILE__);
+                    if (pInputImageCuda != nullptr)
+                    {
+                        cudaFree(pInputImageCuda);
+                        pInputImageCuda = nullptr;
+                    }
+                    if (*spOutputImageCuda != nullptr)
+                    {
+                        cudaFree(*spOutputImageCuda);
+                        *spOutputImageCuda = nullptr;
+                    }
+                    cudaCheck(__LINE__, __FUNCTION__, __FILE__);
                 }
             #endif
         }
         catch (const std::exception& e)
         {
-            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            errorDestructor(e.what(), __LINE__, __FUNCTION__, __FILE__);
         }
     }
 
@@ -78,7 +88,7 @@ namespace op
             if (outputResolution.x <= 0 || outputResolution.y <= 0)
                 error("Output resolution has 0 area.", __LINE__, __FUNCTION__, __FILE__);
             // outputData - Reescale keeping aspect ratio and transform to float the output image
-            Array<float> outputData({outputResolution.y, outputResolution.x, 3});
+            Array<float> outputData({outputResolution.y, outputResolution.x, 3}); // This size is used everywhere
             // CPU version (faster if #Gpus <= 3 and relatively small images)
             if (!mGpuResize)
             {
@@ -90,7 +100,8 @@ namespace op
             else
             {
                 #ifdef USE_CUDA
-// Input image can be shared between this one and cvMatToOpInput.hpp
+                    // Input image can be shared between this one and cvMatToOpInput.hpp
+                    // However, that version reduces the global accuracy a bit
                     // (Free and re-)Allocate temporary memory
                     const unsigned int inputImageSize = 3 * cvInputData.rows * cvInputData.cols;
                     if (pInputMaxSize < inputImageSize)
@@ -111,7 +122,7 @@ namespace op
                     cudaMemcpy(
                         pInputImageCuda, cvInputData.data, sizeof(unsigned char) * inputImageSize, cudaMemcpyHostToDevice);
                     // Resize output image on GPU
-                    resizeAndMergeRGBGPU(
+                    resizeAndPadRbgGpu(
                         *spOutputImageCuda, pInputImageCuda, cvInputData.cols, cvInputData.rows, outputResolution.x,
                         outputResolution.y, (float)scaleInputToOutput);
                     *spGpuMemoryAllocated = true;

@@ -1,6 +1,6 @@
 ### VERSION INFO
 set(OpenPose_VERSION_MAJOR 1)
-set(OpenPose_VERSION_MINOR 4)
+set(OpenPose_VERSION_MINOR 5)
 set(OpenPose_VERSION_PATCH 0)
 set(OpenPose_VERSION ${OpenPose_VERSION_MAJOR}.${OpenPose_VERSION_MINOR}.${OpenPose_VERSION_PATCH})
 
@@ -173,17 +173,26 @@ endif (WIN32)
 ### PROJECT OPTIONS
 # Select the DL Framework
 set(DL_FRAMEWORK CAFFE CACHE STRING "Select Deep Learning Framework.")
-set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE)
-# set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE CAFFE2 TENSORFLOW)
+if (WIN32)
+  set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE)
+else (WIN32)
+  set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE NV_CAFFE)
+  # set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE NV_CAFFE PYTORCH TENSORFLOW)
+endif (WIN32)
 
 # Suboptions for Caffe DL Framework
 include(CMakeDependentOption)
-if (${DL_FRAMEWORK} MATCHES "CAFFE")
+if (${DL_FRAMEWORK} MATCHES "CAFFE" OR ${DL_FRAMEWORK} MATCHES "NV_CAFFE")
   CMAKE_DEPENDENT_OPTION(BUILD_CAFFE "Build Caffe as part of OpenPose." ON
     "DL_FRAMEWORK" ON)
   # OpenPose flags
   add_definitions(-DUSE_CAFFE)
-endif (${DL_FRAMEWORK} MATCHES "CAFFE")
+  # Nvidia NVCaffe
+  if (${DL_FRAMEWORK} MATCHES "NV_CAFFE")
+      MESSAGE(STATUS "Using NVIDIA NVCaffe")
+      add_definitions(-DNV_CAFFE)
+  endif (${DL_FRAMEWORK} MATCHES "NV_CAFFE")
+endif (${DL_FRAMEWORK} MATCHES "CAFFE" OR ${DL_FRAMEWORK} MATCHES "NV_CAFFE")
 
 # Set the acceleration library
 if (APPLE)
@@ -554,7 +563,7 @@ if (WIN32)
     download_zip("caffe_cpu_2018_05_27.zip" ${OP_WIN_URL} ${FIND_LIB_PREFIX} 87E8401B6DFBAC5B8E909DD20E3B3390)
   else (${GPU_MODE} MATCHES "OPENCL")
     # download_zip("caffe_2019_03_12.zip" ${OP_WIN_URL} ${FIND_LIB_PREFIX} 859a592310f0928fd4f40da1456a217f)
-    download_zip("caffe_15_2019_03_14.zip" ${OP_WIN_URL} ${FIND_LIB_PREFIX} f2d8beee9e4959fa419dcb54d507107c)
+    download_zip("caffe_15_2019_05_16.zip" ${OP_WIN_URL} ${FIND_LIB_PREFIX} 12F7A675A3276CD33C76B37D21C2F421)
   endif (${GPU_MODE} MATCHES "OPENCL")
   if (WITH_3D_RENDERER)
     download_zip("freeglut_2018_01_14.zip" ${OP_WIN_URL} ${FIND_LIB_PREFIX} BB182187285E06880F0EDE3A39530091)
@@ -678,11 +687,9 @@ if (WIN32)
 endif (WIN32)
 
 
-### CAFFE
+### CAFFE/NVCAFFE in Ubuntu
 if (UNIX OR APPLE)
-
-  if (${DL_FRAMEWORK} MATCHES "CAFFE")
-
+  if (${DL_FRAMEWORK} MATCHES "CAFFE" OR ${DL_FRAMEWORK} MATCHES "NV_CAFFE")
     # Check if the user specified caffe paths
     if (Caffe_INCLUDE_DIRS AND Caffe_LIBS AND NOT BUILD_CAFFE)
       message(STATUS "\${Caffe_INCLUDE_DIRS} set by the user to " ${Caffe_INCLUDE_DIRS})
@@ -821,9 +828,7 @@ if (UNIX OR APPLE)
       message(FATAL_ERROR "Caffe not found. Either turn on the BUILD_CAFFE option or specify the path of Caffe includes
         and libs using -DCaffe_INCLUDE_DIRS and -DCaffe_LIBS.")
     endif (NOT Caffe_FOUND AND NOT BUILD_CAFFE)
-
-  endif (${DL_FRAMEWORK} MATCHES "CAFFE")
-
+  endif (${DL_FRAMEWORK} MATCHES "CAFFE" OR ${DL_FRAMEWORK} MATCHES "NV_CAFFE")
 endif (UNIX OR APPLE)
 
 ### PROJECT INCLUDES
@@ -909,9 +914,9 @@ elseif (WIN32)
       debug ${GLOG_LIBRARY_DEBUG} optimized ${GLOG_LIBRARY_RELEASE})
 endif (UNIX OR APPLE)
 # Deep net Framework
-if (${DL_FRAMEWORK} MATCHES "CAFFE")
+if (${DL_FRAMEWORK} MATCHES "CAFFE" OR ${DL_FRAMEWORK} MATCHES "NV_CAFFE")
   set(OpenPose_3rdparty_libraries ${OpenPose_3rdparty_libraries} ${Caffe_LIBS} ${GFLAGS_LIBRARY})
-endif (${DL_FRAMEWORK} MATCHES "CAFFE")
+endif (${DL_FRAMEWORK} MATCHES "CAFFE" OR ${DL_FRAMEWORK} MATCHES "NV_CAFFE")
 # CPU vs. GPU
 if (USE_MKL)
   set(OpenPose_3rdparty_libraries ${OpenPose_3rdparty_libraries} ${MKL_LIBS})

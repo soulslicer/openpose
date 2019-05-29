@@ -258,16 +258,16 @@ OpenPose Library - Release Notes
 
 
 
-## Current version - future OpenPose 1.5.0
+## OpenPose 1.5.0 (May 16, 2019)
 1. Main improvements:
     1. Added initial single-person tracker for further speed up or visual smoothing (`--tracking` flag).
     2. Speed up of the CUDA functions of OpenPose:
         1. Greedy body part connector implemented in CUDA: +~30% speedup in Nvidia (CUDA) version with default flags and +~10% in maximum accuracy configuration. In addition, it provides a small 0.5% boost in accuracy (default flags).
         2. +5-30% additional speedup for the body part connector of point 1.
-        3. ~2-4x speedup for NMS.
-        4. ~2x speedup for image resize.
-        5. +25-30% speedup for rendering.
-        6. Reduced latency and increased speed by moving the resize in cvMatToOpOutput to CUDA. It generalizes better to higher number of GPUs.
+        3. About 2-4x speedup for NMS.
+        4. About 2x speedup for image resize and about 2x speedup for multi-scale resize.
+        5. About 25-30% speedup for rendering.
+        6. Reduced latency and increased speed by moving the resize in CvMatToOpOutput and OpOutputToCvMat to CUDA. The linear speedup generalizes better to higher number of GPUs.
     3. Unity binding of OpenPose released. OpenPose adds the flag `BUILD_UNITY_SUPPORT` on CMake, which enables special Unity code so it can be built as a Unity plugin.
     4. If camera is unplugged, OpenPose GUI and command line will display a warning and try to reconnect it.
     5. Wrapper classes simplified and renamed. Wrapper renamed as WrapperT, and created Wrapper as the non-templated class equivalent.
@@ -362,6 +362,23 @@ OpenPose Library - Release Notes
     8. OpenCL fixes.
     9. If manual CUDA architectures are set in CMake, they are also set for Caffe rather than only for OpenPose.
     10. Fixed flag `--hand_alpha_pose`.
+
+
+
+## Current version - future OpenPose 1.5.1
+1. Main improvements:
+    1. Highly improved 3D triangulation for >3 cameras by fixing some small bugs.
+    2. Added community-based support for Nvidia NVCaffe.
+    3. Increased accuracy very lightly for CUDA version (about 0.01%) by adapting the threshold in `process()` in `bodyPartConnectorBase.cu` to `defaultNmsThreshold`. This also removes any posibility of future bugs in that function for using a default NMS threshold higher than 0.15 (which was the hard-coded value used previously).
+    4. Increased mAP but reduced mAR (both about 0.01%) as well as reduction of false positives. Step 1: removed legs where only knee/ankle/feet are found. Step 2: If no people is found in an image, `removePeopleBelowThresholdsAndFillFaces` is re-run with `maximizePositives = true`.
+    5. Number of maximum people is not limited by the maximum number of max peaks anymore. However, the number of body part candidates for a specific keypoint (e.g., nose) is still limited to the number of max peaks.
+    6. Added more checks during destructors of CUDA-related functions and safer CUDA frees.
+2. Functions or parameters renamed:
+    1. `--3d_min_views` default value (-1) no longer means that all camera views are required. Instead, it will be equal to max(2, min(4, #cameras-1)). This should provide a good trade-off between recall and precission.
+3. Main bugs fixed:
+    1. Windows: Added back support for OpenGL and Spinnaker, as well as DLLs for debug compilation.
+    2. `06_face_from_image.cpp`, `07_hand_from_image.cpp`, and `09_keypoints_from_heatmaps` working again, they stopped working in version 1.5.0 with the GPU image resize for the GUI.
+4. Changes/additions that affect the compatibility with the OpenPose Unity Plugin:
 
 
 

@@ -46,7 +46,10 @@ namespace op
         {
             #ifdef USE_CUDA
                 if (mIsLastRenderer && spGpuMemory != nullptr)
+                {
                     cudaFree(*spGpuMemory);
+                    *spGpuMemory = nullptr;
+                }
             #endif
         }
         catch (const std::exception& e)
@@ -99,6 +102,7 @@ namespace op
         try
         {
             mIsFirstRenderer = false;
+            mIsLastRenderer = false;
             spGpuMemory = std::get<0>(tuple);
             spGpuMemoryAllocated = std::get<1>(tuple);
             spVolume = std::get<2>(tuple);

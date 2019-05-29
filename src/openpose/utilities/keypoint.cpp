@@ -176,10 +176,10 @@ namespace op
     std::vector<std::vector<int>> colorsTracking = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,255,0},{0,128,255},{128,0,255},{128,0,0},{0,128,0},{0,0,128},{50,50,0},{50,50,0},{0,50,128},{0,100,128},{100,30,128},{0,50,255},{50,255,128},{100,90,128},{0,90,255},{50,90,128},{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,255,0},{0,128,255},{128,0,255},{128,0,0},{0,128,0},{0,0,128},{50,50,0},{50,50,0},{0,50,128},{0,100,128},{100,30,128},{0,50,255},{50,255,128},{100,90,128},{0,90,255},{50,90,128}};
 
     template <typename T>
-    void renderKeypointsCpu(Array<T>& frameArray, const Array<T>& keypoints, const std::vector<unsigned int>& pairs,
-                            const std::vector<T> colors, const T thicknessCircleRatio,
-                            const T thicknessLineRatioWRTCircle, const std::vector<T>& poseScales, const T threshold,
-                            Array<long long> poseIds)
+    void renderKeypointsCpu(
+        Array<T>& frameArray, const Array<T>& keypoints, const std::vector<unsigned int>& pairs,
+        const std::vector<T> colors, const T thicknessCircleRatio, const T thicknessLineRatioWRTCircle,
+        const std::vector<T>& poseScales, const T threshold, const Array<long long>& poseIds)
     {
         try
         {
@@ -214,8 +214,9 @@ namespace op
                     const auto personRectangle = getKeypointsRectangle(keypoints, person, thresholdRectangle);
                     if (personRectangle.area() > 0)
                     {
-                        const auto ratioAreas = fastMin(T(1), fastMax(personRectangle.width/(T)width,
-                                                                     personRectangle.height/(T)height));
+                        const auto ratioAreas = fastMin(
+                            T(1), fastMax(
+                                personRectangle.width/(T)width, personRectangle.height/(T)height));
                         // Size-dependent variables
                         const auto thicknessRatio = fastMax(
                             positiveIntRound(std::sqrt(area)* thicknessCircleRatio * ratioAreas), 2);
@@ -288,28 +289,39 @@ namespace op
     template OP_API void renderKeypointsCpu(
         Array<float>& frameArray, const Array<float>& keypoints, const std::vector<unsigned int>& pairs,
         const std::vector<float> colors, const float thicknessCircleRatio, const float thicknessLineRatioWRTCircle,
-        const std::vector<float>& poseScales, const float threshold, Array<long long>);
+        const std::vector<float>& poseScales, const float threshold, const Array<long long>&);
     template OP_API void renderKeypointsCpu(
         Array<double>& frameArray, const Array<double>& keypoints, const std::vector<unsigned int>& pairs,
         const std::vector<double> colors, const double thicknessCircleRatio, const double thicknessLineRatioWRTCircle,
-        const std::vector<double>& poseScales, const double threshold, Array<long long>);
+        const std::vector<double>& poseScales, const double threshold, const Array<long long>&);
 
     template <typename T>
-    Rectangle<T> getKeypointsRectangle(const Array<T>& keypoints, const int person, const T threshold)
+    Rectangle<T> getKeypointsRectangle(
+        const Array<T>& keypoints, const int person, const T threshold, const int firstIndex, const int lastIndex)
     {
         try
         {
+            // Params
             const auto numberKeypoints = keypoints.getSize(1);
-            // Sanity check
+            const auto lastIndexClean = (lastIndex < 0 ? numberKeypoints : lastIndex);
+            // Sanity checks
             if (numberKeypoints < 1)
                 error("Number body parts must be > 0.", __LINE__, __FUNCTION__, __FILE__);
+            if (lastIndexClean > numberKeypoints)
+                error("The value of `lastIndex` must be less or equal than `numberKeypoints`. Currently: "
+                    + std::to_string(lastIndexClean) + " vs. " + std::to_string(numberKeypoints),
+                    __LINE__, __FUNCTION__, __FILE__);
+            if (firstIndex > lastIndexClean)
+                error("The value of `firstIndex` must be less or equal than `lastIndex`. Currently: "
+                    + std::to_string(firstIndex) + " vs. " + std::to_string(lastIndex),
+                    __LINE__, __FUNCTION__, __FILE__);
             // Define keypointPtr
             const auto keypointPtr = keypoints.getConstPtr() + person * keypoints.getSize(1) * keypoints.getSize(2);
             T minX = std::numeric_limits<T>::max();
             T maxX = std::numeric_limits<T>::lowest();
             T minY = minX;
             T maxY = maxX;
-            for (auto part = 0 ; part < numberKeypoints ; part++)
+            for (auto part = firstIndex ; part < lastIndexClean ; part++)
             {
                 const auto score = keypointPtr[3*part + 2];
                 if (score > threshold)
@@ -340,9 +352,11 @@ namespace op
         }
     }
     template OP_API Rectangle<float> getKeypointsRectangle(
-        const Array<float>& keypoints, const int person, const float threshold);
+        const Array<float>& keypoints, const int person, const float threshold, const int firstIndex,
+        const int lastIndex);
     template OP_API Rectangle<double> getKeypointsRectangle(
-        const Array<double>& keypoints, const int person, const double threshold);
+        const Array<double>& keypoints, const int person, const double threshold, const int firstIndex,
+        const int lastIndex);
 
     template <typename T>
     T getAverageScore(const Array<T>& keypoints, const int person)

@@ -1,15 +1,16 @@
 #include <set>
 #include <openpose/utilities/check.hpp>
 #include <openpose/utilities/fastMath.hpp>
+#include <openpose/utilities/keypoint.hpp>
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/net/bodyPartConnectorBase.hpp>
 
 namespace op
 {
     template <typename T>
-    inline T getScoreAB(const int i, const int j, const T* const candidateAPtr, const T* const candidateBPtr,
-                        const T* const mapX, const T* const mapY, const Point<int>& heatMapSize,
-                        const T interThreshold, const T interMinAboveThreshold)
+    inline T getScoreAB(
+        const int i, const int j, const T* const candidateAPtr, const T* const candidateBPtr, const T* const mapX,
+        const T* const mapY, const Point<int>& heatMapSize, const T interThreshold, const T interMinAboveThreshold)
     {
         try
         {
@@ -54,6 +55,74 @@ namespace op
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
             return T(0);
+        }
+    }
+
+    template <typename T>
+    void getKeypointCounter(
+        int& personCounter, const std::vector<std::pair<std::vector<int>, T>>& peopleVector,
+        const unsigned int part, const int partFirst, const int partLast, const int minimum)
+    {
+        try
+        {
+            // Count keypoints
+            auto keypointCounter = 0;
+            for (auto i = partFirst ; i < partLast ; i++)
+                keypointCounter += (peopleVector[part].first.at(i) > 0);
+            // If enough keypoints --> subtract them and keep them at least as big as minimum
+            if (keypointCounter > minimum)
+                personCounter += minimum-keypointCounter; // personCounter = non-considered keypoints + minimum
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    template <typename T>
+    void getRoiDiameterAndBounds(
+        Rectangle<int>& roi, int& diameter, int& partFirstNon0, int& partLastNon0,
+        const std::vector<int>& personVector, const T* const peaksPtr,
+        const int partInit, const int partEnd)
+    {
+        try
+        {
+            // Find ROI, partFirstNon0, and partLastNon0
+            roi = Rectangle<int>{0,0,0,0};
+            partFirstNon0 = -1;
+            partLastNon0 = -1;
+            for (auto part = partInit ; part < partEnd ; part++)
+            {
+                const auto x = peaksPtr[personVector[part]-2];
+                const auto y = peaksPtr[personVector[part]-1];
+                const auto score = peaksPtr[personVector[part]];
+                if (score > 0)
+                {
+                    // ROI
+                    if (roi.x > x)
+                        roi.x = x;
+                    if (roi.y > y)
+                        roi.y = y;
+                    if (roi.width < x)
+                        roi.width = x;
+                    if (roi.height > y)
+                        roi.height = y;
+                    // First keypoint?
+                    if (partFirstNon0 < 0)
+                        partFirstNon0 = part;
+                    // Last keypoint?
+                    partLastNon0 = part;
+                }
+            }
+            // From [p1, p2] to [p1, width, height]
+            roi.width -= roi.x;
+            roi.height -= roi.y;
+            // diameter
+            diameter = fastMax(roi.width, roi.height);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
         }
     }
 
@@ -211,8 +280,9 @@ namespace op
                             for (auto j = 1; j <= numberPeaksB; j++)
                             {
                                 // Initial PAF
-                                auto scoreAB = getScoreAB(i, j, candidateAPtr, candidateBPtr, mapX, mapY,
-                                                          heatMapSize, interThreshold, interMinAboveThreshold);
+                                auto scoreAB = getScoreAB(
+                                    i, j, candidateAPtr, candidateBPtr, mapX, mapY, heatMapSize, interThreshold,
+                                    interMinAboveThreshold);
 
                                 // E.g., neck-nose connection. If possible PAF between neck i, nose j --> add
                                 // parts score + connection score
@@ -263,9 +333,8 @@ namespace op
                             const auto indexB = std::get<2>(aBConnection);
                             if (!occurA[indexA-1] && !occurB[indexB-1])
                             {
-                                abConnections.emplace_back(std::make_tuple(bodyPartA*peaksOffset + indexA*3 + 2,
-                                                                           bodyPartB*peaksOffset + indexB*3 + 2,
-                                                                           score));
+                                abConnections.emplace_back(std::make_tuple(
+                                    bodyPartA*peaksOffset+indexA*3+2, bodyPartB*peaksOffset+indexB*3+2, score));
                                 counter++;
                                 if (counter==minAB)
                                     break;
@@ -298,8 +367,8 @@ namespace op
                         // Add ears connections (in case person is looking to opposite direction to camera)
                         // Note: This has some issues:
                         //     - It does not prevent repeating the same keypoint in different people
-                        //     - Assuming I have nose,eye,ear as 1 person subset, and whole arm as another one, it will not
-                        //       merge them both
+                        //     - Assuming I have nose,eye,ear as 1 person subset, and whole arm as another one, it
+                        //       will not merge them both
                         else if (
                             (numberBodyParts == 18 && (pairIndex==17 || pairIndex==18))
                             || ((numberBodyParts == 19 || (numberBodyParts == 25)
@@ -622,48 +691,93 @@ namespace op
     }
 
     template <typename T>
-    void removePeopleBelowThresholds(
+    void removePeopleBelowThresholdsAndFillFaces(
         std::vector<int>& validSubsetIndexes, int& numberPeople,
-        const std::vector<std::pair<std::vector<int>, T>>& peopleVector, const unsigned int numberBodyParts,
-        const int minSubsetCnt, const T minSubsetScore, const int maxPeaks, const bool maximizePositives)
+        std::vector<std::pair<std::vector<int>, T>>& peopleVector, const unsigned int numberBodyParts,
+        const int minSubsetCnt, const T minSubsetScore, const bool maximizePositives, const T* const peaksPtr)
+        // const int minSubsetCnt, const T minSubsetScore, const int maxPeaks, const bool maximizePositives)
     {
         try
         {
             // Delete people below the following thresholds:
                 // a) minSubsetCnt: removed if less than minSubsetCnt body parts
                 // b) minSubsetScore: removed if global score smaller than this
-                // c) maxPeaks (POSE_MAX_PEOPLE): keep first maxPeaks people above thresholds
+                // c) maxPeaks (POSE_MAX_PEOPLE): keep first maxPeaks people above thresholds -> Not required
             numberPeople = 0;
             validSubsetIndexes.clear();
-            validSubsetIndexes.reserve(fastMin((size_t)maxPeaks, peopleVector.size()));
-            for (auto index = 0u ; index < peopleVector.size() ; index++)
+            // validSubsetIndexes.reserve(fastMin((size_t)maxPeaks, peopleVector.size())); // maxPeaks is not required
+            validSubsetIndexes.reserve(peopleVector.size());
+            // Face valid sets
+            std::vector<int> faceValidSubsetIndexes;
+            faceValidSubsetIndexes.reserve(peopleVector.size());
+            // Face invalid sets
+            std::vector<int> faceInvalidSubsetIndexes;
+            faceInvalidSubsetIndexes.reserve(peopleVector.size());
+            // For each person candidate
+            for (auto person = 0u ; person < peopleVector.size() ; person++)
             {
-                auto personCounter = peopleVector[index].first.back();
+                auto personCounter = peopleVector[person].first.back();
+                // Analog for hand/face keypoints
+                if (numberBodyParts >= 135)
+                {
+                    // No consider face keypoints for personCounter
+                    const auto currentCounter = personCounter;
+                    getKeypointCounter(personCounter, peopleVector, person, 65, 135, 1);
+                    const auto newCounter = personCounter;
+                    if (personCounter == 1)
+                    {
+                        faceInvalidSubsetIndexes.emplace_back(person);
+                        continue;
+                    }
+                    // If body is still valid and facial points were removed, then add to valid faces
+                    else if (currentCounter != newCounter)
+                        faceValidSubsetIndexes.emplace_back(person);
+                    // No consider right hand keypoints for personCounter
+                    getKeypointCounter(personCounter, peopleVector, person, 45, 65, 1);
+                    // No consider left hand keypoints for personCounter
+                    getKeypointCounter(personCounter, peopleVector, person, 25, 45, 1);
+                }
                 // Foot keypoints do not affect personCounter (too many false positives,
                 // same foot usually appears as both left and right keypoints)
                 // Pros: Removed tons of false positives
                 // Cons: Standalone leg will never be recorded
+                // Solution: No consider foot keypoints for that
                 if (!maximizePositives && (numberBodyParts == 25 || numberBodyParts > 70))
                 {
-                    // No consider foot keypoints for that
-                    for (auto i = 19 ; i < 25 ; i++)
-                        personCounter -= (peopleVector[index].first.at(i) > 0);
-                    // No consider hand keypoints for that
-                    if (numberBodyParts > 70)
-                        for (auto i = 25 ; i < 65 ; i++)
-                            personCounter -= (peopleVector[index].first.at(i) > 0);
+                    const auto currentCounter = personCounter;
+                    getKeypointCounter(personCounter, peopleVector, person, 19, 25, 0);
+                    const auto newCounter = personCounter;
+                    // Problem: Same leg/foot keypoints are considered for both left and right keypoints.
+                    // Solution: Remove legs that are duplicated and that do not have upper torso
+                    // Result: Slight increase in COCO mAP and decrease in mAR + reducing a lot false positives!
+                    if (newCounter != currentCounter && newCounter <= 4)
+                        continue;
                 }
-                const auto personScore = peopleVector[index].second;
+                // Add only valid people
+                const auto personScore = peopleVector[person].second;
                 if (personCounter >= minSubsetCnt && (personScore/personCounter) >= minSubsetScore)
                 {
                     numberPeople++;
-                    validSubsetIndexes.emplace_back(index);
-                    if (numberPeople == maxPeaks)
-                        break;
+                    validSubsetIndexes.emplace_back(person);
+                    // // This is not required, it is OK if there are more people. No more GPU memory used.
+                    // if (numberPeople == maxPeaks)
+                    //     break;
                 }
+                // Sanity check
                 else if ((personCounter < 1 && numberBodyParts != 25 && numberBodyParts < 70) || personCounter < 0)
                     error("Bad personCounter (" + std::to_string(personCounter) + "). Bug in this"
                           " function if this happens.", __LINE__, __FUNCTION__, __FILE__);
+            }
+            // If no people found --> Repeat with maximizePositives = true
+            // Result: Increased COCO mAP because we catch more foot-only images
+            if (numberPeople == 0 && !maximizePositives)
+            {
+                removePeopleBelowThresholdsAndFillFaces(
+                    validSubsetIndexes, numberPeople, peopleVector, numberBodyParts, minSubsetCnt, minSubsetScore,
+                    true, peaksPtr);
+                // // Debugging
+                // if (numberPeople > 0)
+                //     log("Found " + std::to_string(numberPeople) + " people in second iteration");
             }
         }
         catch (const std::exception& e)
@@ -673,30 +787,35 @@ namespace op
     }
 
     template <typename T>
-    void peopleVectorToPeopleArray(Array<T>& poseKeypoints, Array<T>& poseScores, const T scaleFactor,
-                                   const std::vector<std::pair<std::vector<int>, T>>& peopleVector,
-                                   const std::vector<int>& validSubsetIndexes, const T* const peaksPtr,
-                                   const int numberPeople, const unsigned int numberBodyParts,
-                                   const unsigned int numberBodyPartPairs)
+    void peopleVectorToPeopleArray(
+        Array<T>& poseKeypoints, Array<T>& poseScores, const T scaleFactor,
+        const std::vector<std::pair<std::vector<int>, T>>& peopleVector, const std::vector<int>& validSubsetIndexes,
+        const T* const peaksPtr, const int numberPeople, const unsigned int numberBodyParts,
+        const unsigned int numberBodyPartPairs)
     {
         try
         {
+            // Allocate memory (initialized to 0)
             if (numberPeople > 0)
             {
                 // Initialized to 0 for non-found keypoints in people
                 poseKeypoints.reset({numberPeople, (int)numberBodyParts, 3}, 0.f);
                 poseScores.reset(numberPeople);
             }
+            // No people --> Empty Arrays
             else
             {
                 poseKeypoints.reset();
                 poseScores.reset();
             }
+            // Fill people keypoints
             const auto oneOverNumberBodyPartsAndPAFs = 1/T(numberBodyParts + numberBodyPartPairs);
+            // For each person
             for (auto person = 0u ; person < validSubsetIndexes.size() ; person++)
             {
                 const auto& personPair = peopleVector[validSubsetIndexes[person]];
                 const auto& personVector = personPair.first;
+                // For each body part
                 for (auto bodyPart = 0u; bodyPart < numberBodyParts; bodyPart++)
                 {
                     const auto baseOffset = (person*numberBodyParts + bodyPart) * 3;
@@ -1109,11 +1228,11 @@ namespace op
 //     }
 
     template <typename T>
-    void connectBodyPartsCpu(Array<T>& poseKeypoints, Array<T>& poseScores, const T* const heatMapPtr,
-                             const T* const peaksPtr, const PoseModel poseModel, const Point<int>& heatMapSize,
-                             const int maxPeaks, const T interMinAboveThreshold, const T interThreshold,
-                             const int minSubsetCnt, const T minSubsetScore, const T scaleFactor,
-                             const bool maximizePositives)
+    void connectBodyPartsCpu(
+        Array<T>& poseKeypoints, Array<T>& poseScores, const T* const heatMapPtr, const T* const peaksPtr,
+        const PoseModel poseModel, const Point<int>& heatMapSize, const int maxPeaks, const T interMinAboveThreshold,
+        const T interThreshold, const int minSubsetCnt, const T minSubsetScore, const T scaleFactor,
+        const bool maximizePositives)
     {
         try
         {
@@ -1124,29 +1243,27 @@ namespace op
             if (numberBodyParts == 0)
                 error("Invalid value of numberBodyParts, it must be positive, not " + std::to_string(numberBodyParts),
                       __LINE__, __FUNCTION__, __FILE__);
-
             // std::vector<std::pair<std::vector<int>, double>> refers to:
             //     - std::vector<int>: [body parts locations, #body parts found]
             //     - double: person subset score
-            const auto peopleVector = createPeopleVector(
+            auto peopleVector = createPeopleVector(
                 heatMapPtr, peaksPtr, poseModel, heatMapSize, maxPeaks, interThreshold, interMinAboveThreshold,
                 bodyPartPairs, numberBodyParts, numberBodyPartPairs);
-
             // Delete people below the following thresholds:
                 // a) minSubsetCnt: removed if less than minSubsetCnt body parts
                 // b) minSubsetScore: removed if global score smaller than this
                 // c) maxPeaks (POSE_MAX_PEOPLE): keep first maxPeaks people above thresholds
             int numberPeople;
             std::vector<int> validSubsetIndexes;
-            validSubsetIndexes.reserve(fastMin((size_t)maxPeaks, peopleVector.size()));
-            removePeopleBelowThresholds(
+            // validSubsetIndexes.reserve(fastMin((size_t)maxPeaks, peopleVector.size()));
+            validSubsetIndexes.reserve(peopleVector.size());
+            removePeopleBelowThresholdsAndFillFaces(
                 validSubsetIndexes, numberPeople, peopleVector, numberBodyParts, minSubsetCnt, minSubsetScore,
-                maxPeaks, maximizePositives);
-
+                maximizePositives, peaksPtr);
             // Fill and return poseKeypoints
-            peopleVectorToPeopleArray(poseKeypoints, poseScores, scaleFactor, peopleVector, validSubsetIndexes,
-                                      peaksPtr, numberPeople, numberBodyParts, numberBodyPartPairs);
-
+            peopleVectorToPeopleArray(
+                poseKeypoints, poseScores, scaleFactor, peopleVector, validSubsetIndexes, peaksPtr, numberPeople,
+                numberBodyParts, numberBodyPartPairs);
             // Experimental code
             if (poseModel == PoseModel::BODY_25D)
                 error("BODY_25D is an experimental branch which is not usable.", __LINE__, __FUNCTION__, __FILE__);
@@ -1185,16 +1302,16 @@ namespace op
         const unsigned int numberBodyParts, const unsigned int numberBodyPartPairs,
         const Array<double>& precomputedPAFs);
 
-    template OP_API void removePeopleBelowThresholds(
+    template OP_API void removePeopleBelowThresholdsAndFillFaces(
         std::vector<int>& validSubsetIndexes, int& numberPeople,
-        const std::vector<std::pair<std::vector<int>, float>>& peopleVector,
-        const unsigned int numberBodyParts,
-        const int minSubsetCnt, const float minSubsetScore, const int maxPeaks, const bool maximizePositives);
-    template OP_API void removePeopleBelowThresholds(
+        std::vector<std::pair<std::vector<int>, float>>& peopleVector,
+        const unsigned int numberBodyParts, const int minSubsetCnt, const float minSubsetScore,
+        const bool maximizePositives, const float* const peaksPtr);
+    template OP_API void removePeopleBelowThresholdsAndFillFaces(
         std::vector<int>& validSubsetIndexes, int& numberPeople,
-        const std::vector<std::pair<std::vector<int>, double>>& peopleVector,
-        const unsigned int numberBodyParts,
-        const int minSubsetCnt, const double minSubsetScore, const int maxPeaks, const bool maximizePositives);
+        std::vector<std::pair<std::vector<int>, double>>& peopleVector,
+        const unsigned int numberBodyParts, const int minSubsetCnt, const double minSubsetScore,
+        const bool maximizePositives, const double* const peaksPtr);
 
     template OP_API void peopleVectorToPeopleArray(
         Array<float>& poseKeypoints, Array<float>& poseScores, const float scaleFactor,

@@ -21,10 +21,11 @@ OpenPose - Installation
     7. [3D Reconstruction Module](#3d-reconstruction-module)
     8. [Calibration Module](#calibration-module)
     9. [Compiling without cuDNN](#compiling-without-cudnn)
-    10. [Custom Caffe (Ubuntu Only)](#custom-caffe-ubuntu-only)
-    11. [Custom OpenCV (Ubuntu Only)](#custom-opencv-ubuntu-only)
-    12. [Doxygen Documentation Autogeneration (Ubuntu Only)](#doxygen-documentation-autogeneration-ubuntu-only)
-    13. [CMake Command Line Configuration (Ubuntu Only)](#cmake-command-line-configuration-ubuntu-only)
+    10. [Custom Caffe](#custom-caffe)
+    11. [Custom NVIDIA NVCaffe](#custom-nvidia-nvcaffe)
+    12. [Custom OpenCV](#custom-opencv)
+    13. [Doxygen Documentation Autogeneration (Ubuntu Only)](#doxygen-documentation-autogeneration-ubuntu-only)
+    14. [CMake Command Line Configuration (Ubuntu Only)](#cmake-command-line-configuration-ubuntu-only)
 
 
 
@@ -53,9 +54,14 @@ We add links to some community-based work based on OpenPose. Note: We do not sup
 - [ROS example](https://github.com/firephinx/openpose_ros) (based on a very old OpenPose version). For questions and more details, read and post ONLY on [issue thread #51](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/51).
 
 - Docker Images. For questions and more details, read and post ONLY on [issue thread #347](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/347).
-    - Dockerfile working with CUDA 10: [link 1](https://github.com/ExSidius/openpose-docker/blob/master/Dockerfile) and [link 2](https://cloud.docker.com/repository/docker/exsidius/openpose/general).
-    - [Dockerfile - OpenPose v1.4.0, OpenCV, CUDA 8, CuDNN 6, Python2.7](https://gist.github.com/moiseevigor/11c02c694fc0c22fccd59521793aeaa6).
-    - [Dockerfile - OpenPose v1.2.1](https://gist.github.com/sberryman/6770363f02336af82cb175a83b79de33).
+    - Dockerfile working also with CUDA 10:
+        - [Link 1](https://github.com/esemeniuc/openpose-docker), it claims to also include Python support. Read and post ONLY on [issue thread #1102](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/1102).
+        - [Link 2](https://github.com/ExSidius/openpose-docker/blob/master/Dockerfile).
+        - [Link 3](https://cloud.docker.com/repository/docker/exsidius/openpose/general).
+    - Dockerfile working only with CUDA 8:
+        - [Dockerfile - OpenPose v1.4.0, OpenCV, CUDA 8, CuDNN 5, Python2.7](https://github.com/tlkh/openpose). Read and post ONLY on [issue thread #1102](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/1102).
+        - [Dockerfile - OpenPose v1.4.0, OpenCV, CUDA 8, CuDNN 6, Python2.7](https://gist.github.com/moiseevigor/11c02c694fc0c22fccd59521793aeaa6).
+        - [Dockerfile - OpenPose v1.2.1](https://gist.github.com/sberryman/6770363f02336af82cb175a83b79de33).
 
 - [Google Colab helper script](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/949#issue-387855863): Script to install OpenPose on Google Colab. Really useful when access to a computer powerful enough to run OpenPose is not possible, so one possible way to use OpenPose is to build it on a GPU-enabled Colab runtime and then run the programs there. For questions and more details, read and post ONLY on [issue thread #949](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/949).
 
@@ -167,7 +173,25 @@ make -j`nproc`
 ```
 
 #### Windows
-In order to build the project, open the Visual Studio solution (Windows), called `build/OpenPose.sln`. Then, set the configuration from `Debug` to `Release` and press the green triangle icon (alternatively press <kbd>F5</kbd>).
+In order to build the project, select and run only one of the 2 following alternatives.
+
+1. **CMake-GUI alternative (recommended)**: Open the Visual Studio solution (Windows), called `build/OpenPose.sln`. Then, set the configuration from `Debug` to `Release` and press the green triangle icon (alternatively press <kbd>F5</kbd>).
+
+2. Command-line build alternative (not recommended). NOTE: The command line alternative is not officially supported, but it was added in [GitHub issue #1198](https://github.com/CMU-Perceptual-Computing-Lab/openpose/issues/1198). For any questions or bug report about this command-line version, comment in that GitHub issue.
+    1. Run "MSVS 2017 Developer Command Console"
+    ```
+    openpose\mkdir  build
+    cd build
+    cmake .. -G "Visual Studio 15 2017 Win64" -T v140
+    cmake --build . --config Release
+    copy x64\Release\*  bin\
+    ```
+    2. If you want to clean build
+    ```
+    cmake --clean-first .
+    cmake --build . --config Release
+    copy x64\Release\*  bin\
+    ```
 
 **VERY IMPORTANT NOTE**: In order to use OpenPose outside Visual Studio, and assuming you have not unchecked the `BUILD_BIN_FOLDER` flag in CMake, copy all DLLs from `{build_directory}/bin` into the folder where the generated `openpose.dll` and `*.exe` demos are, e.g., `{build_directory}x64/Release` for the 64-bit release version.
 
@@ -353,18 +377,37 @@ Then, you would have to reduce the `--net_resolution` flag to fit the model into
 
 
 
-#### Custom Caffe (Ubuntu Only)
-Note that OpenPose uses a [custom fork of Caffe](https://github.com/CMU-Perceptual-Computing-Lab/caffe) (rather than the official Caffe master). Our custom fork is only updated if it works on our machines, but we try to keep it updated with the latest Caffe version. This version works on a newly formatted machine (Ubuntu 16.04 LTS) and in all our machines (CUDA 8 and 10 tested). The default GPU version is the master branch, which it is also compatible with CUDA 10 without changes (official Caffe version might require some changes for it). We also use the OpenCL and CPU tags if their CMake flags are selected.
+#### Custom Caffe
+OpenPose uses a [custom fork of Caffe](https://github.com/CMU-Perceptual-Computing-Lab/caffe) (rather than the official Caffe master). Our custom fork is only updated if it works on our machines, but we try to keep it updated with the latest Caffe version. This version works on a newly formatted machine (Ubuntu 16.04 LTS) and in all our machines (CUDA 8 and 10 tested). The default GPU version is the master branch, which it is also compatible with CUDA 10 without changes (official Caffe version might require some changes for it). We also use the OpenCL and CPU tags if their CMake flags are selected. We only modified some Caffe compilation flags and minor details.
 
-We only modified some Caffe compilation flags and minor details. You can use your own Caffe distribution, simply specify the Caffe include path and the library as shown below. You will also need to turn off the `BUILD_CAFFE` variable. Note that cuDNN is required in order to get the maximum possible accuracy in OpenPose.
+Alternatively, you can use your own Caffe distribution on Ubuntu/Mac by 1) disabling `BUILD_CAFFE`, 2) setting `Caffe_INCLUDE_DIRS` to `{CAFFE_PATH}/include/caffe`, and 3) setting `Caffe_LIBS` to `{CAFFE_PATH}/build/lib/libcaffe.so`, as shown in the image below. Note that cuDNN-compatible Caffe version is required in order to get the maximum possible accuracy in OpenPose.
 <p align="center">
     <img src="media/cmake_installation/im_5.png", width="480">
 </p>
 
+For Windows, simply replace the OpenCV DLLs and include folder for your custom one.
 
 
-#### Custom OpenCV (Ubuntu Only)
-If you have built OpenCV from source and OpenPose cannot find it automatically, you can set the `OPENCV_DIR` variable to the directory where you build OpenCV.
+
+#### Custom NVIDIA NVCaffe
+This functionality was added by the community, and we do not officially support it. New pull requests with additional functionality or fixing any bug are welcome!
+
+It has been tested with the official Nvidia Docker image [nvcr.io/nvidia/caffe:18.12-py2](https://ngc.nvidia.com/catalog/containers/nvidia:caffe).
+
+For questions and issues, please only post on the related [Pull Request #1169](https://github.com/CMU-Perceptual-Computing-Lab/openpose/pull/1169). New GitHub issues about this topic (i.e., outside PR #1169) will be automatically closed with no answer.
+
+Windows support has not been added. Replace `set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE)` by `set_property(CACHE DL_FRAMEWORK PROPERTY STRINGS CAFFE NV_CAFFE)` in `CMakeLists.txt` if you intend to use it for Windows, and feel free to do a pull request of it working!
+
+To use a NVIDIA's NVCaffe docker image instead of the standard Caffe, set the following CMake flags:
+
+1. Set the `DL_FRAMEWORK` variable to `NV_CAFFE`.
+2. Set the `BUILD_CAFFE` variable to `OFF`.
+3. Set the correct `Caffe_INCLUDE_DIRS` and `Caffe_LIBS` paths following [Custom Caffe](#custom-caffe).
+
+
+
+#### Custom OpenCV
+If you have built OpenCV from source and OpenPose cannot find it automatically, you can set the `OPENCV_DIR` variable to the directory where you build OpenCV (Ubuntu and Mac). For Windows, simply replace the OpenCV DLLs and include folder for your custom one.
 
 
 
