@@ -1,5 +1,6 @@
 #ifdef USE_CAFFE
     #include <caffe/blob.hpp>
+    #include <torch/torch.h>
 #endif
 #include <openpose/utilities/errorAndLog.hpp>
 #include <openpose/core/arrayCpuGpu.hpp>
@@ -29,6 +30,7 @@ namespace op
         {
             #ifdef USE_CAFFE
                 // Construct spImpl
+                torch::Tensor tensor;
                 spImpl.reset(new ImplArrayCpuGpu{});
                 #ifdef NV_CAFFE
                     spImpl->upCaffeBlobT.reset(new caffe::TBlob<T>{});

@@ -507,7 +507,7 @@ if (UNIX OR APPLE)
 
   if (${GPU_MODE} MATCHES "CUDA")
     # Set CUDA Flags
-    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11")
+    # set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11")
 
     if (NOT CUDA_FOUND)
       message(STATUS "CUDA not found.")
@@ -954,6 +954,14 @@ endif (UNIX OR APPLE)
 
 set(examples_3rdparty_libraries ${OpenPose_3rdparty_libraries} ${GFLAGS_LIBRARY})
 
+
+### Torch
+set(CMAKE_PREFIX_PATH "/usr/local/lib/python2.7/dist-packages/torch/share/cmake/Torch/")
+find_package(Torch REQUIRED)
+include_directories(SYSTEM ${CUDA_INCLUDE_DIRS}
+${TORCH_INCLUDE_DIRS}
+)
+set(OpenPose_3rdparty_libraries ${OpenPose_3rdparty_libraries} ${TORCH_LIBRARIES})
 
 ### ADD SUBDIRECTORIES
 if (Caffe_FOUND)
