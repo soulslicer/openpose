@@ -956,7 +956,8 @@ set(examples_3rdparty_libraries ${OpenPose_3rdparty_libraries} ${GFLAGS_LIBRARY}
 
 
 ### Torch
-set(CMAKE_PREFIX_PATH "/usr/local/lib/python2.7/dist-packages/torch/share/cmake/Torch/")
+add_definitions(-DUSE_PYTORCH)
+set(CMAKE_PREFIX_PATH "/home/raaj/libtorch/share/cmake/")
 find_package(Torch REQUIRED)
 include_directories(SYSTEM ${CUDA_INCLUDE_DIRS}
 ${TORCH_INCLUDE_DIRS}
@@ -1040,7 +1041,7 @@ if (UNIX OR APPLE)
   if (Caffe_FOUND)
     # Install the headers
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/openpose DESTINATION include)
-    install(EXPORT OpenPose DESTINATION lib/OpenPose)
+    #install(EXPORT OpenPose DESTINATION lib/OpenPose)
     if (BUILD_CAFFE)
       install(DIRECTORY ${CMAKE_BINARY_DIR}/caffe/include/caffe DESTINATION include)
       install(DIRECTORY ${CMAKE_BINARY_DIR}/caffe/lib/ DESTINATION lib)

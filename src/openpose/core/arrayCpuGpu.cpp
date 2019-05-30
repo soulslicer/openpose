@@ -1,6 +1,7 @@
-#ifdef USE_CAFFE
-    #include <caffe/blob.hpp>
+#ifdef USE_PYTORCH
     #include <torch/torch.h>
+#elif USE_CAFFE
+    #include <caffe/blob.hpp>
 #endif
 #include <openpose/utilities/errorAndLog.hpp>
 #include <openpose/core/arrayCpuGpu.hpp>
@@ -10,7 +11,10 @@ namespace op
     template<typename T>
     struct ArrayCpuGpu<T>::ImplArrayCpuGpu
     {
-        #ifdef USE_CAFFE
+        #ifdef USE_PYTORCH
+            std::unique_ptr<torch::Tensor> upTorchBlobT;
+            torch::Tensor* pTorchBlobT;
+        #elif USE_CAFFE
             #ifdef NV_CAFFE
                 std::unique_ptr<caffe::TBlob<T>> upCaffeBlobT;
                 caffe::TBlob<T>* pCaffeBlobT;
@@ -28,9 +32,13 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
                 // Construct spImpl
-                torch::Tensor tensor;
+                spImpl.reset(new ImplArrayCpuGpu{});
+                spImpl->upTorchBlobT.reset(new torch::Tensor{});
+                spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
+            #elif USE_CAFFE
+                // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
                 #ifdef NV_CAFFE
                     spImpl->upCaffeBlobT.reset(new caffe::TBlob<T>{});
@@ -53,7 +61,11 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                // Construct spImpl
+                spImpl.reset(new ImplArrayCpuGpu{});
+                spImpl->pTorchBlobT = (torch::Tensor*)caffeBlobTPtr;
+            #elif USE_CAFFE
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
                 #ifdef NV_CAFFE
@@ -77,7 +89,35 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                // Get updated size
+                std::vector<int> arraySize;
+                // If batch size = 1 --> E.g., array.getSize() == {78, 368, 368}
+                if (array.getNumberDimensions() == 3)
+                    // Add 1: arraySize = {1}
+                    arraySize.emplace_back(1);
+                // Add {78, 368, 368}: arraySize = {1, 78, 368, 368}
+                for (const auto& sizeI : array.getSize())
+                    arraySize.emplace_back(sizeI);
+                // Convert to Long
+                std::vector<long> arraySizeLong(arraySize.begin(), arraySize.end());
+                // Construct spImpl
+                spImpl.reset(new ImplArrayCpuGpu{});
+                spImpl->upTorchBlobT.reset(new torch::Tensor());
+                spImpl->upTorchBlobT->reshape(arraySizeLong);
+                spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
+                // Copy data
+                // CPU copy
+                if (!copyFromGpu)
+                {
+                    const auto* const arrayPtr = array.getConstPtr();
+                    std::copy(arrayPtr, arrayPtr + array.getVolume(), (T*)spImpl->pTorchBlobT->cpu().data_ptr());
+                }
+                // GPU copy
+                else
+                    error("Not implemented yet. Let us know you are interested on this function.",
+                          __LINE__, __FUNCTION__, __FILE__);
+            #elif USE_CAFFE
                 // Get updated size
                 std::vector<int> arraySize;
                 // If batch size = 1 --> E.g., array.getSize() == {78, 368, 368}
@@ -123,7 +163,13 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                // Construct spImpl
+                spImpl.reset(new ImplArrayCpuGpu{});
+                spImpl->upTorchBlobT.reset(new torch::Tensor());
+                spImpl->upTorchBlobT->reshape({num, channels, height, width});
+                spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
+            #elif USE_CAFFE
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
                 #ifdef NV_CAFFE
@@ -170,7 +216,10 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                spImpl->pTorchBlobT->reshape({num, channels, height, width});
+            #elif USE_CAFFE
+                throw std::runtime_error("Not implemented Reshape");
                 spImpl->pCaffeBlobT->Reshape(num, channels, height, width);
             #else
                 UNUSED(num);
@@ -190,7 +239,12 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                // Convert to Long
+                std::vector<long> shapeLong(shape.begin(), shape.end());
+                spImpl->pTorchBlobT->reshape(shapeLong);
+            #elif USE_CAFFE
+                throw std::runtime_error("Not implemented Reshape");
                 spImpl->pCaffeBlobT->Reshape(shape);
             #else
                 UNUSED(shape);
@@ -207,7 +261,10 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                throw std::runtime_error("Not implemented shape_string");
+            #elif USE_CAFFE
+                throw std::runtime_error("Not implemented shape_string");
                 return spImpl->pCaffeBlobT->shape_string();
             #else
                 return "";
@@ -226,7 +283,13 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                throw std::runtime_error("Not implemented shape1");
+                torch::ArrayRef<int64_t> sizeTorch = spImpl->pTorchBlobT->sizes();
+                std::vector<int> sizes(sizeTorch.begin(), sizeTorch.end());
+                return sizes;
+            #elif USE_CAFFE
+                throw std::runtime_error("Not implemented shape1");
                 return spImpl->pCaffeBlobT->shape();
             #else
                 return DUMB_VECTOR;
@@ -244,7 +307,10 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return spImpl->pTorchBlobT->size(index);
+            #elif USE_CAFFE
+                throw std::runtime_error("Not implemented shape2");
                 return spImpl->pCaffeBlobT->shape(index);
             #else
                 UNUSED(index);
@@ -264,7 +330,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->num_axes();
+                throw std::runtime_error("Not implemented num_axes");
+                //return spImpl->pCaffeBlobT->num_axes();
             #else
                 return -1;
             #endif
@@ -282,7 +349,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->count();
+                throw std::runtime_error("Not implemented count");
+                //return spImpl->pCaffeBlobT->count();
             #else
                 return -1;
             #endif
@@ -300,7 +368,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->count(start_axis, end_axis);
+                throw std::runtime_error("Not implemented count");
+                //return spImpl->pCaffeBlobT->count(start_axis, end_axis);
             #else
                 UNUSED(start_axis);
                 UNUSED(end_axis);
@@ -320,7 +389,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->count(start_axis);
+                throw std::runtime_error("Not implemented count");
+                //return spImpl->pCaffeBlobT->count(start_axis);
             #else
                 UNUSED(start_axis);
                 return -1;
@@ -339,7 +409,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->CanonicalAxisIndex(axis_index);
+                throw std::runtime_error("Not implemented CanonicalAxisIndex");
+                //return spImpl->pCaffeBlobT->CanonicalAxisIndex(axis_index);
             #else
                 UNUSED(axis_index);
                 return -1;
@@ -357,7 +428,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return spImpl->pTorchBlobT->size(0);
+            #elif USE_CAFFE
                 return spImpl->pCaffeBlobT->num();
             #else
                 return -1;
@@ -375,7 +448,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return spImpl->pTorchBlobT->size(1);
+            #elif USE_CAFFE
                 return spImpl->pCaffeBlobT->channels();
             #else
                 return -1;
@@ -393,7 +468,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return spImpl->pTorchBlobT->size(2);
+            #elif USE_CAFFE
                 return spImpl->pCaffeBlobT->height();
             #else
                 return -1;
@@ -411,7 +488,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return spImpl->pTorchBlobT->size(3);
+            #elif USE_CAFFE
                 return spImpl->pCaffeBlobT->width();
             #else
                 return -1;
@@ -430,7 +509,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->LegacyShape(index);
+                throw std::runtime_error("Not implemented LegacyShape");
+                //return spImpl->pCaffeBlobT->LegacyShape(index);
             #else
                 UNUSED(index);
                 return -1;
@@ -449,7 +529,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->offset(n, c, h, w);
+                throw std::runtime_error("Not implemented offset");
+                //return spImpl->pCaffeBlobT->offset(n, c, h, w);
             #else
                 UNUSED(n);
                 UNUSED(c);
@@ -490,7 +571,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->data_at(n, c, h, w);
+                throw std::runtime_error("Not implemented data_at");
+                //return spImpl->pCaffeBlobT->data_at(n, c, h, w);
             #else
                 UNUSED(n);
                 UNUSED(c);
@@ -512,7 +594,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->diff_at(n, c, h, w);
+                throw std::runtime_error("Not implemented diff_at");
+                //return spImpl->pCaffeBlobT->diff_at(n, c, h, w);
             #else
                 UNUSED(n);
                 UNUSED(c);
@@ -571,7 +654,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return (T*)spImpl->pTorchBlobT->cpu().data_ptr();
+            #elif USE_CAFFE
                 return spImpl->pCaffeBlobT->cpu_data();
             #else
                 return nullptr;
@@ -589,8 +674,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
-                spImpl->pCaffeBlobT->set_cpu_data(data);
+            #if USE_CAFFE
+                throw std::runtime_error("Not implemented set_cpu_data");
+                //spImpl->pCaffeBlobT->set_cpu_data(data);
             #else
                 UNUSED(data);
             #endif
@@ -607,7 +693,8 @@ namespace op
         try
         {
             #if defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
-                return spImpl->pCaffeBlobT->gpu_shape();
+                throw std::runtime_error("Not implemented gpu_shape");
+                //return spImpl->pCaffeBlobT->gpu_shape();
             #else
                 error("Required `USE_CAFFE` and `USE_CUDA` flags enabled.", __LINE__, __FUNCTION__, __FILE__);
                 return nullptr;
@@ -625,7 +712,9 @@ namespace op
     {
         try
         {
-            #if defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
+            #ifdef USE_PYTORCH
+                return (T*)spImpl->pTorchBlobT->cuda().data_ptr();
+            #elif defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
                 return spImpl->pCaffeBlobT->gpu_data();
             #else
                 error("Required `USE_CAFFE` and `USE_CUDA` flags enabled.", __LINE__, __FUNCTION__, __FILE__);
@@ -645,7 +734,8 @@ namespace op
         try
         {
             #if defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
-                spImpl->pCaffeBlobT->set_gpu_data(data);
+                throw std::runtime_error("Not implemented set_gpu_data");
+                //spImpl->pCaffeBlobT->set_gpu_data(data);
             #else
                 UNUSED(data);
                 error("Required `USE_CAFFE` and `USE_CUDA` flags enabled.", __LINE__, __FUNCTION__, __FILE__);
@@ -663,7 +753,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->cpu_diff();
+                throw std::runtime_error("Not implemented cpu_diff");
+                //return spImpl->pCaffeBlobT->cpu_diff();
             #else
                 return nullptr;
             #endif
@@ -681,7 +772,8 @@ namespace op
         try
         {
             #if defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
-                return spImpl->pCaffeBlobT->gpu_diff();
+                throw std::runtime_error("Not implemented gpu_diff");
+                //return spImpl->pCaffeBlobT->gpu_diff();
             #else
                 error("Required `USE_CAFFE` and `USE_CUDA` flags enabled.", __LINE__, __FUNCTION__, __FILE__);
                 return nullptr;
@@ -699,7 +791,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return (T*)spImpl->pTorchBlobT->cpu().data_ptr();
+            #elif USE_CAFFE
                 return spImpl->pCaffeBlobT->mutable_cpu_data();
             #else
                 return nullptr;
@@ -717,7 +811,9 @@ namespace op
     {
         try
         {
-            #if defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
+            #ifdef USE_PYTORCH
+                return (T*)spImpl->pTorchBlobT->cuda().data_ptr();
+            #elif defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
                 return spImpl->pCaffeBlobT->mutable_gpu_data();
             #else
                 error("Required `USE_CAFFE` and `USE_CUDA` flags enabled.", __LINE__, __FUNCTION__, __FILE__);
@@ -737,7 +833,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->mutable_cpu_diff();
+                throw std::runtime_error("Not implemented mutable_cpu_diff");
+                //return spImpl->pCaffeBlobT->mutable_cpu_diff();
             #else
                 return nullptr;
             #endif
@@ -755,7 +852,8 @@ namespace op
         try
         {
             #if defined(USE_CAFFE) && (defined(USE_CUDA) || defined(USE_OPENCL))
-                return spImpl->pCaffeBlobT->mutable_gpu_diff();
+                throw std::runtime_error("Not implemented mutable_gpu_diff");
+                //return spImpl->pCaffeBlobT->mutable_gpu_diff();
             #else
                 error("Required `USE_CAFFE` and `USE_CUDA` flags enabled.", __LINE__, __FUNCTION__, __FILE__);
                 return nullptr;
@@ -774,7 +872,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                spImpl->pCaffeBlobT->Update();
+                throw std::runtime_error("Not implemented Update");
+                //spImpl->pCaffeBlobT->Update();
             #endif
         }
         catch (const std::exception& e)
@@ -789,7 +888,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->asum_data();
+                throw std::runtime_error("Not implemented asum_data");
+                //return spImpl->pCaffeBlobT->asum_data();
             #else
                 return T{0};
             #endif
@@ -807,7 +907,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->asum_data();
+                throw std::runtime_error("Not implemented asum_diff");
+                //return spImpl->pCaffeBlobT->asum_diff();
             #else
                 return T{0};
             #endif
@@ -825,7 +926,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->asum_data();
+                throw std::runtime_error("Not implemented sumsq_data");
+                //return spImpl->pCaffeBlobT->asum_data();
             #else
                 return T{0};
             #endif
@@ -843,7 +945,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                return spImpl->pCaffeBlobT->asum_data();
+                throw std::runtime_error("Not implemented sumsq_diff");
+                //return spImpl->pCaffeBlobT->asum_data();
             #else
                 return T{0};
             #endif
@@ -861,7 +964,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                spImpl->pCaffeBlobT->scale_data(scale_factor);
+                throw std::runtime_error("Not implemented scale_data");
+                //spImpl->pCaffeBlobT->scale_data(scale_factor);
             #else
                 UNUSED(scale_factor);
             #endif
@@ -878,7 +982,8 @@ namespace op
         try
         {
             #ifdef USE_CAFFE
-                spImpl->pCaffeBlobT->scale_diff(scale_factor);
+                throw std::runtime_error("Not implemented scale_diff");
+                //spImpl->pCaffeBlobT->scale_diff(scale_factor);
             #else
                 UNUSED(scale_factor);
             #endif
