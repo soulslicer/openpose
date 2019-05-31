@@ -184,10 +184,8 @@ namespace op
             #ifdef USE_PYTORCH
                 upImpl->upTorchNet = torch::jit::load(upImpl->mCaffeTrainedModel);
                 upImpl->spInputBlob.reset(new torch::Tensor{torch::zeros({1,1,1,1}).cuda()});
-
-                Array<float> inputData({1,3,656,368});
-                this->forwardPass(inputData);
-
+                //Array<float> inputData({1,3,656,368});
+                //this->forwardPass(inputData);
             #elif USE_CAFFE
                 // Initialize net
                 #ifdef USE_OPENCL
@@ -266,16 +264,8 @@ namespace op
                 // Forward
                 torch::Tensor output = upImpl->upTorchNet->forward(inputs).toTensor();
 
-                std::cout << output.data_ptr() << std::endl;
-
                 // Inefficient this makes a copy (What to do? Use the trick in arrayCpuGpu)
-
-                // THis is a problem, cos address of this changes always
                 upImpl->spOutputBlob = std::make_shared<torch::Tensor>(output);
-
-                //*upImpl->spOutputBlob.get() = output;
-
-                std::cout << upImpl->spOutputBlob->data_ptr() << std::endl;
 
             #elif USE_CAFFE
                 // Sanity checks

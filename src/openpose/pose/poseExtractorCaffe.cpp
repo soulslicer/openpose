@@ -96,7 +96,9 @@ namespace op
                 // UNUSED(enableGoogleLogging);
                 // Initializing them on the thread
                 net.back()->initializationOnThread();
+                #ifndef USE_PYTORCH
                 caffeNetOutputBlob.emplace_back((net.back().get())->getOutputBlobArray());
+                #endif
                 // Sanity check
                 if (net.size() != caffeNetOutputBlob.size())
                     error("Weird error, this should not happen. Notify us.", __LINE__, __FUNCTION__, __FILE__);
@@ -250,9 +252,10 @@ namespace op
                     for (auto i = 0u ; i < inputNetData.size(); i++)
                         spNets.at(i)->forwardPass(inputNetData[i]);
 
-                    //std::cout << spCaffeNetOutputBlobs.at(0).get()->gpu_data() << std::endl;
-
-                    //std::cout << spNets.at(0)->getOutputBlobArray().get()->gpu_data() << std::endl;
+                    #ifdef USE_PYTORCH
+                    for (auto i = 0u ; i < inputNetData.size(); i++)
+                        spCaffeNetOutputBlobs.emplace_back(spNets.at(0)->getOutputBlobArray());
+                    #endif
                 }
                 // If custom network output
                 else

@@ -35,7 +35,7 @@ namespace op
             #ifdef USE_PYTORCH
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
-                spImpl->upTorchBlobT.reset(new torch::Tensor{torch::zeros({1})});
+                spImpl->upTorchBlobT.reset(new torch::Tensor{torch::zeros({1}).cuda()});
                 spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
             #elif USE_CAFFE
                 // Construct spImpl
@@ -103,7 +103,7 @@ namespace op
                 std::vector<long> arraySizeLong(arraySize.begin(), arraySize.end());
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
-                spImpl->upTorchBlobT.reset(new torch::Tensor(torch::zeros({1})));
+                spImpl->upTorchBlobT.reset(new torch::Tensor(torch::zeros({1}).cuda()));
                 spImpl->upTorchBlobT->resize_(arraySizeLong);
                 spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
                 // Copy data
@@ -166,7 +166,7 @@ namespace op
             #ifdef USE_PYTORCH
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
-                spImpl->upTorchBlobT.reset(new torch::Tensor(torch::zeros({1})));
+                spImpl->upTorchBlobT.reset(new torch::Tensor(torch::zeros({1}).cuda()));
                 spImpl->upTorchBlobT->resize_({num, channels, height, width});
                 spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
             #elif USE_CAFFE
