@@ -407,6 +407,23 @@ namespace op
         "pose/body_25b/pose_iter_XXXXXX.caffemodel",
         "pose/body_135/pose_iter_XXXXXX.caffemodel",
     };
+    const std::array<std::string, (int)PoseModel::Size> POSE_TRAINED_MODEL_PYTORCH{
+        "pose/body_25/pose_iter_584000.pt",
+        "pose/coco/pose_iter_440000.pt",
+        "pose/mpi/pose_iter_160000.pt",
+        "pose/mpi/pose_iter_160000.pt",
+        "pose/body_19/pose_iter_XXXXXX.pt",
+        "pose/body_19_x2/pose_iter_XXXXXX.pt",
+        "pose/body_19n/pose_iter_XXXXXX.pt",
+        "pose/body_25e/pose_iter_XXXXXX.pt",
+        "car/car_12/pose_iter_XXXXXX.pt",
+        "pose/body_25d/pose_iter_XXXXXX.pt",
+        "pose/body_23/pose_iter_XXXXXX.pt",
+        "car/car_22/pose_iter_XXXXXX.pt",
+        "pose/body_19e/pose_iter_XXXXXX.pt",
+        "pose/body_25b/pose_iter_XXXXXX.pt",
+        "pose/body_135/pose_iter_XXXXXX.pt",
+    };
 
     // Constant Array Parameters
     // POSE_NUMBER_BODY_PARTS equivalent to size of std::map POSE_BODY_XX_BODY_PARTS - 1 (removing background)
@@ -566,7 +583,11 @@ namespace op
     {
         try
         {
-            return POSE_TRAINED_MODEL.at((int)poseModel);
+            #ifdef USE_PYTORCH
+                return POSE_TRAINED_MODEL_PYTORCH.at((int)poseModel);
+            #elif USE_CAFFE
+                return POSE_TRAINED_MODEL.at((int)poseModel);
+            #endif
         }
         catch (const std::exception& e)
         {

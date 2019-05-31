@@ -240,6 +240,15 @@ namespace op
             return mSize;
         }
 
+        inline std::vector<long> getSizeLong() const
+        {
+            auto totalSize = mSize.size();
+            std::vector<long> sizeLong(totalSize);
+            for(size_t i=0; i<totalSize; i++)
+                sizeLong[i] = mSize[i];
+            return sizeLong;
+        }
+
         /**
          * Return a vector with the size of the desired dimension.
          * @param index Dimension to check its size.
@@ -476,6 +485,7 @@ namespace op
 
     private:
         std::vector<int> mSize;
+        std::vector<long> mSizeLong;
         size_t mVolume;
         std::shared_ptr<T> spData;
         T* pData; // pData is a wrapper of spData. Used for Pybind11 binding.

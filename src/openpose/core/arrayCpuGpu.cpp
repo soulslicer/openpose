@@ -35,7 +35,7 @@ namespace op
             #ifdef USE_PYTORCH
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
-                spImpl->upTorchBlobT.reset(new torch::Tensor{});
+                spImpl->upTorchBlobT.reset(new torch::Tensor{torch::zeros({1})});
                 spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
             #elif USE_CAFFE
                 // Construct spImpl
@@ -103,8 +103,8 @@ namespace op
                 std::vector<long> arraySizeLong(arraySize.begin(), arraySize.end());
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
-                spImpl->upTorchBlobT.reset(new torch::Tensor());
-                spImpl->upTorchBlobT->reshape(arraySizeLong);
+                spImpl->upTorchBlobT.reset(new torch::Tensor(torch::zeros({1})));
+                spImpl->upTorchBlobT->resize_(arraySizeLong);
                 spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
                 // Copy data
                 // CPU copy
@@ -166,8 +166,8 @@ namespace op
             #ifdef USE_PYTORCH
                 // Construct spImpl
                 spImpl.reset(new ImplArrayCpuGpu{});
-                spImpl->upTorchBlobT.reset(new torch::Tensor());
-                spImpl->upTorchBlobT->reshape({num, channels, height, width});
+                spImpl->upTorchBlobT.reset(new torch::Tensor(torch::zeros({1})));
+                spImpl->upTorchBlobT->resize_({num, channels, height, width});
                 spImpl->pTorchBlobT = spImpl->upTorchBlobT.get();
             #elif USE_CAFFE
                 // Construct spImpl
@@ -217,7 +217,7 @@ namespace op
         try
         {
             #ifdef USE_PYTORCH
-                spImpl->pTorchBlobT->reshape({num, channels, height, width});
+                spImpl->pTorchBlobT->resize_({num, channels, height, width});
             #elif USE_CAFFE
                 throw std::runtime_error("Not implemented Reshape");
                 spImpl->pCaffeBlobT->Reshape(num, channels, height, width);
@@ -242,7 +242,7 @@ namespace op
             #ifdef USE_PYTORCH
                 // Convert to Long
                 std::vector<long> shapeLong(shape.begin(), shape.end());
-                spImpl->pTorchBlobT->reshape(shapeLong);
+                spImpl->pTorchBlobT->resize_(shapeLong);
             #elif USE_CAFFE
                 throw std::runtime_error("Not implemented Reshape");
                 spImpl->pCaffeBlobT->Reshape(shape);
@@ -262,7 +262,12 @@ namespace op
         try
         {
             #ifdef USE_PYTORCH
-                throw std::runtime_error("Not implemented shape_string");
+                auto sizes = spImpl->pTorchBlobT->sizes();
+                std::string sizeString = "[";
+                for (const auto& size : sizes)
+                    sizeString += std::to_string(size) + " ";
+                sizeString += "]";
+                return sizeString;
             #elif USE_CAFFE
                 throw std::runtime_error("Not implemented shape_string");
                 return spImpl->pCaffeBlobT->shape_string();
@@ -284,7 +289,6 @@ namespace op
         try
         {
             #ifdef USE_PYTORCH
-                throw std::runtime_error("Not implemented shape1");
                 torch::ArrayRef<int64_t> sizeTorch = spImpl->pTorchBlobT->sizes();
                 std::vector<int> sizes(sizeTorch.begin(), sizeTorch.end());
                 return sizes;

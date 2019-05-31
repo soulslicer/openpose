@@ -11,6 +11,8 @@
 #include <openpose/utilities/standard.hpp>
 #include <openpose/pose/poseExtractorCaffe.hpp>
 
+#include <iostream>
+
 namespace op
 {
     const bool TOP_DOWN_REFINEMENT = false; // Note: +5% acc 1 scale, -2% max acc setting
@@ -247,6 +249,10 @@ namespace op
 
                     for (auto i = 0u ; i < inputNetData.size(); i++)
                         spNets.at(i)->forwardPass(inputNetData[i]);
+
+                    //std::cout << spCaffeNetOutputBlobs.at(0).get()->gpu_data() << std::endl;
+
+                    //std::cout << spNets.at(0)->getOutputBlobArray().get()->gpu_data() << std::endl;
                 }
                 // If custom network output
                 else
@@ -262,6 +268,11 @@ namespace op
                     spCaffeNetOutputBlobs.emplace_back(
                         std::make_shared<ArrayCpuGpu<float>>(poseNetOutput, copyFromGpu));
                 }
+
+                    std::cout << "---" << std::endl;
+                    return;
+
+
                 // Reshape blobs if required
                 for (auto i = 0u ; i < inputNetData.size(); i++)
                 {
@@ -270,6 +281,7 @@ namespace op
                         mNetInput4DSizes.at(i), inputNetData[i].getSize());
                     if (changedVectors)
                     {
+                        op::log("A");
                         mNetInput4DSizes.at(i) = inputNetData[i].getSize();
                         reshapePoseExtractorCaffe(
                             spResizeAndMergeCaffe, spNmsCaffe, spBodyPartConnectorCaffe,
@@ -278,6 +290,7 @@ namespace op
                             mGpuId, mUpsamplingRatio);
                             // In order to resize to input size to have same results as Matlab
                             // scaleInputToNetInputs[i] vs. 1.f
+                        op::log("B");
                     }
                     // Get scale net to output (i.e., image input)
                     const auto ratio = (
@@ -288,6 +301,10 @@ namespace op
                             positiveIntRound(ratio*mNetInput4DSizes[0][3]),
                             positiveIntRound(ratio*mNetInput4DSizes[0][2])};
                 }
+
+
+                    return;
+
                 // OP_CUDA_PROFILE_END(timeNormalize1, 1e3, REPS);
                 // OP_CUDA_PROFILE_INIT(REPS);
                 // 2. Resize heat maps + merge different scales

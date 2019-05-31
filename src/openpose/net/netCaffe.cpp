@@ -1,10 +1,18 @@
 #include <numeric> // std::accumulate
-#ifdef USE_CAFFE
-    #include <atomic>
-    #include <mutex>
+
+#include <atomic>
+#include <mutex>
+#include <glog/logging.h> // google::InitGoogleLogging
+
+#ifdef USE_PYTORCH
+    #include <torch/torch.h>
+    #include <torch/script.h>
+    #include <cuda.h>
+    #include <cuda_runtime.h>
+#elif USE_CAFFE
     #include <caffe/net.hpp>
-    #include <glog/logging.h> // google::InitGoogleLogging
 #endif
+
 #ifdef USE_CUDA
     #include <openpose/gpu/cuda.hpp>
 #endif
@@ -16,6 +24,11 @@
 #include <openpose/utilities/standard.hpp>
 #include <openpose/net/netCaffe.hpp>
 
+// HACK
+//#include <caffe/net.hpp>
+
+#include <iostream>
+
 namespace op
 {
     std::mutex sMutexNetCaffe;
@@ -25,79 +38,95 @@ namespace op
     #endif
 
     struct NetCaffe::ImplNetCaffe
-    {
-        #ifdef USE_CAFFE
-            // Init with constructor
-            const int mGpuId;
-            const std::string mCaffeProto;
-            const std::string mCaffeTrainedModel;
-            const std::string mLastBlobName;
-            std::vector<int> mNetInputSize4D;
-            // Init with thread
-            #ifdef NV_CAFFE
-                std::unique_ptr<caffe::Net> upCaffeNet;
-                boost::shared_ptr<caffe::TBlob<float>> spOutputBlob;
-            #else
-                std::unique_ptr<caffe::Net<float>> upCaffeNet;
-                boost::shared_ptr<caffe::Blob<float>> spOutputBlob;
-            #endif
+    {        
+        // Init with constructor
+        const int mGpuId;
+        const std::string mCaffeProto;
+        const std::string mCaffeTrainedModel;
+        const std::string mLastBlobName;
+        std::vector<int> mNetInputSize4D;
+        // Init with thread
+        #ifdef USE_PYTORCH
+            std::shared_ptr<torch::jit::script::Module> upTorchNet;
+            std::shared_ptr<torch::Tensor> spInputBlob;
+            std::shared_ptr<torch::Tensor> spOutputBlob;
+        #elif NV_CAFFE
+            std::unique_ptr<caffe::Net> upCaffeNet;
+            boost::shared_ptr<caffe::TBlob<float>> spOutputBlob;
+        #else
+            std::unique_ptr<caffe::Net<float>> upCaffeNet;
+            boost::shared_ptr<caffe::Blob<float>> spOutputBlob;
+        #endif
 
-            ImplNetCaffe(const std::string& caffeProto, const std::string& caffeTrainedModel, const int gpuId,
-                         const bool enableGoogleLogging, const std::string& lastBlobName) :
-                mGpuId{gpuId},
-                mCaffeProto{caffeProto},
-                mCaffeTrainedModel{caffeTrainedModel},
-                mLastBlobName{lastBlobName}
+        ImplNetCaffe(const std::string& caffeProto, const std::string& caffeTrainedModel, const int gpuId,
+                     const bool enableGoogleLogging, const std::string& lastBlobName) :
+            mGpuId{gpuId},
+            mCaffeProto{caffeProto},
+            mCaffeTrainedModel{caffeTrainedModel},
+            mLastBlobName{lastBlobName}
+        {
+            try
             {
-                try
+                const std::string message{".\nPossible causes:\n\t1. Not downloading the OpenPose trained models."
+                                          "\n\t2. Not running OpenPose from the same directory where the `model`"
+                                          " folder is located.\n\t3. Using paths with spaces."};
+                if (!existFile(mCaffeProto))
+                    error("Prototxt file not found: " + mCaffeProto + message, __LINE__, __FUNCTION__, __FILE__);
+                if (!existFile(mCaffeTrainedModel))
+                    error("Caffe trained model file not found: " + mCaffeTrainedModel + message,
+                          __LINE__, __FUNCTION__, __FILE__);
+                // Double if condition in order to speed up the program if it is called several times
+                if (enableGoogleLogging && !sGoogleLoggingInitialized)
                 {
-                    const std::string message{".\nPossible causes:\n\t1. Not downloading the OpenPose trained models."
-                                              "\n\t2. Not running OpenPose from the same directory where the `model`"
-                                              " folder is located.\n\t3. Using paths with spaces."};
-                    if (!existFile(mCaffeProto))
-                        error("Prototxt file not found: " + mCaffeProto + message, __LINE__, __FUNCTION__, __FILE__);
-                    if (!existFile(mCaffeTrainedModel))
-                        error("Caffe trained model file not found: " + mCaffeTrainedModel + message,
-                              __LINE__, __FUNCTION__, __FILE__);
-                    // Double if condition in order to speed up the program if it is called several times
+                    std::lock_guard<std::mutex> lock{sMutexNetCaffe};
                     if (enableGoogleLogging && !sGoogleLoggingInitialized)
                     {
-                        std::lock_guard<std::mutex> lock{sMutexNetCaffe};
-                        if (enableGoogleLogging && !sGoogleLoggingInitialized)
-                        {
-                            google::InitGoogleLogging("OpenPose");
-                            sGoogleLoggingInitialized = true;
-                        }
+                        google::InitGoogleLogging("OpenPose");
+                        sGoogleLoggingInitialized = true;
                     }
-                    #ifdef USE_OPENCL
-                        // Initialize OpenCL
+                }
+                #ifdef USE_OPENCL
+                    // Initialize OpenCL
+                    if (!sOpenCLInitialized)
+                    {
+                        std::lock_guard<std::mutex> lock{sMutexNetCaffe};
                         if (!sOpenCLInitialized)
                         {
-                            std::lock_guard<std::mutex> lock{sMutexNetCaffe};
-                            if (!sOpenCLInitialized)
-                            {
-                                caffe::Caffe::set_mode(caffe::Caffe::GPU);
-                                std::vector<int> devices;
-                                const int maxNumberGpu = OpenCL::getTotalGPU();
-                                for (auto i = 0; i < maxNumberGpu; i++)
-                                    devices.emplace_back(i);
-                                caffe::Caffe::SetDevices(devices);
-                                if (mGpuId >= maxNumberGpu)
-                                    error("Unexpected error. Please, notify us.", __LINE__, __FUNCTION__, __FILE__);
-                                sOpenCLInitialized = true;
-                            }
+                            caffe::Caffe::set_mode(caffe::Caffe::GPU);
+                            std::vector<int> devices;
+                            const int maxNumberGpu = OpenCL::getTotalGPU();
+                            for (auto i = 0; i < maxNumberGpu; i++)
+                                devices.emplace_back(i);
+                            caffe::Caffe::SetDevices(devices);
+                            if (mGpuId >= maxNumberGpu)
+                                error("Unexpected error. Please, notify us.", __LINE__, __FUNCTION__, __FILE__);
+                            sOpenCLInitialized = true;
                         }
-                    #endif
-                }
-                catch (const std::exception& e)
-                {
-                    error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-                }
+                    }
+                #endif
             }
-        #endif
+            catch (const std::exception& e)
+            {
+                error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            }
+        }
     };
 
-    #ifdef USE_CAFFE
+    #ifdef USE_PYTORCH
+        inline void reshapeNetTorch(torch::jit::script::Module* caffeNet, const std::vector<int>& dimensions)
+        {
+            try
+            {
+                #ifdef USE_CUDA
+                    cudaCheck(__LINE__, __FUNCTION__, __FILE__);
+                #endif
+            }
+            catch (const std::exception& e)
+            {
+                error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            }
+        }
+    #elif USE_CAFFE
         #ifdef NV_CAFFE
         inline void reshapeNetCaffe(caffe::Net* caffeNet, const std::vector<int>& dimensions)
         #else
@@ -152,7 +181,14 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                upImpl->upTorchNet = torch::jit::load(upImpl->mCaffeTrainedModel);
+                upImpl->spInputBlob.reset(new torch::Tensor{torch::zeros({1,1,1,1}).cuda()});
+
+                Array<float> inputData({1,3,656,368});
+                this->forwardPass(inputData);
+
+            #elif USE_CAFFE
                 // Initialize net
                 #ifdef USE_OPENCL
                     caffe::Caffe::set_mode(caffe::Caffe::GPU);
@@ -210,7 +246,38 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                // Sanity checks
+                if (inputData.empty())
+                    error("The Array inputData cannot be empty.", __LINE__, __FUNCTION__, __FILE__);
+                if (inputData.getNumberDimensions() != 4 || inputData.getSize(1) != 3)
+                    error("The Array inputData must have 4 dimensions: [batch size, 3 (RGB), height, width].",
+                          __LINE__, __FUNCTION__, __FILE__);
+
+                // Set Input
+                upImpl->spInputBlob->resize_(inputData.getSizeLong());
+                cudaMemcpy(upImpl->spInputBlob->data_ptr(), inputData.getConstPtr(), inputData.getVolume() * sizeof(float),
+                           cudaMemcpyHostToDevice);
+
+                // Create a vector of inputs.
+                std::vector<torch::jit::IValue> inputs;
+                inputs.push_back(*upImpl->spInputBlob.get());
+
+                // Forward
+                torch::Tensor output = upImpl->upTorchNet->forward(inputs).toTensor();
+
+                std::cout << output.data_ptr() << std::endl;
+
+                // Inefficient this makes a copy (What to do? Use the trick in arrayCpuGpu)
+
+                // THis is a problem, cos address of this changes always
+                upImpl->spOutputBlob = std::make_shared<torch::Tensor>(output);
+
+                //*upImpl->spOutputBlob.get() = output;
+
+                std::cout << upImpl->spOutputBlob->data_ptr() << std::endl;
+
+            #elif USE_CAFFE
                 // Sanity checks
                 if (inputData.empty())
                     error("The Array inputData cannot be empty.", __LINE__, __FUNCTION__, __FILE__);
@@ -261,7 +328,9 @@ namespace op
     {
         try
         {
-            #ifdef USE_CAFFE
+            #ifdef USE_PYTORCH
+                return std::make_shared<ArrayCpuGpu<float>>(upImpl->spOutputBlob.get());
+            #elif USE_CAFFE
                 return std::make_shared<ArrayCpuGpu<float>>(upImpl->spOutputBlob.get());
             #else
                 return nullptr;
