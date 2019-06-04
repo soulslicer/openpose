@@ -11,6 +11,7 @@
 #include <openpose/utilities/standard.hpp>
 #include <openpose/pose/poseExtractorCaffeTaf.hpp>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 
 namespace op
 {
@@ -21,6 +22,13 @@ namespace op
         size_t size = sizeof(float)*src->shape()[1]*src->shape()[2]*src->shape()[3];
         cudaMemcpy(dst->mutable_gpu_data(), src->gpu_data(), size, cudaMemcpyDeviceToDevice);
     }
+
+    cv::Mat mat_from_blob2(std::shared_ptr<ArrayCpuGpu<float>> src, int channel)
+    {
+        cv::Mat m(src->shape()[2], src->shape()[3], CV_32FC1, (float*)(src->cpu_data() + channel*src->shape()[2]*src->shape()[3]));
+        return m;
+    }
+
 
     #ifdef USE_CAFFE
         std::vector<ArrayCpuGpu<float>*> arraySharedToPtr3(
@@ -102,6 +110,9 @@ namespace op
         {
             try
             {
+                // Tracker
+                this->mPoseTracker = std::unique_ptr<PoseTracker>(new PoseTracker(mPoseModel, 2));
+
                 // Add Caffe Net
                 net.emplace_back(
                     std::make_shared<NetCaffe>(
@@ -340,6 +351,11 @@ namespace op
                         spNetsTrack.at(i)->reshape(reduceSize2(spNetsTrack.at(i)->shape("last_paf"), inputSize), "last_paf", 0);
                         spNetsTrack.at(i)->reshape(reduceSize2(spNetsTrack.at(i)->shape("curr_paf"), inputSize), "curr_paf", 1);
 
+//                        std::cout << inputSize.at(2) << " " << inputSize.at(3) << std::endl;
+//                        std::cout << this->mTrackCurrTafBlobs.at(0)->shape_string() << std::endl;
+//                        exit(-1);
+
+
                     }
                     // Get scale net to output (i.e., image input)
                     const auto ratio = (
@@ -410,6 +426,16 @@ namespace op
 
                 const auto caffeTafBlobs = arraySharedToPtr3(mTrackCurrTafBlobs);
                 spResizeAndMergeCaffe->Forward(caffeTafBlobs, {spTafsBlob.get()});
+
+                    cv::Mat mx = mat_from_blob2(spTafsBlob, 0);
+                    mx = cv::abs(mx);
+                    cv::Mat my = mat_from_blob2(spTafsBlob, 1);
+                    my = cv::abs(my);
+                    cv::Mat m = mx+my;
+                    cv::imshow("win", m);
+                    cv::waitKey(15);
+
+
 
                 // 5. CUDA sanity check
                 #ifdef USE_CUDA

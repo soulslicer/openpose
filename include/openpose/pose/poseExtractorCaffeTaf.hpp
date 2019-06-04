@@ -10,6 +10,7 @@
 #include <openpose/net/resizeAndMergeCaffe.hpp>
 #include <openpose/pose/enumClasses.hpp>
 #include <openpose/pose/poseExtractorNet.hpp>
+#include <openpose/pose/poseTracker.hpp>
 
 namespace op
 {
@@ -93,8 +94,9 @@ namespace op
         std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mTrackCurrPafBlobs;
         std::vector<std::shared_ptr<ArrayCpuGpu<float>>> mTrackLastPafBlobs;
 
-
         std::shared_ptr<ArrayCpuGpu<float>> spTafsBlob;
+
+        std::unique_ptr<PoseTracker> mPoseTracker;
 
         DELETE_COPY(PoseExtractorCaffeTaf);
     };
