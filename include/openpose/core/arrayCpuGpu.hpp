@@ -37,7 +37,7 @@ namespace op
         // // void ReshapeLike(const Blob& other);
         // void ReshapeLike(const ArrayCpuGpu& other);
         std::string shape_string() const;
-        const std::vector<int>& shape() const;
+        const std::vector<int> shape() const;
         int shape(const int index) const;
         int num_axes() const;
         int count() const;
@@ -66,6 +66,7 @@ namespace op
         // const boost::shared_ptr<SyncedMemory>& data() const;
         // const boost::shared_ptr<SyncedMemory>& diff() const;
 
+        void* internal();
         const T* cpu_data() const;
         void set_cpu_data(T* data);
         const int* gpu_shape() const;

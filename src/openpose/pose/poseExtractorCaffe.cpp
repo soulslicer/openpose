@@ -12,10 +12,26 @@
 #include <openpose/pose/poseExtractorCaffe.hpp>
 
 #include <iostream>
+#include <opencv2/opencv.hpp>
+#include <torch/torch.h>
 
 namespace op
 {
     const bool TOP_DOWN_REFINEMENT = false; // Note: +5% acc 1 scale, -2% max acc setting
+
+    cv::Mat mat_from_blob(std::shared_ptr<ArrayCpuGpu<float>> src, int channel)
+    {
+        cv::Mat m(src->shape()[2], src->shape()[3], CV_32FC1, (float*)(src->cpu_data() + channel*src->shape()[2]*src->shape()[3]));
+        return m;
+    }
+
+    cv::Mat mat_from_tensor(torch::Tensor* tensor, int channel)
+    {
+        float* a = new float[tensor->size(0)*tensor->size(1)*tensor->size(2)*tensor->size(3)];
+        memcpy(a, tensor->cpu().data_ptr(), sizeof(float)*tensor->size(0)*tensor->size(1)*tensor->size(2)*tensor->size(3));
+        cv::Mat m(tensor->size(2), tensor->size(3), CV_32FC1, (float*)(a + channel*tensor->size(2)*tensor->size(3)));
+        return m;
+    }
 
     #ifdef USE_CAFFE
         std::vector<ArrayCpuGpu<float>*> arraySharedToPtr(
@@ -98,10 +114,10 @@ namespace op
                 net.back()->initializationOnThread();
                 #ifndef USE_PYTORCH
                 caffeNetOutputBlob.emplace_back((net.back().get())->getOutputBlobArray());
-                #endif
                 // Sanity check
                 if (net.size() != caffeNetOutputBlob.size())
                     error("Weird error, this should not happen. Notify us.", __LINE__, __FUNCTION__, __FILE__);
+                #endif
                 // Cuda check
                 #ifdef USE_CUDA
                     cudaCheck(__LINE__, __FUNCTION__, __FILE__);
@@ -253,8 +269,9 @@ namespace op
                         spNets.at(i)->forwardPass(inputNetData[i]);
 
                     #ifdef USE_PYTORCH
+                    if(spCaffeNetOutputBlobs.size() == 0) spCaffeNetOutputBlobs.resize(inputNetData.size());
                     for (auto i = 0u ; i < inputNetData.size(); i++)
-                        spCaffeNetOutputBlobs.emplace_back(spNets.at(0)->getOutputBlobArray());
+                        spCaffeNetOutputBlobs[i] = spNets.at(0)->getOutputBlobArray();
                     #endif
                 }
                 // If custom network output
@@ -272,10 +289,6 @@ namespace op
                         std::make_shared<ArrayCpuGpu<float>>(poseNetOutput, copyFromGpu));
                 }
 
-                    std::cout << "---" << std::endl;
-                    return;
-
-
                 // Reshape blobs if required
                 for (auto i = 0u ; i < inputNetData.size(); i++)
                 {
@@ -284,7 +297,6 @@ namespace op
                         mNetInput4DSizes.at(i), inputNetData[i].getSize());
                     if (changedVectors)
                     {
-                        op::log("A");
                         mNetInput4DSizes.at(i) = inputNetData[i].getSize();
                         reshapePoseExtractorCaffe(
                             spResizeAndMergeCaffe, spNmsCaffe, spBodyPartConnectorCaffe,
@@ -293,7 +305,6 @@ namespace op
                             mGpuId, mUpsamplingRatio);
                             // In order to resize to input size to have same results as Matlab
                             // scaleInputToNetInputs[i] vs. 1.f
-                        op::log("B");
                     }
                     // Get scale net to output (i.e., image input)
                     const auto ratio = (
@@ -304,9 +315,6 @@ namespace op
                             positiveIntRound(ratio*mNetInput4DSizes[0][3]),
                             positiveIntRound(ratio*mNetInput4DSizes[0][2])};
                 }
-
-
-                    return;
 
                 // OP_CUDA_PROFILE_END(timeNormalize1, 1e3, REPS);
                 // OP_CUDA_PROFILE_INIT(REPS);

@@ -212,6 +212,12 @@ namespace op
     // }
 
     template<typename T>
+    void* ArrayCpuGpu<T>::internal()
+    {
+        return spImpl->pTorchBlobT;
+    }
+
+    template<typename T>
     void ArrayCpuGpu<T>::Reshape(const int num, const int channels, const int height, const int width)
     {
         try
@@ -282,9 +288,10 @@ namespace op
         }
     }
 
+    // Had to change this to remove& due to Pytorch
     std::vector<int> DUMB_VECTOR;
     template<typename T>
-    const std::vector<int>& ArrayCpuGpu<T>::shape() const
+    const std::vector<int> ArrayCpuGpu<T>::shape() const
     {
         try
         {
