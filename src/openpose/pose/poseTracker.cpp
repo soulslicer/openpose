@@ -83,8 +83,6 @@ namespace op
         std::vector<int> finalIdxs(personKp.getSize()[0], -1);
         std::vector<float> finalScores(personKp.getSize()[0], -1);
 
-        //std::cout << "HACK STAF PAF TAF" << std::endl;
-
         //for(int i=25; i<mTafPartPairs.size()/2; i++){
         //for(int i=0; i<25; i++){
         for(int i=0; i<mTafPartPairs.size()/2; i++){
@@ -163,34 +161,8 @@ namespace op
              float scale)
     {
         bool debug=false;
-        if(mFrameCount > 1000) debug=true;
+        //if(mFrameCount > 1000) debug=true;
         if(debug) std::this_thread::sleep_for (std::chrono::seconds(1));
-
-        // VIZ
-//        std::cout << poseKeypoints << std::endl;
-//        std::cout << getPoseKeypoints() << std::endl;
-
-//        if(debug){
-//            int mindex = 36;
-//            cv::Mat hm = cv::abs(mat_from_blob3(tafsBlob, mindex*2)) + cv::abs(mat_from_blob3(tafsBlob, mindex*2 + 1));
-//            cv::cvtColor(hm, hm, cv::COLOR_GRAY2BGR);
-
-//            cv::Mat fx = mat_from_blob3(tafsBlob, mindex*2);
-//            cv::Mat fy = mat_from_blob3(tafsBlob, mindex*2 + 1);
-//            for(int u=0; u<fx.size().width; u+=10){
-//                for(int v=0; v<fx.size().height; v+=10){
-//                    cv::Point2f p1(u,v);
-//                    cv::Point2i currP(u,v);
-//                    cv::Point2f p2(u + 20*fx.at<float>(currP), v + 20*fy.at<float>(currP));
-//                    cv::line(hm, p1, p2, cv::Scalar(0,1,0));
-//                }
-//            }
-
-//            cv::imshow("win", hm);
-//            cv::waitKey(15);
-//        }
-
-        /////////////////
 
         if(!poseKeypoints.getSize(0)) return;
         mFrameCount += 1;
@@ -278,3 +250,29 @@ namespace op
     }
 
 }
+
+// VIZ
+//        std::cout << poseKeypoints << std::endl;
+//        std::cout << getPoseKeypoints() << std::endl;
+
+//        if(debug){
+//            int mindex = 36;
+//            cv::Mat hm = cv::abs(mat_from_blob3(tafsBlob, mindex*2)) + cv::abs(mat_from_blob3(tafsBlob, mindex*2 + 1));
+//            cv::cvtColor(hm, hm, cv::COLOR_GRAY2BGR);
+
+//            cv::Mat fx = mat_from_blob3(tafsBlob, mindex*2);
+//            cv::Mat fy = mat_from_blob3(tafsBlob, mindex*2 + 1);
+//            for(int u=0; u<fx.size().width; u+=10){
+//                for(int v=0; v<fx.size().height; v+=10){
+//                    cv::Point2f p1(u,v);
+//                    cv::Point2i currP(u,v);
+//                    cv::Point2f p2(u + 20*fx.at<float>(currP), v + 20*fy.at<float>(currP));
+//                    cv::line(hm, p1, p2, cv::Scalar(0,1,0));
+//                }
+//            }
+
+//            cv::imshow("win", hm);
+//            cv::waitKey(15);
+//        }
+
+/////////////////

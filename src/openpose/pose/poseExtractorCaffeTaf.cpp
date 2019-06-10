@@ -427,15 +427,13 @@ namespace op
                 const auto caffeTafBlobs = arraySharedToPtr3(mTrackCurrTafBlobs);
                 spResizeAndMergeCaffe->Forward(caffeTafBlobs, {spTafsBlob.get()});
 
-                    cv::Mat mx = mat_from_blob2(spTafsBlob, 0);
-                    mx = cv::abs(mx);
-                    cv::Mat my = mat_from_blob2(spTafsBlob, 1);
-                    my = cv::abs(my);
-                    cv::Mat m = mx+my;
-                    cv::imshow("win", m);
-                    cv::waitKey(15);
-
-
+//                    cv::Mat mx = mat_from_blob2(spTafsBlob, 0);
+//                    mx = cv::abs(mx);
+//                    cv::Mat my = mat_from_blob2(spTafsBlob, 1);
+//                    my = cv::abs(my);
+//                    cv::Mat m = mx+my;
+//                    cv::imshow("win", m);
+//                    cv::waitKey(15);
 
                 // 5. CUDA sanity check
                 #ifdef USE_CUDA
