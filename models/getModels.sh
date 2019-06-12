@@ -5,6 +5,11 @@ POSE_FOLDER="pose/"
 FACE_FOLDER="face/"
 HAND_FOLDER="hand/"
 
+# Body (BODY_21A_VIDEO)
+BODY_21_FOLDER=${POSE_FOLDER}"body_21a_video/"
+BODY_21_MODEL=${BODY_21_FOLDER}"pose_iter_264000.caffemodel"
+wget -c ${OPENPOSE_URL}${BODY_21_MODEL} -P ${BODY_21_FOLDER}
+
 # ------------------------- POSE (BODY+FOOT) MODELS -------------------------
 # Body (BODY_25)
 BODY_25_FOLDER=${POSE_FOLDER}"body_25/"
