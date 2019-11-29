@@ -1,0 +1,19 @@
+# WORKING COMMAND
+changed the name of the folder and the prototxt file inside and it worked!!!!!
+ran: 
+build/examples/openpose/openpose.bin --model_pose BODY_21A --tracking 1 --render_pose 1 --write_video <VideoName> --write_json output/ --video <VideoName> 
+
+
+# COMMAND FOR SERVERS
+build/examples/openpose/openpose.bin --model_pose BODY_21A --tracking 1 --render_pose 1 --write_video <VideoName> --write_json output/ --video <VideoName> --display 0
+
+i.e. 
+./build/examples/openpose/openpose.bin --video video/ufc.mp4 --write_video output/ufc.mp4 --write_json output/ --model_pose BODY_25 --render_pose 2 --tracking 0 --number_people_max 1 --display 0
+
+
+# ONlY SHOWS ONE PERSON
+
+./build/examples/openpose/openpose.bin --video <VideoName> --write_video output/makeithot.avi --write_json output/ --model_pose BODY_25 --render_pose 2 --tracking 0 --number_people_max 1 
+`--number_people_max 1` flag when using the `--tracking` flag
+ only shows 1 person, doesn't print the person_ID
+

@@ -1,5 +1,4 @@
-# INSTALL SCRIPT FOR OPENPOSE
-
+# OP INSTALL SCRIPT
 #cmake
 
 sudo apt purge cmake-qt-gui
@@ -50,4 +49,4 @@ git clone https://github.com/CMU-Perceptual-Computing-Lab/caffe.git
 
 sudo apt-get install libopencv-dev
 
-
+`--number_people_max 1` flag when using the `--tracking` flag
