@@ -1,0 +1,53 @@
+# INSTALL SCRIPT FOR OPENPOSE
+
+#cmake
+
+sudo apt purge cmake-qt-gui
+
+sudo apt-get install qtbase5-dev
+
+sudo apt-get install libssl-dev
+
+./configure --qt-gui
+
+sudo ./bootstrap && sudo make -j8 && sudo make install -j8
+
+#cuda
+
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-ubuntu1604.pin
+
+sudo mv cuda-ubuntu1604.pin /etc/apt/preferences.d/cuda-repository-pin-600
+
+wget http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda-repo-ubuntu1604-10-1-local-10.1.243-418.87.00_1.0-1_amd64.deb
+
+sudo dpkg -i cuda-repo-ubuntu1604-10-1-local-10.1.243-418.87.00_1.0-1_amd64.deb
+
+sudo apt-key add /var/cuda-repo-10-1-local-10.1.243-418.87.00/7fa2af80.pub
+
+sudo apt-get update
+
+sudo apt-get -y install cuda
+
+#cudnn
+# file name : cudnn-10.1-linux-x64-v7.5.1.10.tgz
+
+
+sudo cp  '/home/datahinge-lin-1/Downloads/cuda/include/cudnn.h' '/usr/local/cuda/include/' 
+
+sudo cp -r '/home/datahinge-lin-1/Downloads/cuda/lib64/.' '/usr/local/cuda/lib64/' 
+
+
+#caffe dependencies
+
+sudo bash ./scripts/ubuntu/install_deps.sh
+
+
+cd 3rdparty
+
+git clone https://github.com/CMU-Perceptual-Computing-Lab/caffe.git
+
+#openCV
+
+sudo apt-get install libopencv-dev
+
+
