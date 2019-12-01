@@ -32,7 +32,7 @@ namespace op
             log("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             // Body pose
             if (poseModeString == "BODY_25")
-                return PoseModel::BODY_25;
+                return PoseModel::BODY_21A;
             else if (poseModeString == "COCO")
                 return PoseModel::COCO_18;
             else if (poseModeString == "MPI")
