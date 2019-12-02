@@ -24,7 +24,7 @@ docker run -it --rm --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=0 cwaffles/openpo
 
 # update openpose on docker container
 git fetch origin
-
+git pull
 # Add remote repo
 git remote add brody-op https://github.com/BroderickHigby/openpose.git
 git fetch brody-op
