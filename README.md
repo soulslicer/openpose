@@ -44,7 +44,9 @@ apt-get install ffmpeg
 
 ## Run Inference 
 
-Upload video to `./video` folder via GitHub, Docker connect, or wget
+Upload video to `./video` folder via GitHub, Docker connect, or wget. Example videos already in the repo.
+
+For help on flags, type: `build/examples/openpose/openpose.bin --help`
 ### For local machines
 `build/examples/openpose/openpose.bin --model_pose BODY_25 --tracking 1 --render_pose 1 --write_video <VideoName> --write_json output/ --video <VideoName> `
 
