@@ -209,15 +209,15 @@ namespace op
         for (auto& kv : to_update_set) {
             auto mostCommonIdx = kv.first; 
             auto& item = kv.second;
-            auto& highestIDused = std::vector<int>();
+            //auto& highestIDused = std::vector<int>();
 
             if(item.size() > 1){
                 std::sort(item.begin(), item.end(), pairSort);
                 auto best_item_index = item.back().second;
                 auto best_person_kp = getPerson(poseKeypoints, best_item_index);
-                if mostCommonIdx >= highestIDused
-                    highestIDused = mostCommonIdx;
-                    mostCommonIdx = mostCommonIdx + 1;
+              //  if mostCommonIdx >= highestIDused
+               //     highestIDused = mostCommonIdx;
+               //     mostCommonIdx = mostCommonIdx + 1;
 
 
                 updateTracklet(mostCommonIdx, best_person_kp);
