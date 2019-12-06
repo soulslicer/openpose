@@ -4,7 +4,7 @@
 \red21\green23\blue26;\red87\green96\blue106;\red0\green0\blue0;\red86\green32\blue244;}
 {\*\expandedcolortbl;;\cssrgb\c14118\c16078\c18039;\cssrgb\c100000\c100000\c100000;\cssrgb\c1176\c18431\c38431;
 \cssrgb\c10588\c12157\c13725\c29804;\cssrgb\c41569\c45098\c49020;\csgray\c0;\cssrgb\c41680\c25960\c96645;}
-\margl1440\margr1440\vieww18220\viewh14080\viewkind0
+\margl1440\margr1440\vieww19600\viewh13800\viewkind0
 \deftab720
 
 \itap1\trowd \taflags1 \trgaph108\trleft-108 \trbrdrt\brdrnil \trbrdrl\brdrnil \trbrdrr\brdrnil 
@@ -13,6 +13,7 @@
 \pard\intbl\itap1\pardeftab720\partightenfactor0
 
 \f0\fs24 \cf2 \cb3 \expnd0\expndtw0\kerning0
+# From getModels.sh\
 OPENPOSE_URL=\cf4 "http://posefs1.perception.cs.cmu.edu/OpenPose/models/"\cf2 \cb1 \cell 
 \pard\intbl\itap1\cell \row
 
@@ -86,7 +87,7 @@ OPENPOSE_URL=\cf4 "http://posefs1.perception.cs.cmu.edu/OpenPose/models/"\cf2 \c
 http://posefs1.perception.cs.cmu.edu/OpenPose/models/pose/pose_iter_264000.caffemodel/body_21a_video/\
 \
 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
 
 \fs38 \cf7 \cb1 \kerning1\expnd0\expndtw0 \CocoaLigature0 Changed body_21 to body_21a_video in poseParameters.cpp
 \fs22 \
@@ -95,7 +96,7 @@ http://posefs1.perception.cs.cmu.edu/OpenPose/models/pose/pose_iter_264000.caffe
 \fs24 \cf4 \cb3 \expnd0\expndtw0\kerning0
 \CocoaLigature1 \
 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
 
 \f1\b\fs22 \cf7 \cb1 \kerning1\expnd0\expndtw0 \CocoaLigature0 root@cab696cb6691:/openpose# ./build/examples/openpose/openpose.bin --video makeithot.mp4 --write_video output/makeithot.avi --write_json output/  --render_pose 2 --tracking 0 --number_people_max 1 --model_pose BODY_21A --logging_level 0 --disable_multi_thread --display 0 --write_json output/
 \f0\b0 \
@@ -120,14 +121,15 @@ Coming from:\
 root@cab696cb6691:/openpose# git commit -m "updated to openpose/staf \
 \
 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
 
 \fs38 Changed body_21a_video folder to body_21 
 \fs22 \
-\
-root@cab696cb6691:/openpose# ls models/pose/\
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+```\
+ls models/pose/\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
 
-\f1\b \cf8 body_21a_video
+\f1\b \cf8 # body_21a_video
 \f0\b0 \cf7   
 \f1\b \cf8 body_25
 \f0\b0 \cf7   
@@ -135,23 +137,19 @@ root@cab696cb6691:/openpose# ls models/pose/\
 \f0\b0 \cf7   
 \f1\b \cf8 mpi
 \f0\b0 \cf7 \
-root@cab696cb6691:/openpose# ls models/pose/body_21a_video/\
+ls models/pose/body_21a_video/\
 pose_deploy.prototxt  pose_iter_264000.caffemodel\
-root@cab696cb6691:/openpose# vim src/openpose/pose/poseParameters.cpp\
-root@cab696cb6691:/openpose# mv models/pose/body_21a_video/ models/pose/body_21a/\
-root@cab696cb6691:/openpose# ls models/pose/\
+vim src/openpose/pose/poseParameters.cpp\
+ mv models/pose/body_21a_video/ models/pose/body_21a/\
+ ls models/pose/\
+```\
 
-\f1\b \cf8 body_21a
-\f0\b0 \cf7   
-\f1\b \cf8 body_25
-\f0\b0 \cf7   
-\f1\b \cf8 coco
-\f0\b0 \cf7   
-\f1\b \cf8 mpi
-\f0\b0 \cf7 \
-root@cab696cb6691:/openpose# ./build/examples/openpose/openpose.bin --video makeithot.mp4 --write_video output/makeithot.avi --write_json output/  --render_pose 2 --tracking 0 --number_people_max 1 --model_pose BODY_21A --logging_level 0 --disable_multi_thread --display 0 --write_json output/\
-Starting OpenPose demo...\
-Configuring OpenPose...\
+\f1\b \cf8 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
+
+\f0\b0 \cf7 `./build/examples/openpose/openpose.bin --video makeithot.mp4 --write_video output/makeithot.avi --write_json output/  --render_pose 2 --tracking 0 --number_people_max 1 --model_pose BODY_21A --logging_level 0 --disable_multi_thread --display 0 --write_json output/`\
+\
+\
 /openpose/src/openpose/utilities/flagsToOpenPose.cpp:flagsToProducer():196\
 /openpose/src/openpose/utilities/flagsToOpenPose.cpp:flagsToProducerType():159\
 /openpose/src/openpose/utilities/flagsToOpenPose.cpp:flagsToPoseMode():11\
@@ -172,6 +170,6 @@ root@cab696cb6691:/openpose# \
 \
 \
 \
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardeftab720\pardirnatural\partightenfactor0
 
 \fs28 Changed the flags to always return BODY_21A when BODY_25 is input}

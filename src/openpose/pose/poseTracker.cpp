@@ -47,6 +47,8 @@ namespace op
         return std::pair<int, int>(itm, cnt);
     }
 
+
+
     op::Array<float> getPerson(op::Array<float>& poseKeypoints, int pid){
         return op::Array<float>({poseKeypoints.getSize()[1], poseKeypoints.getSize()[2]}, poseKeypoints.getPtr() + pid*poseKeypoints.getSize()[1]*poseKeypoints.getSize()[2]);
     }
@@ -205,12 +207,19 @@ namespace op
 
         // Global Update
         for (auto& kv : to_update_set) {
-            auto mostCommonIdx = kv.first;
+            auto mostCommonIdx = kv.first; 
             auto& item = kv.second;
+            auto& highestIDused = std::vector<int>();
+
             if(item.size() > 1){
                 std::sort(item.begin(), item.end(), pairSort);
                 auto best_item_index = item.back().second;
                 auto best_person_kp = getPerson(poseKeypoints, best_item_index);
+                if mostCommonIdx >= highestIDused
+                    highestIDused = mostCommonIdx;
+                    mostCommonIdx = mostCommonIdx + 1;
+
+
                 updateTracklet(mostCommonIdx, best_person_kp);
                 if(debug) std::cout << "Update : " << best_item_index << " into tracklet " << mostCommonIdx << std::endl;
                 tid_updated.emplace_back(mostCommonIdx);
