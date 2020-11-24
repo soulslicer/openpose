@@ -14,8 +14,12 @@ if(CUDNN_INCLUDE AND CUDNN_LIBRARY)
     set(HAVE_CUDNN  TRUE)
     set(CUDNN_FOUND TRUE)
 
-    file(READ ${CUDNN_INCLUDE}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
-
+    if(EXISTS "${CUDNN_INCLUDE}/cudnn_version.h")
+        file(READ ${CUDNN_INCLUDE}/cudnn_version.h CUDNN_VERSION_FILE_CONTENTS)
+    else()
+        file(READ ${CUDNN_INCLUDE}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
+    endif()
+    
     # cuDNN v3 and beyond
     string(REGEX MATCH "define CUDNN_MAJOR * +([0-9]+)"
            CUDNN_VERSION_MAJOR "${CUDNN_VERSION_FILE_CONTENTS}")
