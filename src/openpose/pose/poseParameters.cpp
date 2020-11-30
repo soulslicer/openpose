@@ -420,6 +420,7 @@ namespace op
         "pose/body_19e/pose_deploy.prototxt",
         "pose/body_25b/pose_deploy.prototxt",
         "pose/body_135/pose_deploy.prototxt",
+        "pose/body_21a_video/pose_deploy.prototxt",
         "pose/body_21a/pose_deploy.prototxt",
     };
     const std::array<std::string, (int)PoseModel::Size> POSE_TRAINED_MODEL{
@@ -438,6 +439,7 @@ namespace op
         "pose/body_19e/pose_iter_XXXXXX.caffemodel",
         "pose/body_25b/pose_iter_XXXXXX.caffemodel",
         "pose/body_135/pose_iter_XXXXXX.caffemodel",
+        "pose/body_21a_video/pose_iter_XXXXXX.caffemodel",
         "pose/body_21a/pose_iter_XXXXXX.caffemodel",
     };
 

@@ -11,7 +11,7 @@ namespace op
         /**
          * COCO + 6 foot keypoints + neck + lower abs model, with 25+1 components (see poseParameters.hpp for details).
          */
-        BODY_25 = 0,
+        BODY_21A = 0,
         COCO_18,        /**< COCO model + neck, with 18+1 components (see poseParameters.hpp for details). */
         MPI_15,         /**< MPI model, with 15+1 components (see poseParameters.hpp for details). */
         MPI_15_4,       /**< Variation of the MPI model, reduced number of CNN stages to 4: faster but less accurate.*/
@@ -26,7 +26,7 @@ namespace op
         BODY_19E,       /**< Experimental. Do not use. */
         BODY_25B,       /**< Experimental. Do not use. */
         BODY_135,       /**< Experimental. Do not use. */
-        BODY_21A,       /**< Experimental. Do not use. */
+        BODY_25,       /**< Experimental. Do not use. */
         Size,
     };
 

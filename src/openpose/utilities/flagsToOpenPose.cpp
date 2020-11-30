@@ -32,7 +32,7 @@ namespace op
             log("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             // Body pose
             if (poseModeString == "BODY_25")
-                return PoseModel::BODY_25;
+                return PoseModel::BODY_21A; // changed from BODY_25:
             else if (poseModeString == "COCO")
                 return PoseModel::COCO_18;
             else if (poseModeString == "MPI")
@@ -67,12 +67,12 @@ namespace op
             // else
             error("String (`" + poseModeString + "`) does not correspond to any model (BODY_25, COCO, MPI,"
                   " MPI_4_layers).", __LINE__, __FUNCTION__, __FILE__);
-            return PoseModel::BODY_25;
+            return PoseModel::BODY_21A;
         }
         catch (const std::exception& e)
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-            return PoseModel::BODY_25;
+            return PoseModel::BODY_21A;
         }
     }
 
