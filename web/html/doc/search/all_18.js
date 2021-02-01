@@ -1,0 +1,23 @@
+var searchData=
+[
+  ['ucharcvmattofloatptr_988',['uCharCvMatToFloatPtr',['../namespaceop.html#a532d08cb2ef011f9cad29c01d3431d6e',1,'op']]],
+  ['ucharimagecast_989',['uCharImageCast',['../namespaceop.html#a6aeab543a61ef23ed58a6e29401424ae',1,'op']]],
+  ['ucharround_990',['uCharRound',['../namespaceop.html#a61240e5fbd4ea84a2cfdc89407bcb1ae',1,'op']]],
+  ['udphost_991',['udpHost',['../structop_1_1_wrapper_struct_output.html#a17c339a9c6c97e1dfdb29b3af0bdab77',1,'op::WrapperStructOutput']]],
+  ['udpport_992',['udpPort',['../structop_1_1_wrapper_struct_output.html#a873bcabae9cf7039830cae565009ce2b',1,'op::WrapperStructOutput']]],
+  ['udpsender_993',['UdpSender',['../classop_1_1_udp_sender.html',1,'op::UdpSender'],['../classop_1_1_udp_sender.html#a80fb12e5d4357e5dbb37c8a7b660c67c',1,'op::UdpSender::UdpSender()']]],
+  ['udpsender_2ehpp_994',['udpSender.hpp',['../udp_sender_8hpp.html',1,'']]],
+  ['uintround_995',['uIntRound',['../namespaceop.html#a8525e440d6ac1b558e72637dc4f4e3c4',1,'op']]],
+  ['ulonglonground_996',['uLongLongRound',['../namespaceop.html#a757a5cc88734e7be9e910e7d8213c282',1,'op']]],
+  ['ulonground_997',['ulongRound',['../namespaceop.html#aaafe2e235a1a3a146bb026b71c521c7b',1,'op']]],
+  ['undistort_998',['undistort',['../classop_1_1_camera_parameter_reader.html#aee02b82d0c5fd51dd3ba5a2267f7b370',1,'op::CameraParameterReader']]],
+  ['undistortimage_999',['undistortImage',['../structop_1_1_wrapper_struct_input.html#ae7183e10862dbdbed422f042f1a71ed1',1,'op::WrapperStructInput']]],
+  ['unitybinding_2ehpp_1000',['unityBinding.hpp',['../unity_binding_8hpp.html',1,'']]],
+  ['unrollarraytoucharcvmat_1001',['unrollArrayToUCharCvMat',['../namespaceop.html#a1910d9f194831570be6ffe683209e7b3',1,'op']]],
+  ['unsignedchar_1002',['UnsignedChar',['../namespaceop.html#af72fe4ed32846c12f41b049d3d0e1bdaaa93f121640d609f8772397a0f40f40d6',1,'op']]],
+  ['unused_1003',['UNUSED',['../macros_8hpp.html#af57a843cfdae82e064838c20b3b54851',1,'macros.hpp']]],
+  ['update_1004',['Update',['../classop_1_1_array_cpu_gpu.html#af9f32307732772c708ff45c52b4e7dd0',1,'op::ArrayCpuGpu']]],
+  ['update_1005',['update',['../classop_1_1_gui3_d.html#af10162684889706894f13a308970ba32',1,'op::Gui3D::update()'],['../classop_1_1_gui.html#a8e9a67dd507598654a5db06273d50c94',1,'op::Gui::update()']]],
+  ['updatetracker_1006',['updateTracker',['../classop_1_1_hand_detector.html#a58513169f01ab7c705979f1f2a88b571',1,'op::HandDetector']]],
+  ['upsamplingratio_1007',['upsamplingRatio',['../structop_1_1_wrapper_struct_pose.html#a25ee056d914f1cdc990a8a7956810313',1,'op::WrapperStructPose']]]
+];
