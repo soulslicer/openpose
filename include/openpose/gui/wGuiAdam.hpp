@@ -68,14 +68,14 @@ namespace op
             if (tDatums != nullptr)
             {
                 // Debugging log
-                dLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLogIfDebug("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
                 // Profiling speed
                 const auto profilerKey = Profiler::timerInit(__LINE__, __FUNCTION__, __FILE__);
                 // Update cvMat & keypoints
                 if (!tDatums->empty())
                 {
                     // Update cvMat
-                    std::vector<cv::Mat> cvOutputDatas;
+                    std::vector<Mat> cvOutputDatas;
                     for (auto& tDatum : *tDatums)
                         cvOutputDatas.emplace_back(tDatumPtr->cvOutputData);
                     spGuiAdam->setImage(cvOutputDatas);
@@ -97,7 +97,7 @@ namespace op
                     Profiler::printAveragedTimeMsOnIterationX(profilerKey, __LINE__, __FUNCTION__, __FILE__);
                 }
                 // Debugging log
-                dLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLogIfDebug("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             }
         }
         catch (const std::exception& e)

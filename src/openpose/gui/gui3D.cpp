@@ -1,4 +1,5 @@
-﻿#include <atomic>
+﻿#include <openpose/gui/gui3D.hpp>
+#include <atomic>
 #include <mutex>
 #include <stdio.h>
 #ifdef USE_3D_RENDERER
@@ -11,7 +12,6 @@
 #include <openpose/hand/handParameters.hpp>
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/utilities/keypoint.hpp>
-#include <openpose/gui/gui3D.hpp>
 
 namespace op
 {
@@ -303,7 +303,7 @@ namespace op
                 else  //zoom out
                     gGViewDistance -= 10 * gScaleForMouseMotion;
                 if (LOG_VERBOSE_3D_RENDERER)
-                    log("gGViewDistance: " + std::to_string(gGViewDistance));
+                    opLog("gGViewDistance: " + std::to_string(gGViewDistance));
             }
             else
             {
@@ -319,7 +319,7 @@ namespace op
                         gCameraMode = CameraMode::CAM_ROTATE;
                 }
                 if (LOG_VERBOSE_3D_RENDERER)
-                    log("Clicked: [" + std::to_string(gXClick) + "," + std::to_string(gYClick) + "]");
+                    opLog("Clicked: [" + std::to_string(gXClick) + "," + std::to_string(gYClick) + "]");
             }
             glutPostRedisplay();
         }
@@ -354,11 +354,11 @@ namespace op
                 glutPostRedisplay();
                 if (LOG_VERBOSE_3D_RENDERER)
                 {
-                    log("gMouseXRotateDeg = " + std::to_string(gMouseXRotateDeg));
-                    log("gMouseYRotateDeg = " + std::to_string(gMouseYRotateDeg));
-                    log("gMouseXPan = " + std::to_string(gMouseXPan));
-                    log("gMouseYPan = " + std::to_string(gMouseYPan));
-                    log("gMouseZPan = " + std::to_string(gMouseZPan));
+                    opLog("gMouseXRotateDeg = " + std::to_string(gMouseXRotateDeg));
+                    opLog("gMouseYRotateDeg = " + std::to_string(gMouseYRotateDeg));
+                    opLog("gMouseXPan = " + std::to_string(gMouseXPan));
+                    opLog("gMouseYPan = " + std::to_string(gMouseYPan));
+                    opLog("gMouseZPan = " + std::to_string(gMouseZPan));
                 }
             }
         }
@@ -484,7 +484,7 @@ namespace op
                              const Array<float>& leftHandKeypoints3D, const Array<float>& rightHandKeypoints3D)
     {
         try
-        {   
+        {
             // 3-D rendering
             #ifdef USE_3D_RENDERER
                 if (mDisplayMode == DisplayMode::DisplayAll || mDisplayMode == DisplayMode::Display3D)
@@ -556,34 +556,35 @@ namespace op
         }
     }
 
-    cv::Mat Gui3D::readCvMat()
+    Matrix Gui3D::readCvMat()
     {
         try
         {
             // 3-D rendering
-            cv::Mat image;
+            cv::Mat cvImage;
             #ifdef USE_3D_RENDERER
                 if (mDisplayMode == DisplayMode::DisplayAll || mDisplayMode == DisplayMode::Display3D)
                 {
                     // Save/display 3D display in OpenCV window
                     if (mCopyGlToCvMat)
                     {
-                        image = cv::Mat(WINDOW_HEIGHT, WINDOW_WIDTH, CV_8UC3);
+                        cvImage = cv::Mat(WINDOW_HEIGHT, WINDOW_WIDTH, CV_8UC3);
                         #ifdef _WIN32
-                            glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_BGR_EXT, GL_UNSIGNED_BYTE, image.data);
+                            glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_BGR_EXT, GL_UNSIGNED_BYTE, cvImage.data);
                         #else
-                            glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_BGR, GL_UNSIGNED_BYTE, image.data);
+                            glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_BGR, GL_UNSIGNED_BYTE, cvImage.data);
                         #endif
-                        cv::flip(image, image, 0);
+                        cv::flip(cvImage, cvImage, 0);
                     }
                 }
             #endif
+            Matrix image = OP_CV2OPMAT(cvImage);
             return image;
         }
         catch (const std::exception& e)
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-            return cv::Mat();
+            return Matrix();
         }
     }
 }

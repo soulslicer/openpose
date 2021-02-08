@@ -1,2 +1,0 @@
-Version wget-1.19.1-win64 from:
-- https://eternallybored.org/misc/wget/

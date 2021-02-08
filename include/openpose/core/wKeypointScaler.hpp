@@ -56,7 +56,7 @@ namespace op
             if (checkNoNullNorEmpty(tDatums))
             {
                 // Debugging log
-                dLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLogIfDebug("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
                 // Profiling speed
                 const auto profilerKey = Profiler::timerInit(__LINE__, __FUNCTION__, __FILE__);
                 // Rescale pose data
@@ -67,17 +67,17 @@ namespace op
                         tDatumPtr->handKeypoints[1], tDatumPtr->faceKeypoints};
                     spKeypointScaler->scale(
                         arraysToScale, tDatumPtr->scaleInputToOutput, tDatumPtr->scaleNetToOutput,
-                        Point<int>{tDatumPtr->cvInputData.cols, tDatumPtr->cvInputData.rows});
+                        Point<int>{tDatumPtr->cvInputData.cols(), tDatumPtr->cvInputData.rows()});
                     // Rescale part candidates
                     spKeypointScaler->scale(
                         tDatumPtr->poseCandidates, tDatumPtr->scaleInputToOutput, tDatumPtr->scaleNetToOutput,
-                        Point<int>{tDatumPtr->cvInputData.cols, tDatumPtr->cvInputData.rows});
+                        Point<int>{tDatumPtr->cvInputData.cols(), tDatumPtr->cvInputData.rows()});
                 }
                 // Profiling speed
                 Profiler::timerEnd(profilerKey);
                 Profiler::printAveragedTimeMsOnIterationX(profilerKey, __LINE__, __FUNCTION__, __FILE__);
                 // Debugging log
-                dLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLogIfDebug("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             }
         }
         catch (const std::exception& e)

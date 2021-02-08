@@ -1,9 +1,10 @@
+#include <openpose/producer/producer.hpp>
 #include <openpose/producer/headers.hpp>
 #include <openpose/utilities/check.hpp>
 #include <openpose/utilities/fastMath.hpp>
 #include <openpose/utilities/fileSystem.hpp>
 #include <openpose/utilities/openCv.hpp>
-#include <openpose/producer/producer.hpp>
+#include <openpose_private/utilities/openCvMultiversionHeaders.hpp>
 
 namespace op
 {
@@ -83,26 +84,26 @@ namespace op
 
     Producer::~Producer(){}
 
-    cv::Mat Producer::getFrame()
+    Matrix Producer::getFrame()
     {
         try
         {
             // Return first element from getFrames (if any)
             const auto frames = getFrames();
-            return (frames.empty() ? cv::Mat() : frames[0]);
+            return (frames.empty() ? Matrix() : frames[0]);
         }
         catch (const std::exception& e)
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-            return cv::Mat();
+            return Matrix();
         }
     }
 
-    std::vector<cv::Mat> Producer::getFrames()
+    std::vector<Matrix> Producer::getFrames()
     {
         try
         {
-            std::vector<cv::Mat> frames;
+            std::vector<Matrix> frames;
 
             if (isOpened())
             {
@@ -144,7 +145,7 @@ namespace op
         }
     }
 
-    std::vector<cv::Mat> Producer::getCameraMatrices()
+    std::vector<Matrix> Producer::getCameraMatrices()
     {
         try
         {
@@ -157,7 +158,7 @@ namespace op
         }
     }
 
-    std::vector<cv::Mat> Producer::getCameraExtrinsics()
+    std::vector<Matrix> Producer::getCameraExtrinsics()
     {
         try
         {
@@ -170,7 +171,7 @@ namespace op
         }
     }
 
-    std::vector<cv::Mat> Producer::getCameraIntrinsics()
+    std::vector<Matrix> Producer::getCameraIntrinsics()
     {
         try
         {
@@ -187,24 +188,26 @@ namespace op
     {
         try
         {
-            check(fpsMode == ProducerFpsMode::RetrievalFps || fpsMode == ProducerFpsMode::OriginalFps,
-                  "Unknown ProducerFpsMode.", __LINE__, __FUNCTION__, __FILE__);
+            checkBool(
+                fpsMode == ProducerFpsMode::RetrievalFps || fpsMode == ProducerFpsMode::OriginalFps,
+                "Unknown ProducerFpsMode.", __LINE__, __FUNCTION__, __FILE__);
             // For webcam, ProducerFpsMode::OriginalFps == ProducerFpsMode::RetrievalFps, since the internal webcam
             // cache will overwrite frames after it gets full
             if (mType == ProducerType::Webcam)
             {
                 mProducerFpsMode = {ProducerFpsMode::RetrievalFps};
                 if (fpsMode == ProducerFpsMode::OriginalFps)
-                    log("The producer fps mode set to `OriginalFps` (flag `process_real_time` on the demo) is not"
+                    opLog("The producer fps mode set to `OriginalFps` (flag `process_real_time` on the demo) is not"
                         " necessary, it is already assumed for webcam.",
                         Priority::Max, __LINE__, __FUNCTION__, __FILE__);
             }
             // If no webcam
             else
             {
-                check(fpsMode == ProducerFpsMode::RetrievalFps || get(CV_CAP_PROP_FPS) > 0,
-                      "Selected to keep the source fps but get(CV_CAP_PROP_FPS) <= 0, i.e., the source did not set"
-                      " its fps property.", __LINE__, __FUNCTION__, __FILE__);
+                checkBool(
+                    fpsMode == ProducerFpsMode::RetrievalFps || get(CV_CAP_PROP_FPS) > 0,
+                    "Selected to keep the source fps but get(CV_CAP_PROP_FPS) <= 0, i.e., the source did not set"
+                    " its fps property.", __LINE__, __FUNCTION__, __FILE__);
                 mProducerFpsMode = {fpsMode};
             }
             reset(mNumberEmptyFrames, mTrackingFps);
@@ -243,15 +246,17 @@ namespace op
                 // Individual checks
                 if (property == ProducerProperty::AutoRepeat)
                 {
-                    check(value != 1. || (mType == ProducerType::ImageDirectory || mType == ProducerType::Video),
-                          "ProducerProperty::AutoRepeat only implemented for ProducerType::ImageDirectory and"
-                          " Video.", __LINE__, __FUNCTION__, __FILE__);
+                    checkBool(
+                        value != 1. || (mType == ProducerType::ImageDirectory || mType == ProducerType::Video),
+                        "ProducerProperty::AutoRepeat only implemented for ProducerType::ImageDirectory and"
+                        " Video.", __LINE__, __FUNCTION__, __FILE__);
                 }
                 else if (property == ProducerProperty::Rotation)
                 {
-                    check(value == 0. || value == 90. || value == 180. || value == 270.,
-                          "ProducerProperty::Rotation only implemented for {0, 90, 180, 270} degrees.",
-                          __LINE__, __FUNCTION__, __FILE__);
+                    checkBool(
+                        value == 0. || value == 90. || value == 180. || value == 270.,
+                        "ProducerProperty::Rotation only implemented for {0, 90, 180, 270} degrees.",
+                        __LINE__, __FUNCTION__, __FILE__);
                 }
                 else if (property == ProducerProperty::FrameStep)
                 {
@@ -273,14 +278,14 @@ namespace op
         }
     }
 
-    void Producer::checkFrameIntegrity(cv::Mat& frame)
+    void Producer::checkFrameIntegrity(Matrix& frame)
     {
         try
         {
             // Process wrong frames
             if (frame.empty())
             {
-                log("Empty frame detected, frame number " + std::to_string((int)get(CV_CAP_PROP_POS_FRAMES))
+                opLog("Empty frame detected, frame number " + std::to_string((int)get(CV_CAP_PROP_POS_FRAMES))
                     + " of " + std::to_string((int)get(CV_CAP_PROP_FRAME_COUNT)) + ".",
                     Priority::Max, __LINE__, __FUNCTION__, __FILE__);
                 mNumberEmptyFrames++;
@@ -290,15 +295,15 @@ namespace op
                 mNumberEmptyFrames = 0;
 
                 if (mType != ProducerType::ImageDirectory
-                      && ((frame.cols != get(CV_CAP_PROP_FRAME_WIDTH) && get(CV_CAP_PROP_FRAME_WIDTH) > 0)
-                          || (frame.rows != get(CV_CAP_PROP_FRAME_HEIGHT) && get(CV_CAP_PROP_FRAME_HEIGHT) > 0)))
+                      && ((frame.cols() != get(CV_CAP_PROP_FRAME_WIDTH) && get(CV_CAP_PROP_FRAME_WIDTH) > 0)
+                          || (frame.rows() != get(CV_CAP_PROP_FRAME_HEIGHT) && get(CV_CAP_PROP_FRAME_HEIGHT) > 0)))
                 {
-                    log("Frame size changed. Returning empty frame.\nExpected vs. received sizes: "
+                    opLog("Frame size changed. Returning empty frame.\nExpected vs. received sizes: "
                         + std::to_string(positiveIntRound(get(CV_CAP_PROP_FRAME_WIDTH)))
                         + "x" + std::to_string(positiveIntRound(get(CV_CAP_PROP_FRAME_HEIGHT)))
-                        + " vs. " + std::to_string(frame.cols) + "x" + std::to_string(frame.rows),
+                        + " vs. " + std::to_string(frame.cols()) + "x" + std::to_string(frame.rows()),
                         Priority::Max, __LINE__, __FUNCTION__, __FILE__);
-                    frame = cv::Mat();
+                    frame = Matrix();
                 }
             }
         }
@@ -373,7 +378,7 @@ namespace op
                             }
                             else
                             {
-                                std::vector<cv::Mat> frames;
+                                std::vector<Matrix> frames;
                                 for (auto i = 0 ; i < std::floor(difference) ; i++)
                                     frames = getRawFrames();
                             }
@@ -403,14 +408,13 @@ namespace op
         }
     }
 
-    std::shared_ptr<Producer> createProducer(const ProducerType producerType, const std::string& producerString,
-                                             const Point<int>& cameraResolution,
-                                             const std::string& cameraParameterPath, const bool undistortImage,
-                                             const int numberViews)
+    std::shared_ptr<Producer> createProducer(
+        const ProducerType producerType, const std::string& producerString, const Point<int>& cameraResolution,
+        const std::string& cameraParameterPath, const bool undistortImage, const int numberViews)
     {
         try
         {
-            log("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+            opLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
 
             // Directory of images
             if (producerType == ProducerType::ImageDirectory)
@@ -452,7 +456,7 @@ namespace op
                             undistortImage);
                         if (webcamReader->isOpened())
                         {
-                            log("Auto-detecting camera index... Detected and opened camera " + std::to_string(index)
+                            opLog("Auto-detecting camera index... Detected and opened camera " + std::to_string(index)
                                 + ".", Priority::High);
                             return webcamReader;
                         }

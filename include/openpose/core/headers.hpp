@@ -13,11 +13,13 @@
 #include <openpose/core/keepTopNPeople.hpp>
 #include <openpose/core/keypointScaler.hpp>
 #include <openpose/core/macros.hpp>
+#include <openpose/core/matrix.hpp>
 #include <openpose/core/opOutputToCvMat.hpp>
 #include <openpose/core/point.hpp>
 #include <openpose/core/rectangle.hpp>
 #include <openpose/core/renderer.hpp>
 #include <openpose/core/scaleAndSizeExtractor.hpp>
+#include <openpose/core/string.hpp>
 #include <openpose/core/verbosePrinter.hpp>
 #include <openpose/core/wCvMatToOpInput.hpp>
 #include <openpose/core/wCvMatToOpOutput.hpp>

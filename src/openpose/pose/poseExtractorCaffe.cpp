@@ -1,15 +1,13 @@
+#include <openpose/pose/poseExtractorCaffe.hpp>
 #include <limits> // std::numeric_limits
 #include <openpose/gpu/cuda.hpp>
-#ifdef USE_CUDA
-    #include <openpose/gpu/cuda.hu>
-#endif
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/utilities/check.hpp>
 #include <openpose/utilities/fastMath.hpp>
 #include <openpose/utilities/keypoint.hpp>
 #include <openpose/utilities/openCv.hpp>
 #include <openpose/utilities/standard.hpp>
-#include <openpose/pose/poseExtractorCaffe.hpp>
+#include <openpose_private/utilities/openCvPrivate.hpp>
 
 namespace op
 {
@@ -171,7 +169,7 @@ namespace op
                 if (mEnableNet)
                 {
                     // Logging
-                    log("Starting initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                    opLog("Starting initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
                     // Initialize Caffe net
                     addCaffeNetOnThread(
                         spNets, spCaffeNetOutputBlobs, mPoseModel, mGpuId,
@@ -190,7 +188,7 @@ namespace op
                     cudaCheck(__LINE__, __FUNCTION__, __FILE__);
                 #endif
                 // Logging
-                log("Finished initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLog("Finished initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             #endif
         }
         catch (const std::exception& e)
@@ -293,7 +291,14 @@ namespace op
                 // 2. Resize heat maps + merge different scales
                 // ~5ms (GPU) / ~20ms (CPU)
                 const auto caffeNetOutputBlobs = arraySharedToPtr(spCaffeNetOutputBlobs);
-                const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
+                // Set and fill floatScaleRatios
+                    // Option 1/2 (warning for double-to-float conversion)
+                // const std::vector<float> floatScaleRatios(scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
+                    // Option 2/2
+                std::vector<float> floatScaleRatios;
+                std::for_each(
+                    scaleInputToNetInputs.begin(), scaleInputToNetInputs.end(),
+                    [&floatScaleRatios](const double value) { floatScaleRatios.emplace_back(float(value)); });
                 spResizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
                 spResizeAndMergeCaffe->Forward(caffeNetOutputBlobs, {spHeatMapsBlob.get()});
                 // Get scale net to output (i.e., image input)
@@ -327,10 +332,10 @@ namespace op
                 spBodyPartConnectorCaffe->Forward(
                     {spHeatMapsBlob.get(), spPeaksBlob.get()}, mPoseKeypoints, mPoseScores);
                 // OP_CUDA_PROFILE_END(timeNormalize4, 1e3, REPS);
-                // log("1(caf)= " + std::to_string(timeNormalize1) + "ms");
-                // log("2(res) = " + std::to_string(timeNormalize2) + " ms");
-                // log("3(nms) = " + std::to_string(timeNormalize3) + " ms");
-                // log("4(bpp) = " + std::to_string(timeNormalize4) + " ms");
+                // opLog("1(caf)= " + std::to_string(timeNormalize1) + "ms");
+                // opLog("2(res) = " + std::to_string(timeNormalize2) + " ms");
+                // opLog("3(nms) = " + std::to_string(timeNormalize3) + " ms");
+                // opLog("4(bpp) = " + std::to_string(timeNormalize4) + " ms");
                 // Re-run on each person
                 if (TOP_DOWN_REFINEMENT)
                 {
@@ -341,22 +346,22 @@ namespace op
                         const auto rectangleF = getKeypointsRectangle(mPoseKeypoints, person, nmsThreshold)
                                               / mScaleNetToOutput;
                         // Make rectangle bigger to make sure the whole body is inside
-                        cv::Rect cvRectangle{
+                        Rectangle<int> rectangleInt{
                             positiveIntRound(rectangleF.x - 0.2*rectangleF.width),
                             positiveIntRound(rectangleF.y - 0.2*rectangleF.height),
                             positiveIntRound(rectangleF.width*1.4),
                             positiveIntRound(rectangleF.height*1.4)
                         };
-                        keepRoiInside(cvRectangle, inputNetData[0].getSize(3), inputNetData[0].getSize(2));
+                        keepRoiInside(rectangleInt, inputNetData[0].getSize(3), inputNetData[0].getSize(2));
                         // Input size
                         // // Note: In order to preserve speed but maximize accuracy
                         // // If e.g. rectange = 10x1 and inputSize = 656x368 --> targetSize = 656x368
                         // // Note: If e.g. rectange = 1x10 and inputSize = 656x368 --> targetSize = 368x656
-                        // const auto width = ( ? cvRectangle.width : cvRectangle.height);
-                        // const auto height = (width == cvRectangle.width ? cvRectangle.height : cvRectangle.width);
+                        // const auto width = ( ? rectangleInt.width : rectangleInt.height);
+                        // const auto height = (width == rectangleInt.width ? rectangleInt.height : rectangleInt.width);
                         // const Point<int> inputSize{width, height};
                         // Note: If inputNetData.size = -1x368 --> TargetSize = 368x-1
-                        const Point<int> inputSizeInit{cvRectangle.width, cvRectangle.height};
+                        const Point<int> inputSizeInit{rectangleInt.width, rectangleInt.height};
                         // Target size
                         Point<int> targetSize;
                         // Optimal case (using training size)
@@ -370,7 +375,7 @@ namespace op
                             const auto maxSide = fastMin(
                                 368, fastMax(inputNetData[0].getSize(2), inputNetData[0].getSize(3)));
                             // Person bounding box is vertical
-                            if (cvRectangle.width < cvRectangle.height)
+                            if (rectangleInt.width < rectangleInt.height)
                                 targetSize = Point<int>{minSide, maxSide};
                             // Person bounding box is horizontal
                             else
@@ -388,17 +393,17 @@ namespace op
                         {
                             if (padding.x > 2) // 2 pixels as threshold
                             {
-                                cvRectangle.x -= padding.x/2;
-                                cvRectangle.width += padding.x;
+                                rectangleInt.x -= padding.x/2;
+                                rectangleInt.width += padding.x;
                             }
                             else if (padding.y > 2) // 2 pixels as threshold
                             {
-                                cvRectangle.y -= padding.y/2;
-                                cvRectangle.height += padding.y;
+                                rectangleInt.y -= padding.y/2;
+                                rectangleInt.height += padding.y;
                             }
-                            keepRoiInside(cvRectangle, inputNetData[0].getSize(3), inputNetData[0].getSize(2));
+                            keepRoiInside(rectangleInt, inputNetData[0].getSize(3), inputNetData[0].getSize(2));
                             scaleNetToRoi = resizeGetScaleFactor(
-                                Point<int>{cvRectangle.width, cvRectangle.height}, targetSize);
+                                Point<int>{rectangleInt.width, rectangleInt.height}, targetSize);
                         }
                         // No if scaleNetToRoi < 1 (image would be shrinked, so we assume best result already obtained)
                         if (scaleNetToRoi > 1)
@@ -413,7 +418,8 @@ namespace op
                                     inputNetData[0].getSize(2), inputNetData[0].getSize(3), CV_32FC1,
                                     inputNetData[0].getPseudoConstPtr() + c * areaInput);
                                 // Input image cropped
-                                const cv::Mat inputCvMat(wholeInputCvMat, cvRectangle);
+                                const cv::Mat inputCvMat(
+                                    wholeInputCvMat, cv::Rect{rectangleInt.x, rectangleInt.y, rectangleInt.width, rectangleInt.height});
                                 // Resize image for inputNetDataRoi
                                 cv::Mat resizedImageCvMat(
                                     inputNetDataRoi.getSize(2), inputNetDataRoi.getSize(3), CV_32FC1,
@@ -439,20 +445,20 @@ namespace op
                                     mUpsamplingRatio);
                             }
                             // 2. Resize heat maps + merge different scales
-                            const auto caffeNetOutputBlobs = arraySharedToPtr(caffeNetOutputBlob);
-                            // const std::vector<float> floatScaleRatios(
+                            const auto caffeNetOutputBlobsNew = arraySharedToPtr(caffeNetOutputBlob);
+                            // const std::vector<float> floatScaleRatiosNew(
                             //     scaleInputToNetInputs.begin(), scaleInputToNetInputs.end());
-                            const std::vector<float> floatScaleRatios{(float)scaleInputToNetInputs[0]};
-                            spResizeAndMergeCaffe->setScaleRatios(floatScaleRatios);
+                            const std::vector<float> floatScaleRatiosNew{(float)scaleInputToNetInputs[0]};
+                            spResizeAndMergeCaffe->setScaleRatios(floatScaleRatiosNew);
                             spResizeAndMergeCaffe->Forward(
-                                caffeNetOutputBlobs, {spHeatMapsBlob.get()});
+                                caffeNetOutputBlobsNew, {spHeatMapsBlob.get()});
                             // Get scale net to output (i.e., image input)
                             const auto scaleRoiToOutput = float(mScaleNetToOutput / scaleNetToRoi);
                             // 3. Get peaks by Non-Maximum Suppression
                             const auto nmsThresholdRefined = 0.02f;
                             spNmsCaffe->setThreshold(nmsThresholdRefined);
-                            const auto nmsOffset = float(0.5/double(scaleRoiToOutput));
-                            spNmsCaffe->setOffset(Point<float>{nmsOffset, nmsOffset});
+                            const auto nmsOffsetNew = float(0.5/double(scaleRoiToOutput));
+                            spNmsCaffe->setOffset(Point<float>{nmsOffsetNew, nmsOffsetNew});
                             spNmsCaffe->Forward({spHeatMapsBlob.get()}, {spPeaksBlob.get()});
                             // Define poseKeypoints
                             Array<float> poseKeypoints;
@@ -467,8 +473,8 @@ namespace op
                             if (!poseKeypoints.empty())
                             {
                                 // // Scale back keypoints
-                                const auto xOffset = float(cvRectangle.x*mScaleNetToOutput);
-                                const auto yOffset = float(cvRectangle.y*mScaleNetToOutput);
+                                const auto xOffset = float(rectangleInt.x*mScaleNetToOutput);
+                                const auto yOffset = float(rectangleInt.y*mScaleNetToOutput);
                                 scaleKeypoints2d(poseKeypoints, 1.f, 1.f, xOffset, yOffset);
                                 // Re-assign person back
                                 // // Option a) Just use biggest person (simplest but fails with crowded people)

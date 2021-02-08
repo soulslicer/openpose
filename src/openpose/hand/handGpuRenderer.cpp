@@ -1,10 +1,10 @@
+#include <openpose/hand/handGpuRenderer.hpp>
 #ifdef USE_CUDA
     #include <cuda.h>
     #include <cuda_runtime_api.h>
 #endif
 #include <openpose/gpu/cuda.hpp>
 #include <openpose/hand/renderHand.hpp>
-#include <openpose/hand/handGpuRenderer.hpp>
 
 namespace op
 {
@@ -58,7 +58,7 @@ namespace op
     {
         try
         {
-            log("Starting initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+            opLog("Starting initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             // GPU memory allocation for rendering
             #ifdef USE_CUDA
                 cudaMalloc((void**)(&pGpuHand), HAND_MAX_HANDS * HAND_NUMBER_PARTS * 3 * sizeof(float));
@@ -66,7 +66,7 @@ namespace op
                 cudaMalloc((void**)&pMinPtr, sizeof(float) * 2 * HAND_MAX_HANDS);
                 cudaMalloc((void**)&pScalePtr, sizeof(float) * HAND_MAX_HANDS);
             #endif
-            log("Finished initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+            opLog("Finished initialization on thread.", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
         }
         catch (const std::exception& e)
         {
@@ -84,7 +84,7 @@ namespace op
                 // I prefer std::round(T&) over positiveIntRound(T) for std::atomic
                 const auto elementRendered = spElementToRender->load();
                 const auto numberPeople = handKeypoints[0].getSize(0);
-                const Point<int> frameSize{outputData.getSize(1), outputData.getSize(0)};
+                const Point<unsigned int> frameSize{(unsigned int)outputData.getSize(1), (unsigned int)outputData.getSize(0)};
                 // GPU rendering
                 if (numberPeople > 0 && elementRendered == 0)
                 {

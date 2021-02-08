@@ -1,5 +1,5 @@
-#include <openpose/utilities/errorAndLog.hpp>
 #include <openpose/core/datum.hpp>
+#include <openpose/utilities/errorAndLog.hpp>
 
 namespace op
 {
@@ -361,7 +361,7 @@ namespace op
                 #endif
             #endif
             // Return
-            return std::move(datum);
+            return datum;
         }
         catch (const std::exception& e)
         {

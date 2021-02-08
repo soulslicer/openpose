@@ -1,7 +1,7 @@
+#include <openpose/gui/gui.hpp>
 #include <opencv2/highgui/highgui.hpp> // cv::waitKey
 #include <openpose/filestream/fileStream.hpp>
 #include <openpose/utilities/check.hpp>
-#include <openpose/gui/gui.hpp>
 
 namespace op
 {
@@ -15,7 +15,7 @@ namespace op
             {
                 const auto fullScreen = false;
                 FrameDisplayer frameDisplayer{OPEN_POSE_NAME_AND_VERSION + " - GUI Help",
-                                              Point<int>{helpCvMat.cols, helpCvMat.rows}, fullScreen};
+                                              Point<int>{helpCvMat.cols(), helpCvMat.rows()}, fullScreen};
                 frameDisplayer.displayFrame(helpCvMat, 33);
             }
         }
@@ -114,7 +114,7 @@ namespace op
                         faceExtractorNet->setEnabled(!faceExtractorNet->getEnabled());
                     // Warning if not enabled
                     if (faceExtractorNets.empty())
-                        log("OpenPose must be run with face keypoint estimation enabled (`--face` flag).",
+                        opLog("OpenPose must be run with face keypoint estimation enabled (`--face` flag).",
                             Priority::High);
                 }
                 // Enable/disable hands
@@ -124,7 +124,7 @@ namespace op
                         handExtractorNet->setEnabled(!handExtractorNet->getEnabled());
                     // Warning if not enabled
                     if (handExtractorNets.empty())
-                        log("OpenPose must be run with face keypoint estimation enabled (`--hand` flag).",
+                        opLog("OpenPose must be run with face keypoint estimation enabled (`--hand` flag).",
                             Priority::High);
                 }
                 // Enable/disable extra rendering (3D/Adam), while keeping 2D rendering
@@ -247,11 +247,11 @@ namespace op
         mFrameDisplayer.initializationOnThread();
     }
 
-    void Gui::setImage(const cv::Mat& cvMatOutput)
+    void Gui::setImage(const Matrix& cvMatOutput)
     {
         try
         {
-            setImage(std::vector<cv::Mat>{cvMatOutput});
+            setImage(std::vector<Matrix>{cvMatOutput});
         }
         catch (const std::exception& e)
         {
@@ -259,7 +259,7 @@ namespace op
         }
     }
 
-    void Gui::setImage(const std::vector<cv::Mat>& cvMatOutputs)
+    void Gui::setImage(const std::vector<Matrix>& cvMatOutputs)
     {
         try
         {

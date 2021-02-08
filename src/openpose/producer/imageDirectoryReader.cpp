@@ -1,7 +1,8 @@
+#include <openpose/producer/imageDirectoryReader.hpp>
 #include <openpose/filestream/fileStream.hpp>
 #include <openpose/utilities/fastMath.hpp>
 #include <openpose/utilities/fileSystem.hpp>
-#include <openpose/producer/imageDirectoryReader.hpp>
+#include <openpose_private/utilities/openCvMultiversionHeaders.hpp>
 
 namespace op
 {
@@ -52,7 +53,7 @@ namespace op
         }
     }
 
-    cv::Mat ImageDirectoryReader::getRawFrame()
+    Matrix ImageDirectoryReader::getRawFrame()
     {
         try
         {
@@ -66,22 +67,22 @@ namespace op
             // after setWidth/setHeight this is performed over the new resolution (so they always match).
             checkFrameIntegrity(frame);
             // Update size, since images might have different size between each one of them
-            mResolution = Point<int>{frame.cols, frame.rows};
+            mResolution = Point<int>{frame.cols(), frame.rows()};
             // Return final frame
             return frame;
         }
         catch (const std::exception& e)
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-            return cv::Mat();
+            return Matrix();
         }
     }
 
-    std::vector<cv::Mat> ImageDirectoryReader::getRawFrames()
+    std::vector<Matrix> ImageDirectoryReader::getRawFrames()
     {
         try
         {
-            std::vector<cv::Mat> rawFrames;
+            std::vector<Matrix> rawFrames;
             for (auto i = 0 ; i < positiveIntRound(Producer::get(ProducerProperty::NumberViews)) ; i++)
                 rawFrames.emplace_back(getRawFrame());
             return rawFrames;
@@ -121,7 +122,7 @@ namespace op
                 return -1.;
             else
             {
-                log("Unknown property", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
+                opLog("Unknown property", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
                 return -1.;
             }
         }
@@ -143,9 +144,9 @@ namespace op
             else if (capProperty == CV_CAP_PROP_POS_FRAMES)
                 mFrameNameCounter = fastTruncate((long long)value, 0ll, (long long)mFilePaths.size()-1);
             else if (capProperty == CV_CAP_PROP_FRAME_COUNT || capProperty == CV_CAP_PROP_FPS)
-                log("This property is read-only.", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
+                opLog("This property is read-only.", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
             else
-                log("Unknown property", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
+                opLog("Unknown property", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
         }
         catch (const std::exception& e)
         {

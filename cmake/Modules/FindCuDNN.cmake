@@ -19,7 +19,7 @@ if(CUDNN_INCLUDE AND CUDNN_LIBRARY)
     else()
         file(READ ${CUDNN_INCLUDE}/cudnn.h CUDNN_VERSION_FILE_CONTENTS)
     endif()
-    
+
     # cuDNN v3 and beyond
     string(REGEX MATCH "define CUDNN_MAJOR * +([0-9]+)"
            CUDNN_VERSION_MAJOR "${CUDNN_VERSION_FILE_CONTENTS}")

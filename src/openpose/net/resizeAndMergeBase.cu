@@ -1,6 +1,6 @@
-#include <openpose/gpu/cuda.hpp>
-#include <openpose/gpu/cuda.hu>
 #include <openpose/net/resizeAndMergeBase.hpp>
+#include <openpose/gpu/cuda.hpp>
+#include <openpose_private/gpu/cuda.hu>
 
 namespace op
 {
@@ -55,7 +55,7 @@ namespace op
     template <typename T>
     __global__ void resizeAndPadKernel(
         T* targetPtr, const T* const sourcePtr, const int widthSource, const int heightSource, const int widthTarget,
-        const int heightTarget, const float rescaleFactor)
+        const int heightTarget, const T rescaleFactor)
     {
         const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
         const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -80,7 +80,7 @@ namespace op
     template <typename T>
     __global__ void resizeAndPadKernel(
         T* targetPtr, const unsigned char* const sourcePtr, const int widthSource, const int heightSource,
-        const int widthTarget, const int heightTarget, const float rescaleFactor)
+        const int widthTarget, const int heightTarget, const T rescaleFactor)
     {
         const auto x = (blockIdx.x * blockDim.x) + threadIdx.x;
         const auto y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -290,10 +290,10 @@ namespace op
             const auto channels = targetSize[1];
             const auto heightTarget = targetSize[2];
             const auto widthTarget = targetSize[3];
-            const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D};
-            const dim3 numBlocks{
-                getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
-                getNumberCudaBlocks(heightTarget, threadsPerBlock.y)};
+            // const dim3 threadsPerBlock{THREADS_PER_BLOCK_1D, THREADS_PER_BLOCK_1D};
+            // const dim3 numBlocks{
+            //     getNumberCudaBlocks(widthTarget, threadsPerBlock.x),
+            //     getNumberCudaBlocks(heightTarget, threadsPerBlock.y)};
             const auto& sourceSize = sourceSizes[0];
             const auto heightSource = sourceSize[2];
             const auto widthSource = sourceSize[3];
@@ -365,9 +365,9 @@ namespace op
                     // OP_CUDA_PROFILE_END(timeNormalize3, 1e3, REPS);
 
                     // // Profiling code
-                    // log("  Res(ori)=" + std::to_string(timeNormalize1) + "ms");
-                    // log("  Res(new)=" + std::to_string(timeNormalize2) + "ms");
-                    // log("  Res(new8x)=" + std::to_string(timeNormalize3) + "ms");
+                    // opLog("  Res(ori)=" + std::to_string(timeNormalize1) + "ms");
+                    // opLog("  Res(new)=" + std::to_string(timeNormalize2) + "ms");
+                    // opLog("  Res(new8x)=" + std::to_string(timeNormalize3) + "ms");
                 }
                 // Old inefficient multi-scale merging
                 else
@@ -514,9 +514,9 @@ namespace op
                 // OP_CUDA_PROFILE_END(timeNormalize3, 1e3, REPS);
 
                 // // Profiling code
-                // log("  Res(orig)=" + std::to_string(timeNormalize1) + "ms");
-                // log("  Res(new4)=" + std::to_string(timeNormalize2) + "ms");
-                // log("  Res(new1)=" + std::to_string(timeNormalize3) + "ms");
+                // opLog("  Res(orig)=" + std::to_string(timeNormalize1) + "ms");
+                // opLog("  Res(new4)=" + std::to_string(timeNormalize2) + "ms");
+                // opLog("  Res(new1)=" + std::to_string(timeNormalize3) + "ms");
             }
 
             cudaCheck(__LINE__, __FUNCTION__, __FILE__);

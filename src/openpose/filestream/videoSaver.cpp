@@ -1,8 +1,8 @@
+#include <openpose/filestream/videoSaver.hpp>
 #include <opencv2/highgui/highgui.hpp> // cv::VideoWriter
 #include <openpose/filestream/imageSaver.hpp>
 #include <openpose/utilities/fileSystem.hpp>
 #include <openpose/utilities/string.hpp>
-#include <openpose/filestream/videoSaver.hpp>
 
 namespace op
 {
@@ -86,7 +86,7 @@ namespace op
                 if (upImpl->mUseFfmpeg)
                     error("MP4 recording requires an Ubuntu or Mac machine.", __LINE__, __FUNCTION__, __FILE__);
             #endif
-            if (upImpl->mUseFfmpeg && system("ffmpeg --help") != 0)
+            if (upImpl->mUseFfmpeg && system("ffmpeg -version") != 0)
                 error("In order to save the video in MP4 format, FFmpeg must be installed on your system."
                       " Please, use an `avi` output format (e.g., `--write_video output.avi`) or install FFmpeg"
                       " by running `sudo apt-get install ffmpeg` (Ubuntu) or an analogous command.",
@@ -109,45 +109,45 @@ namespace op
             // Images --> Video
             if (upImpl->mUseFfmpeg)
             {
-                log("JPG images temporarily generated in " + upImpl->mTempImageFolder + ".", op::Priority::High);
+                opLog("JPG images temporarily generated in " + upImpl->mTempImageFolder + ".", op::Priority::High);
                 // FFmpeg command: Save video from images (override if video with same name exists)
                 // Framerate works with both `-r` and `-framerate` for an image folder. Source:
                 //     https://stackoverflow.com/questions/51143100/framerate-vs-r-vs-filter-fps
                 // Very important: Either FPS flag must go before `-i`!!! Otherwise, it would either not work (`-r`)
                 // or do a weird resample (`-framerate`)
                 const std::string imageToVideoCommand = "ffmpeg -y -framerate " + std::to_string(upImpl->mFps)
-                    + " -i " + upImpl->mTempImageFolder + "/%12d_rendered.jpg"
-                    + " -c:v libx264 -pix_fmt yuv420p "
-                    + upImpl->mVideoSaverPath;
-                log("Creating MP4 video out of JPG images by running:\n" + imageToVideoCommand + "\n",
+                    + " -i '" + upImpl->mTempImageFolder + "/%12d_rendered.jpg'"
+                    + " -c:v libx264 -pix_fmt yuv420p '"
+                    + upImpl->mVideoSaverPath + "'";
+                opLog("Creating MP4 video out of JPG images by running:\n" + imageToVideoCommand + "\n",
                     op::Priority::High);
-                auto codeAnswer = system(imageToVideoCommand.c_str());
+                auto codeAnswerVideo = system(imageToVideoCommand.c_str());
                 // Remove temporary images
-                if (codeAnswer == 0)
+                if (codeAnswerVideo == 0)
                 {
-                    codeAnswer = system(("rm -rf " + upImpl->mTempImageFolder).c_str());
-                    log("Video saved and temporary image folder removed.", op::Priority::High);
+                    codeAnswerVideo = system(("rm -rf '" + upImpl->mTempImageFolder + "'").c_str());
+                    opLog("Video saved and temporary image folder removed.", op::Priority::High);
                 }
                 // Sanity check
-                if (codeAnswer != 0)
-                    log("\nVideo " + upImpl->mVideoSaverPath + " could not be saved (exit code: "
-                        + std::to_string(codeAnswer) + "). Make sure you can manually run the following command"
+                if (codeAnswerVideo != 0)
+                    opLog("\nVideo " + upImpl->mVideoSaverPath + " could not be saved (exit code: "
+                        + std::to_string(codeAnswerVideo) + "). Make sure you can manually run the following command"
                         " (with no errors) from the terminal:\n" + imageToVideoCommand, op::Priority::High);
                 // Video (no sound) --> Video (with sound)
                 if (!upImpl->mAddAudioFromThisVideo.empty())
                 {
                     const auto tempOutput = upImpl->mVideoSaverPath + RANDOM_TEXT + ".mp4";
-                    const auto audioCommand = "ffmpeg -y -i " + upImpl->mVideoSaverPath
-                        + " -i " + upImpl->mAddAudioFromThisVideo + " -codec copy -shortest " + tempOutput;
-                    log("Adding audio to video by running:\n" + audioCommand, op::Priority::High);
-                    auto codeAnswer = system(audioCommand.c_str());
+                    const auto audioCommand = "ffmpeg -y -i '" + upImpl->mVideoSaverPath
+                        + "' -i '" + upImpl->mAddAudioFromThisVideo + "' -codec copy -shortest '" + tempOutput + "'";
+                    opLog("Adding audio to video by running:\n" + audioCommand, op::Priority::High);
+                    auto codeAnswerAudio = system(audioCommand.c_str());
                     // Move temp output to real output
-                    if (codeAnswer == 0)
-                        codeAnswer = system(("mv " + tempOutput + " " + upImpl->mVideoSaverPath).c_str());
+                    if (codeAnswerAudio == 0)
+                        codeAnswerAudio = system(("mv '" + tempOutput + "' '" + upImpl->mVideoSaverPath + "'").c_str());
                     // Sanity check
-                    if (codeAnswer != 0)
-                        log("\nVideo " + upImpl->mVideoSaverPath + " could not be saved with audio (exit code: "
-                            + std::to_string(codeAnswer) + "). Make sure you can manually run the following command"
+                    if (codeAnswerAudio != 0)
+                        opLog("\nVideo " + upImpl->mVideoSaverPath + " could not be saved with audio (exit code: "
+                            + std::to_string(codeAnswerAudio) + "). Make sure you can manually run the following command"
                             " (with no errors) from the terminal:\n" + audioCommand, op::Priority::High);
                 }
             }
@@ -176,11 +176,11 @@ namespace op
         }
     }
 
-    void VideoSaver::write(const cv::Mat& cvMat)
+    void VideoSaver::write(const Matrix& matToSave)
     {
         try
         {
-            write(std::vector<cv::Mat>{cvMat});
+            write(std::vector<Matrix>{matToSave});
         }
         catch (const std::exception& e)
         {
@@ -188,10 +188,11 @@ namespace op
         }
     }
 
-    void VideoSaver::write(const std::vector<cv::Mat>& cvMats)
+    void VideoSaver::write(const std::vector<Matrix>& matsToSave)
     {
         try
         {
+            OP_OP2CVVECTORMAT(cvMats, matsToSave);
             // Sanity check
             if (cvMats.empty())
                 error("The image(s) to be saved cannot be empty.", __LINE__, __FUNCTION__, __FILE__);
@@ -209,7 +210,7 @@ namespace op
                 // FFmpeg video
                 if (upImpl->mUseFfmpeg)
                 {
-                    log("Temporarily saving video frames as JPG images in: " + upImpl->mTempImageFolder,
+                    opLog("Temporarily saving video frames as JPG images in: " + upImpl->mTempImageFolder,
                         op::Priority::High);
                     upImpl->upImageSaver.reset(new ImageSaver{upImpl->mTempImageFolder, "jpg"});
                 }
@@ -236,7 +237,8 @@ namespace op
             // FFmpeg video
             if (upImpl->mUseFfmpeg)
             {
-                upImpl->upImageSaver->saveImages(cvOutputData, toFixedLengthString(upImpl->mImageSaverCounter, 12u));
+                const auto opMat = OP_CV2OPMAT(cvOutputData);
+                upImpl->upImageSaver->saveImages(opMat, toFixedLengthString(upImpl->mImageSaverCounter, 12u));
                 upImpl->mImageSaverCounter++;
             }
             // OpenCV video

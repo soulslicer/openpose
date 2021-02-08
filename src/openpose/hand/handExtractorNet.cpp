@@ -1,10 +1,10 @@
-#include <openpose/utilities/check.hpp>
 #include <openpose/hand/handExtractorNet.hpp>
+#include <openpose/utilities/check.hpp>
 
 namespace op
 {
     HandExtractorNet::HandExtractorNet(const Point<int>& netInputSize, const Point<int>& netOutputSize,
-                                       const unsigned short numberScales, const float rangeScales,
+                                       const int numberScales, const float rangeScales,
                                        const std::vector<HeatMapType>& heatMapTypes,
                                        const ScaleMode heatMapScaleMode) :
         mMultiScaleNumberAndRange{std::make_pair(numberScales, rangeScales)},
@@ -17,19 +17,24 @@ namespace op
         try
         {
             // Error check
-            if (mHeatMapScaleMode != ScaleMode::ZeroToOne && mHeatMapScaleMode != ScaleMode::PlusMinusOne
+            if (mHeatMapScaleMode != ScaleMode::ZeroToOne
+                && mHeatMapScaleMode != ScaleMode::ZeroToOneFixedAspect
+                && mHeatMapScaleMode != ScaleMode::PlusMinusOne
+                && mHeatMapScaleMode != ScaleMode::PlusMinusOneFixedAspect
                 && mHeatMapScaleMode != ScaleMode::UnsignedChar)
-                error("The ScaleMode heatMapScaleMode must be ZeroToOne, PlusMinusOne or UnsignedChar.",
-                      __LINE__, __FUNCTION__, __FILE__);
-            checkE(netOutputSize.x, netInputSize.x, "Net input and output size must be equal.",
-                   __LINE__, __FUNCTION__, __FILE__);
-            checkE(netOutputSize.y, netInputSize.y, "Net input and output size must be equal.",
-                   __LINE__, __FUNCTION__, __FILE__);
-            checkE(netInputSize.x, netInputSize.y, "Net input size must be squared.",
-                   __LINE__, __FUNCTION__, __FILE__);
+                error("The ScaleMode heatMapScaleMode must be ZeroToOne, ZeroToOneFixedAspect, PlusMinusOne,"
+                    " PlusMinusOneFixedAspect or UnsignedChar.", __LINE__, __FUNCTION__, __FILE__);
+            checkEqual(
+                netOutputSize.x, netInputSize.x, "Net input and output size must be equal.",
+                __LINE__, __FUNCTION__, __FILE__);
+            checkEqual(
+                netOutputSize.y, netInputSize.y, "Net input and output size must be equal.",
+                __LINE__, __FUNCTION__, __FILE__);
+            checkEqual(
+                netInputSize.x, netInputSize.y, "Net input size must be squared.", __LINE__, __FUNCTION__, __FILE__);
             // Warnings
             if (!mHeatMapTypes.empty())
-                log("Note only keypoint heatmaps are available with hand heatmaps (no background nor PAFs).",
+                opLog("Note that only the keypoint heatmaps are available with hand heatmaps (no background nor PAFs).",
                     Priority::High);
         }
         catch (const std::exception& e)
