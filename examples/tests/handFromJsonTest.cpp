@@ -1,7 +1,7 @@
 // ----------------------- OpenPose Tests - Hand Keypoint Detection from JSON Ground-Truth Data -----------------------
 // Example to test hands accuracy given ground-truth bounding boxes.
 
-// Command-line user intraface
+// Command-line user interface
 #define OPENPOSE_FLAGS_DISABLE_POSE
 #include <openpose/flags.hpp>
 // OpenPose dependencies
@@ -30,29 +30,31 @@ int handFromJsonTest()
 {
     try
     {
-        op::log("Starting OpenPose demo...", op::Priority::High);
+        op::opLog("Starting OpenPose demo...", op::Priority::High);
         const auto timerBegin = std::chrono::high_resolution_clock::now();
 
         // logging_level
-        op::check(0 <= FLAGS_logging_level && FLAGS_logging_level <= 255, "Wrong logging_level value.",
-                  __LINE__, __FUNCTION__, __FILE__);
+        op::checkBool(
+            0 <= FLAGS_logging_level && FLAGS_logging_level <= 255, "Wrong logging_level value.",
+            __LINE__, __FUNCTION__, __FILE__);
         op::ConfigureLog::setPriorityThreshold((op::Priority)FLAGS_logging_level);
 
         // Applying user defined configuration - GFlags to program variables
         // handNetInputSize
-        const auto handNetInputSize = op::flagsToPoint(FLAGS_hand_net_resolution, "368x368 (multiples of 16)");
+        const auto handNetInputSize = op::flagsToPoint(op::String(FLAGS_hand_net_resolution), "368x368 (multiples of 16)");
         // producerType
         const auto producerSharedPtr = op::createProducer(op::ProducerType::ImageDirectory, FLAGS_image_dir);
 
         // OpenPose wrapper
-        op::log("Configuring OpenPose...", op::Priority::High);
+        op::opLog("Configuring OpenPose...", op::Priority::High);
         op::WrapperHandFromJsonTest<op::Datum> opWrapper;
         // Pose configuration (use WrapperStructPose{} for default and recommended configuration)
         op::WrapperStructPose wrapperStructPose{
-            op::PoseMode::Disabled, op::flagsToPoint("656x368"), op::flagsToPoint("1280x720"), op::ScaleMode::InputResolution,
-            FLAGS_num_gpu, FLAGS_num_gpu_start, 1, 0.15f, op::RenderMode::None, op::PoseModel::BODY_25, true, 0.f, 0.f,
-            0, "models/", {}, op::ScaleMode::ZeroToOne, false, 0.05f, -1, false};
-        wrapperStructPose.modelFolder = FLAGS_model_folder;
+            op::PoseMode::Disabled, op::flagsToPoint("656x368", "?x?"), -1.0, op::flagsToPoint("1280x720", "?x?"),
+            op::ScaleMode::InputResolution, FLAGS_num_gpu, FLAGS_num_gpu_start, 1, 0.15f, op::RenderMode::None,
+            op::PoseModel::BODY_25, true, 0.f, 0.f, 0, "models/", {}, op::ScaleMode::ZeroToOneFixedAspect, false,
+            0.05f, -1, false};
+        wrapperStructPose.modelFolder = op::String(FLAGS_model_folder);
         // Hand configuration (use op::WrapperStructHand{} to disable it)
         const op::WrapperStructHand wrapperStructHand{
             FLAGS_hand, op::Detector::Provided, handNetInputSize, FLAGS_hand_scale_number,
@@ -62,7 +64,7 @@ int handFromJsonTest()
                             FLAGS_write_json, op::flagsToDisplayMode(FLAGS_display, false));
 
         // Start processing
-        op::log("Starting thread(s)...", op::Priority::High);
+        op::opLog("Starting thread(s)...", op::Priority::High);
         opWrapper.exec();
 
         // Measuring total time
@@ -71,7 +73,7 @@ int handFromJsonTest()
             std::chrono::duration_cast<std::chrono::nanoseconds>(now-timerBegin).count()* 1e-9);
         const auto message = "OpenPose demo successfully finished. Total time: "
                            + std::to_string(totalTimeSec) + " seconds.";
-        op::log(message, op::Priority::High);
+        op::opLog(message, op::Priority::High);
 
         return 0;
     }

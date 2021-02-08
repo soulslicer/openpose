@@ -11,6 +11,12 @@ SET HAND_FOLDER=hand/
 
 echo:
 echo ------------------------- POSE (BODY+FOOT) MODELS -------------------------
+
+echo Body (BODY_21A_VIDEO)
+set BODY_21_FOLDER=%POSE_FOLDER%body_21a_video/
+set BODY_21_MODEL=%BODY_21_FOLDER%pose_iter_264000.caffemodel
+%WGET_EXE% -c %OPENPOSE_URL%%BODY_21_MODEL% -P %BODY_21_FOLDER%
+
 echo Body (BODY_25)
 set BODY_25_FOLDER=%POSE_FOLDER%body_25/
 set BODY_25_MODEL=%BODY_25_FOLDER%pose_iter_584000.caffemodel

@@ -1,0 +1,292 @@
+name: CI
+
+on: [push, pull_request]
+
+env:
+  GH_REPO_NAME: ${{ github.event.repository.name }}
+  DOXYFILE: ${{ github.workspace }}/.doc_autogeneration.doxygen
+  GH_REPO_REF: ${{ github.repositoryUrl }}
+
+jobs:
+  build:
+    name: ${{ matrix.env.NAME }}
+    runs-on: ${{ matrix.os }}
+    env: ${{ matrix.env }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu
+          # Ubuntu 20.04 - Default - CMake - CUDA
+          - os: ubuntu-20.04
+            os_name: linux
+            env:
+              NAME: U20-default-cmake-cuda
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+          # Ubuntu 18.04 - Default - CMake - CUDA
+          - os: ubuntu-18.04
+            os_name: linux
+            env:
+              NAME: U18-default-cmake-cuda
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+          # Ubuntu 20.04 - Python - CMake - CUDA
+          - os: ubuntu-20.04
+            os_name: linux
+            env:
+              NAME: U20-python-cmake-cuda
+              WITH_CUDNN: false
+              WITH_PYTHON: true
+              CI_OS_NAME: linux
+              CI_BUILD_NUMBER: ${{ github.run_number }}
+              CI_COMMIT: ${{ github.sha }}
+              PYTHON3_VERSION: python3.8
+            DOCS: true
+          # Ubuntu 18.04 - Python - CMake - CUDA
+          - os: ubuntu-18.04
+            os_name: linux
+            env:
+              NAME: U18-python-cmake-cuda
+              WITH_CUDNN: false
+              WITH_PYTHON: true
+              CI_OS_NAME: linux
+          # Ubuntu 20.04 - Python - CMake - CPU
+          - os: ubuntu-20.04
+            os_name: linux
+            env:
+              NAME: U20-python-cmake-cpu
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+              PYTHON3_VERSION: python3.8
+          # Ubuntu 18.04 - Python - CMake - CPU
+          - os: ubuntu-18.04
+            os_name: linux
+            env:
+              NAME: U18-python-cmake-cpu
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+          # Ubuntu 16.04 - Python - CMake - CPU
+          - os: ubuntu-16.04
+            os_name: linux
+            env:
+              NAME: U16-python-cmake-cpu
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+          # TO-DO (not passing)
+          # # Ubuntu 20.04 - Python - CMake - OpenCL
+          # - os: ubuntu-20.04
+          #   os_name: linux
+          #   env:
+          #     NAME: U20-python-cmake-opencl
+          #     WITH_PYTHON: true
+          #     WITH_CUDA: false
+          #     WITH_CUDNN: false
+          #     WITH_OPEN_CL: true
+          #     CI_OS_NAME: linux
+          #     PYTHON3_VERSION: python3.8
+          # Ubuntu 18.04 - Python - CMake - OpenCL
+          - os: ubuntu-18.04
+            os_name: linux
+            env:
+              NAME: U18-python-cmake-opencl
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_OPEN_CL: true
+              CI_OS_NAME: linux
+          # Ubuntu 16.04 - Python - CMake - OpenCL
+          - os: ubuntu-16.04
+            os_name: linux
+            env:
+              NAME: U16-python-cmake-opencl
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_OPEN_CL: true
+              CI_OS_NAME: linux
+          # Ubuntu 20.04 - Python - CMake - CPU - Debug
+          - os: ubuntu-20.04
+            os_name: linux
+            env:
+              NAME: U20-python-cmake-cpu-debug
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_DEBUG: true
+              CI_OS_NAME: linux
+              PYTHON3_VERSION: python3.8
+          # Ubuntu 18.04 - Python - CMake - CPU - Debug
+          - os: ubuntu-18.04
+            os_name: linux
+            env:
+              NAME: U18-python-cmake-cpu-debug
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_DEBUG: true
+              CI_OS_NAME: linux
+          # Ubuntu 16.04 - Python - CMake - CPU - Debug
+          - os: ubuntu-16.04
+            os_name: linux
+            env:
+              NAME: U16-python-cmake-cpu-debug
+              WITH_PYTHON: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_DEBUG: true
+              CI_OS_NAME: linux
+          # Ubuntu 20.04 - Python - CMake - CPU - Unity
+          - os: ubuntu-20.04
+            os_name: linux
+            env:
+              NAME: U20-python-cmake-cpu-unity
+              WITH_PYTHON: true
+              WITH_UNITY: true
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+              PYTHON3_VERSION: python3.8
+          # Ubuntu 20.04 - Default - CMake - CPU
+          - os: ubuntu-20.04
+            os_name: linux
+            env:
+              NAME: U20-default-cmake-cpu
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              CI_OS_NAME: linux
+
+          # Mac OSX
+          # Mac OSX - Python - CMake - CPU
+          - os: macos-10.15
+            os_name: osx
+            env:
+              NAME: OSX-python-cmake-cpu
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_PYTHON: true
+              CI_OS_NAME: osx
+          # Mac OSX - Python - CMake - OpenCL
+          - os: macos-10.15
+            os_name: osx
+            env:
+              NAME: OSX-default-cmake-opencl
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_OPEN_CL: true
+              CI_OS_NAME: osx
+          # Mac OSX - Python - CMake - CPU - Debug
+          - os: macos-10.15
+            os_name: osx
+            env:
+              NAME: OSX-python-cmake-cpu-debug
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_PYTHON: true
+              WITH_DEBUG: true
+              CI_OS_NAME: osx
+          # Mac OSX - Python - CMake - CPU - Unity
+          - os: macos-10.15
+            os_name: osx
+            env:
+              NAME: OSX-python-cmake-cpu-unity
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              WITH_PYTHON: true
+              WITH_UNITY: true
+              CI_OS_NAME: osx
+          # Mac OSX - Default - CMake - CPU
+          - os: macos-10.15
+            os_name: osx
+            env:
+              NAME: OSX-default-cmake-cpu
+              WITH_CUDA: false
+              WITH_CUDNN: false
+              CI_OS_NAME: osx
+
+          # TO-DO (not passing)
+          # Note: CUDA jobs fail in U16 because of an issue with GCC 5.5 (https://github.com/NVIDIA/apex/issues/529). GH Actions doesn't support
+          # GCC 5.4 and CUDA does not support newer than GCC 5.X. Thus, cuDNN (sh file only for Ubuntu 16) is no longer tested.
+          # # Ubuntu 16.04
+          # # Ubuntu 16.04 - Default - CMake - CUDA
+          # - os: ubuntu-16.04
+          #   os_name: linux
+          #   env:
+          #     NAME: U16-default-cmake-cuda8
+          #     CI_OS_NAME: linux
+
+          # # Deprecated (not working for the above issue between CUDA and the Ubuntu16 from GitHub Actions) 
+          # # Ubuntu 16.04 - Default - Make - CUDA
+          # - os: ubuntu-16.04
+          #   os_name: linux
+          #   env:
+          #     NAME: U16-default-make-cuda
+          #     WITH_CUDNN: false
+          #     WITH_CMAKE: false
+          #     CI_OS_NAME: linux
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 2.x
+      if: ${{ matrix.env.WITH_PYTHON }}
+    - name: Install (Linux)
+      run: scripts/CI/install_deps_ubuntu.sh
+      if: ${{ matrix.os_name == 'linux' }}
+    - name: Install (Mac OS)
+      run: scripts/CI/install_deps_osx.sh
+      if: ${{ matrix.os_name == 'osx' }}
+
+    - name: Configure
+      run: scripts/CI/configure.sh
+    - name: Make
+      run: scripts/CI/run_make.sh
+    - name: Tests
+      run: scripts/CI/run_tests.sh
+
+    - name: Docs APT packages
+      run: |
+        # The Doxygen apt-get version for Ubuntu 20 is 1.8.17, which has some bugs fixed in 1.9.1
+        # run: sudo apt-get -yq install doxygen doxygen-doc doxygen-latex doxygen-gui graphviz
+        git clone https://github.com/doxygen/doxygen.git && cd doxygen && git checkout Release_1_9_1
+        mkdir build && cd build
+        cmake -G "Unix Makefiles" ..
+        make -j`nproc`
+        sudo make install
+      if: ${{ matrix.DOCS }}
+    - name: Generate docs
+      run: |
+        cd ${{ github.workspace }}
+        echo 'Generating Doxygen code documentation...'
+        doxygen $DOXYFILE 2>&1 | tee doxygen.log
+        echo 'Creating .nojekyll and copying log...'
+        echo "" > doxygen/html/.nojekyll
+        cp doxygen.log doxygen/html/doxygen.log
+        # Required so Doxygen links/finds the license file
+        cp LICENSE doxygen/html/LICENSE
+        # Required in order to link .github/media/ images with doc without modifying doc links. Remove if using `publish_dir: doxygen/html/`
+        mkdir -p doxygen_final/web/html/ && mv doxygen/html doxygen_final/web/html/doc
+        mkdir -p doxygen_final/web/.github/media/ && cp -rf .github/media/ doxygen_final/web/.github/
+        mkdir -p doxygen_final/web/html/.github/media/ && cp -rf .github/media/ doxygen_final/web/html/.github/
+        mkdir -p doxygen_final/web/html/doc/.github/media/ && cp -rf .github/media/ doxygen_final/web/html/doc/.github/
+      if: ${{ matrix.DOCS }}
+    - name: Deploy Docs
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: doxygen_final/
+        # publish_dir: doxygen/html/ # Original one, it would turn [...].github.io/openpose/web/html/doc/ into [...].github.io/openpose/, but images would not work
+        destination_dir: .
+        enable_jekyll: false
+        force_orphan: true
+      if: ${{ matrix.DOCS && github.event_name == 'push' && github.ref == 'refs/heads/master' }}

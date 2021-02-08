@@ -1,0 +1,36 @@
+image: Visual Studio 2019
+clone_folder: c:\openpose
+
+build_script:
+    - mkdir build
+    - cd build
+    - cmake -DGPU_MODE=CPU_ONLY -G "Visual Studio 16 2019" -A x64 ..
+    - cmake --build . --config "Release"
+
+after_build:
+    - ps: cd ..
+    - ps: mkdir artifacts
+    - ps: mkdir artifacts/bin
+    - ps: mkdir artifacts/examples
+    - ps: mkdir artifacts/examples/media
+    - ps: mkdir artifacts/include
+    - ps: mkdir artifacts/lib
+    - ps: Get-ChildItem -Path build/x64/Release/*.exe -Recurse -File | Copy-Item -Destination artifacts/bin
+    - ps: Get-ChildItem -Path build/x64/Release/*.dll -Recurse -File | Copy-Item -Destination artifacts/bin
+    - ps: Get-ChildItem -Path build/bin/*.dll -Recurse -File | Copy-Item -Destination artifacts/bin
+    - ps: Get-ChildItem -Path examples/media/* -Recurse -File | Copy-Item -Destination artifacts/examples/media
+    - ps: Copy-Item include/openpose -Recurse -Destination artifacts/include/
+    - ps: Copy-Item 3rdparty/windows/opencv/include/opencv2 -Recurse -Destination artifacts/include/
+    - ps: Get-ChildItem -Path build/*.lib -Recurse -File | Copy-Item -Destination artifacts/lib
+    - ps: Get-ChildItem -Path 3rdparty/*.lib -Recurse -File | Copy-Item -Destination artifacts/lib
+    - ps: Copy-Item models -Recurse -Destination artifacts/
+    - ps: cd artifacts
+    # - ps: 7z a ..\openpose.zip . # `artifacts` disabled
+    - ps: cd ..
+    # Test
+    - ps: .\artifacts\bin\OpenPoseDemo.exe --image_dir examples/media/ --net_resolution -1x32 --write_json output/ --write_images output/ --display 0
+
+# `artifacts` disabled because of the AppVeyor crash: "Maximum allowed artifact storage size of 50000 Mb will be exceeded."
+# artifacts:
+#     - path: openpose.zip
+#       name: OpenPose

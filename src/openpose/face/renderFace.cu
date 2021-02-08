@@ -1,8 +1,8 @@
+#include <openpose/face/renderFace.hpp>
 #include <openpose/face/faceParameters.hpp>
 #include <openpose/gpu/cuda.hpp>
-#include <openpose/gpu/cuda.hu>
-#include <openpose/utilities/render.hu>
-#include <openpose/face/renderFace.hpp>
+#include <openpose_private/gpu/cuda.hu>
+#include <openpose_private/utilities/render.hu>
 
 namespace op
 {
@@ -46,7 +46,7 @@ namespace op
     }
 
     void renderFaceKeypointsGpu(
-        float* framePtr, float* maxPtr, float* minPtr, float* scalePtr, const Point<int>& frameSize,
+        float* framePtr, float* maxPtr, float* minPtr, float* scalePtr, const Point<unsigned int>& frameSize,
         const float* const facePtr, const int numberPeople, const float renderThreshold, const float alphaColorToAdd)
     {
         try

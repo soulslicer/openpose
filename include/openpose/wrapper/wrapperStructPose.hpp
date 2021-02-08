@@ -32,6 +32,15 @@ namespace op
         Point<int> netInputSize;
 
         /**
+         * Zero or negative means that using `-1` in netInputSize will behave as explained in its flag description.
+         * Otherwise, and to avoid out of memory errors, the `-1` in netInputSize will clip to this value times the
+         * default 16/9 aspect ratio value (i.e., 656 width for a 368 height). E.g., netInputSizeDynamicBehavior = 10
+         * and netInputSize = {-1x368} will clip to 6560x368 (10 x 656). Recommended 1 for small GPUs (to avoid out of
+         * memory errors but maximize speed) and 0 for big GPUs (for maximum accuracy and speed).
+         */
+        double netInputSizeDynamicBehavior;
+
+        /**
          * Output size of the final rendered image.
          * It barely affects performance compared to netInputSize.
          * The final Datum.poseKeypoints can be scaled with respect to outputSize if `keypointScaleMode` is set to
@@ -43,7 +52,7 @@ namespace op
          * Final scale of the Array<float> Datum.poseKeypoints and the writen pose data.
          * The final Datum.poseKeypoints can be scaled with respect to input size (ScaleMode::InputResolution), net
          * output size (ScaleMode::NetOutputResolution), output rendering size (ScaleMode::OutputResolution), from 0 to
-         * 1 (ScaleMode::ZeroToOne), and -1 to 1 (ScaleMode::PlusMinusOne).
+         * 1 (ScaleMode::ZeroToOne(FixedAspect)), and -1 to 1 (ScaleMode::PlusMinusOne(FixedAspect)).
          */
         ScaleMode keypointScaleMode;
 
@@ -118,7 +127,7 @@ namespace op
         /**
          * Folder where the pose Caffe models are located.
          */
-        std::string modelFolder;
+        String modelFolder;
 
         /**
          * Whether and which heat maps to save on the Array<float> Datum.heatmaps.
@@ -129,8 +138,8 @@ namespace op
 
         /**
          * Scale of the Datum.heatmaps.
-         * Select ScaleMode::ZeroToOne for range [0,1], ScaleMode::PlusMinusOne for [-1,1] and ScaleMode::UnsignedChar
-         * for [0, 255].
+         * Select ScaleMode::ZeroToOne(FixedAspect) for range [0,1], ScaleMode::PlusMinusOne(FixedAspect) for [-1,1]
+         * and ScaleMode::UnsignedChar for [0, 255].
          * If heatMapTypes.empty(), then this parameters makes no effect.
          */
         ScaleMode heatMapScaleMode;
@@ -143,7 +152,8 @@ namespace op
 
         /**
          * Rendering threshold. Only estimated keypoints whose score confidences are higher than this value will be
-         * rendered. Generally, a high threshold (> 0.5) will only render very clear body parts; while small thresholds
+         * rendered. Note: Rendered refers only to visual display in the OpenPose basic GUI, not in the saved results.
+         * Generally, a high threshold (> 0.5) will only render very clear body parts; while small thresholds
          * (~0.1) will also output guessed and occluded keypoints, but also more false positives (i.e., wrong
          * detections).
          */
@@ -179,14 +189,14 @@ namespace op
          * The combination modelFolder + protoTxtPath represents the whole path to the prototxt file.
          * If empty, it will use the default OpenPose ProtoTxt file.
          */
-        std::string protoTxtPath;
+        String protoTxtPath;
 
         /**
          * Final path where the pose Caffe CaffeModel is located.
          * The combination modelFolder + caffeModelPath represents the whole path to the caffemodel file.
          * If empty, it will use the default OpenPose CaffeModel file.
          */
-        std::string caffeModelPath;
+        String caffeModelPath;
 
         /**
          * The image upsampling scale. 8 is the stride of the network, so the ideal value to maximize the
@@ -210,16 +220,17 @@ namespace op
          */
         WrapperStructPose(
             const PoseMode poseMode = PoseMode::Enabled, const Point<int>& netInputSize = Point<int>{-1, 368},
+            const double netInputSizeDynamicBehavior = 1.,
             const Point<int>& outputSize = Point<int>{-1, -1},
             const ScaleMode keypointScaleMode = ScaleMode::InputResolution, const int gpuNumber = -1,
             const int gpuNumberStart = 0, const int scalesNumber = 1, const float scaleGap = 0.25f,
             const RenderMode renderMode = RenderMode::Auto, const PoseModel poseModel = PoseModel::BODY_25,
             const bool blendOriginalFrame = true, const float alphaKeypoint = POSE_DEFAULT_ALPHA_KEYPOINT,
             const float alphaHeatMap = POSE_DEFAULT_ALPHA_HEAT_MAP, const int defaultPartToRender = 0,
-            const std::string& modelFolder = "models/", const std::vector<HeatMapType>& heatMapTypes = {},
+            const String& modelFolder = "models/", const std::vector<HeatMapType>& heatMapTypes = {},
             const ScaleMode heatMapScaleMode = ScaleMode::UnsignedChar, const bool addPartCandidates = false,
             const float renderThreshold = 0.05f, const int numberPeopleMax = -1, const bool maximizePositives = false,
-            const double fpsMax = -1., const std::string& protoTxtPath = "", const std::string& caffeModelPath = "",
+            const double fpsMax = -1., const String& protoTxtPath = "", const String& caffeModelPath = "",
             const float upsamplingRatio = 0.f, const bool enableGoogleLogging = true);
     };
 }

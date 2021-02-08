@@ -9,11 +9,13 @@ set(SOURCES_OP_CORE
     gpuRenderer.cpp
     keepTopNPeople.cpp
     keypointScaler.cpp
+    matrix.cpp
     opOutputToCvMat.cpp
     point.cpp
     rectangle.cpp
     renderer.cpp
     scaleAndSizeExtractor.cpp
+    string.cpp
     verbosePrinter.cpp)
 
 include(${CMAKE_SOURCE_DIR}/cmake/Utils.cmake)

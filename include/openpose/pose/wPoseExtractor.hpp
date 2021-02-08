@@ -66,7 +66,7 @@ namespace op
             if (checkNoNullNorEmpty(tDatums))
             {
                 // Debugging log
-                dLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLogIfDebug("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
                 // Profiling speed
                 const auto profilerKey = Profiler::timerInit(__LINE__, __FUNCTION__, __FILE__);
                 // Extract people pose
@@ -76,7 +76,7 @@ namespace op
                     auto& tDatumPtr = (*tDatums)[i];
                     // OpenPose net forward pass
                     spPoseExtractor->forwardPass(
-                        tDatumPtr->inputNetData, Point<int>{tDatumPtr->cvInputData.cols, tDatumPtr->cvInputData.rows},
+                        tDatumPtr->inputNetData, Point<int>{tDatumPtr->cvInputData.cols(), tDatumPtr->cvInputData.rows()},
                         tDatumPtr->scaleInputToNetInputs, tDatumPtr->poseNetOutput, tDatumPtr->id);
                     // OpenPose keypoint detector
                     tDatumPtr->poseCandidates = spPoseExtractor->getCandidatesCopy();
@@ -98,7 +98,7 @@ namespace op
                 Profiler::timerEnd(profilerKey);
                 Profiler::printAveragedTimeMsOnIterationX(profilerKey, __LINE__, __FUNCTION__, __FILE__);
                 // Debugging log
-                dLog("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+                opLogIfDebug("", Priority::Low, __LINE__, __FUNCTION__, __FILE__);
             }
         }
         catch (const std::exception& e)

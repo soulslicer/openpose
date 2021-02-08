@@ -1,6 +1,8 @@
 // ------------------------- OpenPose Resize Layer Testing -------------------------
 
-// Command-line user intraface
+// Third-party dependencies
+#include <opencv2/opencv.hpp>
+// Command-line user interface
 #define OPENPOSE_FLAGS_DISABLE_POSE
 #include <openpose/flags.hpp>
 // OpenPose dependencies
@@ -11,8 +13,8 @@
 #endif
 // OpenCL dependencies
 #ifdef USE_OPENCL
-#include <openpose/gpu/opencl.hcl>
-#include <openpose/gpu/cl2.hpp>
+#include <openpose_private/gpu/opencl.hcl>
+#include <openpose_private/gpu/cl2.hpp>
 
 DEFINE_string(image_path,               "examples/media/COCO_val2014_000000000192.jpg",     "Process the desired image.");
 
@@ -201,7 +203,7 @@ int clTest()
         //            cv::imshow("gpuImg", gpuImg);
         //            cv::imshow("cpuImg", cpuImg);
 
-        //            op::log("Done");
+        //            op::opLog("Done");
         //            cv::waitKey(0);
 
         return 0;

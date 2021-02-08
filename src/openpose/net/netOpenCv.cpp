@@ -1,11 +1,12 @@
 // TODO: After completely adding the OpenCV DNN module, add this flag to CMake as alternative to USE_CAFFE
 // #define USE_OPEN_CV_DNN
 
+#include <openpose/net/netOpenCv.hpp>
 // Note: OpenCV only uses CPU or OpenCL (for Intel GPUs). Used CUDA for following blobs (Resize + NMS)
-#include <openpose/core/macros.hpp> // OPEN_CV_IS_4_OR_HIGHER
 #ifdef USE_CAFFE
     #include <caffe/net.hpp>
 #endif
+#include <openpose_private/utilities/openCvMultiversionHeaders.hpp> // OPEN_CV_IS_4_OR_HIGHER
 #ifdef USE_OPEN_CV_DNN
     #if defined(USE_CAFFE) && defined(USE_CUDA) && defined(OPEN_CV_IS_4_OR_HIGHER)
         #include <opencv2/opencv.hpp>
@@ -17,7 +18,6 @@
 #endif
 #include <numeric> // std::accumulate
 #include <openpose/utilities/fileSystem.hpp>
-#include <openpose/net/netOpenCv.hpp>
 
 namespace op
 {
@@ -40,9 +40,12 @@ namespace op
                 mNet{cv::dnn::readNetFromCaffe(caffeProto, caffeTrainedModel)},
                 spOutputBlob{new caffe::Blob<float>(1,1,1,1)}
             {
-                const std::string message{".\nPossible causes:\n\t1. Not downloading the OpenPose trained models."
-                                          "\n\t2. Not running OpenPose from the same directory where the `model`"
-                                          " folder is located.\n\t3. Using paths with spaces."};
+                    const std::string message{".\nPossible causes:\n"
+                        "\t1. Not downloading the OpenPose trained models.\n"
+                        "\t2. Not running OpenPose from the root directory (i.e., where the `model` folder is located, but do not move the `model` folder!). E.g.,\n"
+                        "\t\tRight example for the Windows portable binary: `cd {OpenPose_root_path}; bin/openpose.exe`\n"
+                        "\t\tWrong example for the Windows portable binary: `cd {OpenPose_root_path}/bin; openpose.exe`\n"
+                        "\t3. Using paths with spaces."};
                 if (!existFile(mCaffeProto))
                     error("Prototxt file not found: " + mCaffeProto + message, __LINE__, __FUNCTION__, __FILE__);
                 if (!existFile(mCaffeTrainedModel))

@@ -4,10 +4,11 @@
     // 2. Extract and render body/hand/face/foot keypoint/heatmap/PAF of that image.
     // 3. Save the results on disk.
     // 4. Display the rendered pose.
-// If the user wants to learn to use the OpenPose C++ library, we highly recommend to start with the examples in
-// `examples/tutorial_api_cpp/`.
+// For more details on the OpenPose examples, see
+// - https://cmu-perceptual-computing-lab.github.io/openpose/web/html/doc/
+// - https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/doc/00_index.md
 
-// Command-line user intraface
+// Command-line user interface
 #include <openpose/flags.hpp>
 // OpenPose dependencies
 #include <openpose/headers.hpp>
@@ -19,35 +20,38 @@ void configureWrapper(op::Wrapper& opWrapper)
         // Configuring OpenPose
 
         // logging_level
-        op::check(0 <= FLAGS_logging_level && FLAGS_logging_level <= 255, "Wrong logging_level value.",
-                  __LINE__, __FUNCTION__, __FILE__);
+        op::checkBool(
+            0 <= FLAGS_logging_level && FLAGS_logging_level <= 255, "Wrong logging_level value.",
+            __LINE__, __FUNCTION__, __FILE__);
         op::ConfigureLog::setPriorityThreshold((op::Priority)FLAGS_logging_level);
         op::Profiler::setDefaultX(FLAGS_profile_speed);
 
         // Applying user defined configuration - GFlags to program variables
         // producerType
         op::ProducerType producerType;
-        std::string producerString;
+        op::String producerString;
         std::tie(producerType, producerString) = op::flagsToProducer(
-            FLAGS_image_dir, FLAGS_video, FLAGS_ip_camera, FLAGS_camera, FLAGS_flir_camera, FLAGS_flir_camera_index);
+            op::String(FLAGS_image_dir), op::String(FLAGS_video), op::String(FLAGS_ip_camera), FLAGS_camera,
+            FLAGS_flir_camera, FLAGS_flir_camera_index);
         // cameraSize
-        const auto cameraSize = op::flagsToPoint(FLAGS_camera_resolution, "-1x-1");
+        const auto cameraSize = op::flagsToPoint(op::String(FLAGS_camera_resolution), "-1x-1");
         // outputSize
-        const auto outputSize = op::flagsToPoint(FLAGS_output_resolution, "-1x-1");
+        const auto outputSize = op::flagsToPoint(op::String(FLAGS_output_resolution), "-1x-1");
         // netInputSize
-        const auto netInputSize = op::flagsToPoint(FLAGS_net_resolution, "-1x368");
+        const auto netInputSize = op::flagsToPoint(op::String(FLAGS_net_resolution), "-1x368");
         // faceNetInputSize
-        const auto faceNetInputSize = op::flagsToPoint(FLAGS_face_net_resolution, "368x368 (multiples of 16)");
+        const auto faceNetInputSize = op::flagsToPoint(op::String(FLAGS_face_net_resolution), "368x368 (multiples of 16)");
         // handNetInputSize
-        const auto handNetInputSize = op::flagsToPoint(FLAGS_hand_net_resolution, "368x368 (multiples of 16)");
+        const auto handNetInputSize = op::flagsToPoint(op::String(FLAGS_hand_net_resolution), "368x368 (multiples of 16)");
         // poseMode
         const auto poseMode = op::flagsToPoseMode(FLAGS_body);
         // poseModel
-        const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
+        const auto poseModel = op::flagsToPoseModel(op::String(FLAGS_model_pose));
         // JSON saving
         if (!FLAGS_write_keypoint.empty())
-            op::log("Flag `write_keypoint` is deprecated and will eventually be removed."
-                    " Please, use `write_json` instead.", op::Priority::Max);
+            op::opLog(
+                "Flag `write_keypoint` is deprecated and will eventually be removed. Please, use `write_json`"
+                " instead.", op::Priority::Max);
         // keypointScaleMode
         const auto keypointScaleMode = op::flagsToScaleMode(FLAGS_keypoint_scale);
         // heatmaps to add
@@ -64,12 +68,13 @@ void configureWrapper(op::Wrapper& opWrapper)
 
         // Pose configuration (use WrapperStructPose{} for default and recommended configuration)
         const op::WrapperStructPose wrapperStructPose{
-            poseMode, netInputSize, outputSize, keypointScaleMode, FLAGS_num_gpu, FLAGS_num_gpu_start,
-            FLAGS_scale_number, (float)FLAGS_scale_gap, op::flagsToRenderMode(FLAGS_render_pose, multipleView),
-            poseModel, !FLAGS_disable_blending, (float)FLAGS_alpha_pose, (float)FLAGS_alpha_heatmap,
-            FLAGS_part_to_show, FLAGS_model_folder, heatMapTypes, heatMapScaleMode, FLAGS_part_candidates,
-            (float)FLAGS_render_threshold, FLAGS_number_people_max, FLAGS_maximize_positives, FLAGS_fps_max,
-            FLAGS_prototxt_path, FLAGS_caffemodel_path, (float)FLAGS_upsampling_ratio, enableGoogleLogging};
+            poseMode, netInputSize, FLAGS_net_resolution_dynamic, outputSize, keypointScaleMode, FLAGS_num_gpu,
+            FLAGS_num_gpu_start, FLAGS_scale_number, (float)FLAGS_scale_gap,
+            op::flagsToRenderMode(FLAGS_render_pose, multipleView), poseModel, !FLAGS_disable_blending,
+            (float)FLAGS_alpha_pose, (float)FLAGS_alpha_heatmap, FLAGS_part_to_show, op::String(FLAGS_model_folder),
+            heatMapTypes, heatMapScaleMode, FLAGS_part_candidates, (float)FLAGS_render_threshold,
+            FLAGS_number_people_max, FLAGS_maximize_positives, FLAGS_fps_max, op::String(FLAGS_prototxt_path),
+            op::String(FLAGS_caffemodel_path), (float)FLAGS_upsampling_ratio, enableGoogleLogging};
         opWrapper.configure(wrapperStructPose);
         // Face configuration (use op::WrapperStructFace{} to disable it)
         const op::WrapperStructFace wrapperStructFace{
@@ -95,15 +100,17 @@ void configureWrapper(op::Wrapper& opWrapper)
         const op::WrapperStructInput wrapperStructInput{
             producerType, producerString, FLAGS_frame_first, FLAGS_frame_step, FLAGS_frame_last,
             FLAGS_process_real_time, FLAGS_frame_flip, FLAGS_frame_rotate, FLAGS_frames_repeat,
-            cameraSize, FLAGS_camera_parameter_path, FLAGS_frame_undistort, FLAGS_3d_views};
+            cameraSize, op::String(FLAGS_camera_parameter_path), FLAGS_frame_undistort, FLAGS_3d_views};
         opWrapper.configure(wrapperStructInput);
         // Output (comment or use default argument to disable any output)
         const op::WrapperStructOutput wrapperStructOutput{
-            FLAGS_cli_verbose, FLAGS_write_keypoint, op::stringToDataFormat(FLAGS_write_keypoint_format),
-            FLAGS_write_json, FLAGS_write_coco_json, FLAGS_write_coco_json_variants, FLAGS_write_coco_json_variant,
-            FLAGS_write_images, FLAGS_write_images_format, FLAGS_write_video, FLAGS_write_video_fps,
-            FLAGS_write_video_with_audio, FLAGS_write_heatmaps, FLAGS_write_heatmaps_format, FLAGS_write_video_3d,
-            FLAGS_write_video_adam, FLAGS_write_bvh, FLAGS_udp_host, FLAGS_udp_port};
+            FLAGS_cli_verbose, op::String(FLAGS_write_keypoint), op::stringToDataFormat(FLAGS_write_keypoint_format),
+            op::String(FLAGS_write_json), op::String(FLAGS_write_coco_json), FLAGS_write_coco_json_variants,
+            FLAGS_write_coco_json_variant, op::String(FLAGS_write_images), op::String(FLAGS_write_images_format),
+            op::String(FLAGS_write_video), FLAGS_write_video_fps, FLAGS_write_video_with_audio,
+            op::String(FLAGS_write_heatmaps), op::String(FLAGS_write_heatmaps_format), op::String(FLAGS_write_video_3d),
+            op::String(FLAGS_write_video_adam), op::String(FLAGS_write_bvh), op::String(FLAGS_udp_host),
+            op::String(FLAGS_udp_port)};
         opWrapper.configure(wrapperStructOutput);
         // GUI (comment or use default argument to disable any visual output)
         const op::WrapperStructGui wrapperStructGui{
@@ -123,16 +130,16 @@ int openPoseDemo()
 {
     try
     {
-        op::log("Starting OpenPose demo...", op::Priority::High);
+        op::opLog("Starting OpenPose demo...", op::Priority::High);
         const auto opTimer = op::getTimerInit();
 
         // Configure OpenPose
-        op::log("Configuring OpenPose...", op::Priority::High);
+        op::opLog("Configuring OpenPose...", op::Priority::High);
         op::Wrapper opWrapper;
         configureWrapper(opWrapper);
 
         // Start, run, and stop processing - exec() blocks this thread until OpenPose wrapper has finished
-        op::log("Starting thread(s)...", op::Priority::High);
+        op::opLog("Starting thread(s)...", op::Priority::High);
         opWrapper.exec();
 
         // Measuring total time
@@ -141,7 +148,7 @@ int openPoseDemo()
         // Return successful message
         return 0;
     }
-    catch (const std::exception& e)
+    catch (const std::exception&)
     {
         return -1;
     }

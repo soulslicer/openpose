@@ -1,5 +1,7 @@
-#include <algorithm> // std::transform
 #include <openpose/utilities/string.hpp>
+#include <algorithm> // std::transform
+#include <cctype> // std::tolower, std::toupper
+#include <locale> // std::tolower, std::toupper
 
 namespace op
 {
@@ -88,8 +90,9 @@ namespace op
     {
         try
         {
-            auto result = string;
-            std::transform(string.begin(), string.end(), result.begin(), tolower);
+            std::string result = string;
+            std::transform(string.begin(), string.end(), result.begin(),
+                [](unsigned char c) { return (unsigned char)std::tolower(c); });
             return result;
         }
         catch (const std::exception& e)
@@ -103,9 +106,54 @@ namespace op
     {
         try
         {
-            auto result = string;
-            std::transform(string.begin(), string.end(), result.begin(), toupper);
+            std::string result = string;
+            std::transform(string.begin(), string.end(), result.begin(),
+                [](unsigned char c) { return (unsigned char)std::toupper(c); });
             return result;
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return "";
+        }
+    }
+
+    std::string remove0sFromString(const std::string& string)
+    {
+        try
+        {
+            std::string stringNo0s;
+            if (string[0] == '0')
+            {
+                // Find first not 0
+                const std::size_t found = string.find_first_not_of("0");
+                if (found == std::string::npos)
+                    error("This should not happen.", __LINE__, __FUNCTION__, __FILE__);
+                // Make sure that 0 is not the only digit
+                if (string.size() > found && std::isdigit(string[found]))
+                    stringNo0s = string.substr(found);
+                else
+                    stringNo0s = string.substr(found-1);
+            }
+            else
+                stringNo0s = string;
+            return stringNo0s;
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return "";
+        }
+    }
+
+    std::string getFirstNumberOnString(const std::string& string)
+    {
+        try
+        {
+            const std::size_t found = string.find_first_not_of("0123456789");
+            if (found == std::string::npos)
+                error("This should not happen.", __LINE__, __FUNCTION__, __FILE__);
+            return string.substr(0, found);
         }
         catch (const std::exception& e)
         {

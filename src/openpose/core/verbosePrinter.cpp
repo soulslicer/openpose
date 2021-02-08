@@ -1,5 +1,5 @@
-#include <openpose/utilities/fastMath.hpp>
 #include <openpose/core/verbosePrinter.hpp>
+#include <openpose/utilities/fastMath.hpp>
 
 namespace op
 {
@@ -44,7 +44,7 @@ namespace op
                     plotResults = ((frameNumber+1) % uLongLongRound(mVerbose) == 0);
                 // Plot results
                 if (plotResults)
-                    log("Processing frame " + std::to_string(frameNumber+1) + mNumberFramesString);
+                    opLog("Processing frame " + std::to_string(frameNumber+1) + mNumberFramesString);
             }
         }
         catch (const std::exception& e)

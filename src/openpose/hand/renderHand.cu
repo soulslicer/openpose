@@ -1,8 +1,8 @@
-#include <openpose/gpu/cuda.hpp>
-#include <openpose/gpu/cuda.hu>
-#include <openpose/hand/handParameters.hpp>
-#include <openpose/utilities/render.hu>
 #include <openpose/hand/renderHand.hpp>
+#include <openpose/gpu/cuda.hpp>
+#include <openpose/hand/handParameters.hpp>
+#include <openpose_private/gpu/cuda.hu>
+#include <openpose_private/utilities/render.hu>
 
 namespace op
 {
@@ -46,7 +46,7 @@ namespace op
     }
 
     void renderHandKeypointsGpu(
-        float* framePtr, float* maxPtr, float* minPtr, float* scalePtr, const Point<int>& frameSize,
+        float* framePtr, float* maxPtr, float* minPtr, float* scalePtr, const Point<unsigned int>& frameSize,
         const float* const handsPtr, const int numberHands, const float renderThreshold, const float alphaColorToAdd)
     {
         try

@@ -1,5 +1,5 @@
-#include <openpose/pose/poseParametersRender.hpp>
 #include <openpose/pose/poseParameters.hpp>
+#include <openpose/pose/poseParametersRender.hpp>
 
 namespace op
 {
@@ -789,7 +789,11 @@ namespace op
                 return 0.01f;
             // Non-MPI models
             else
-                return (maximizePositives ? 0.01f : 0.05f);
+                // return (maximizePositives ? 0.01f : 0.5f); // 0.485 but much less false positive connections
+                // return (maximizePositives ? 0.01f : 0.1f); // 0.518
+                // return (maximizePositives ? 0.01f : 0.075f); // 0.521
+                return (maximizePositives ? 0.01f : 0.05f); // 0.523
+                // return (maximizePositives ? 0.01f : 0.01f); // 0.527 but huge amount of false positives joints
         }
         catch (const std::exception& e)
         {

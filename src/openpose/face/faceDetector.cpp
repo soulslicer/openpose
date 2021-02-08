@@ -1,8 +1,8 @@
+#include <openpose/face/faceDetector.hpp>
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/utilities/check.hpp>
 #include <openpose/utilities/keypoint.hpp>
-#include <openpose/face/faceDetector.hpp>
- 
+
 namespace op
 {
     FaceDetector::FaceDetector(const PoseModel poseModel) :

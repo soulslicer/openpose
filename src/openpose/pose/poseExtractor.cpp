@@ -146,7 +146,7 @@ namespace op
         }
     }
 
-    Array<long long> PoseExtractor::extractIds(const Array<float>& poseKeypoints, const cv::Mat& cvMatInput,
+    Array<long long> PoseExtractor::extractIds(const Array<float>& poseKeypoints, const Matrix& cvMatInput,
                                                const unsigned long long imageViewIndex)
     {
         try
@@ -164,7 +164,7 @@ namespace op
     }
 
     Array<long long> PoseExtractor::extractIdsLockThread(const Array<float>& poseKeypoints,
-                                                         const cv::Mat& cvMatInput,
+                                                         const Matrix& cvMatInput,
                                                          const unsigned long long imageViewIndex,
                                                          const long long frameId)
     {
@@ -183,7 +183,7 @@ namespace op
     }
 
     void PoseExtractor::track(Array<float>& poseKeypoints, Array<long long>& poseIds,
-                              const cv::Mat& cvMatInput,
+                              const Matrix& cvMatInput,
                               const unsigned long long imageViewIndex)
     {
         try
@@ -214,7 +214,7 @@ namespace op
     }
 
     void PoseExtractor::trackLockThread(Array<float>& poseKeypoints, Array<long long>& poseIds,
-                                        const cv::Mat& cvMatInput,
+                                        const Matrix& cvMatInput,
                                         const unsigned long long imageViewIndex, const long long frameId)
     {
         try

@@ -9,7 +9,7 @@ namespace op
     #ifdef _WIN32
         // Output callback register in Unity
         typedef void(__stdcall * OutputCallback) (void * ptrs, int ptrSize, int * sizes, int sizeSize,
-                                                  uchar outputType);
+                                                  unsigned char outputType);
         // Global output callback
         OutputCallback sUnityOutputCallback;
     #endif
@@ -19,7 +19,7 @@ namespace op
     bool sUnityOutputEnabled = true;
     bool sImageOutput = false;
 
-    enum class OutputType : uchar
+    enum class OutputType : unsigned char
     {
         None,
         DatumsInfo,
@@ -86,13 +86,14 @@ namespace op
 
     private:
         template<class T>
-        void outputValue(T ** ptrs, int ptrSize, int * sizes, int sizeSize, OutputType outputType)
+        void outputValue(T** ptrs, const int ptrSize, int* sizes, const int sizeSize, const OutputType outputType)
         {
             try
             {
                 #ifdef _WIN32
                     if (sUnityOutputCallback)
-                        sUnityOutputCallback(static_cast<void*>(ptrs), ptrSize, sizes, sizeSize, (uchar)outputType);
+                        sUnityOutputCallback(
+                            static_cast<void*>(ptrs), ptrSize, sizes, sizeSize, (unsigned char)outputType);
                 #else
                     UNUSED(ptrs);
                     UNUSED(ptrSize);
@@ -114,12 +115,12 @@ namespace op
             {
                 auto& datum = datumsPtr->at(0);
                 int sizes[] = { 1 };
-                int sizeSize = 1;
-                unsigned long long *val[] = {&(datum->id), &(datum->subId), &(datum->subIdMax), &(datum->frameNumber)};
-                int ptrSize = 4;
+                const int sizeSize = 1;
+                unsigned long long* val[] = {&(datum->id), &(datum->subId), &(datum->subIdMax), &(datum->frameNumber)};
+                const int ptrSize = 4;
                 outputValue(&val[0], ptrSize, &sizes[0], sizeSize, OutputType::DatumsInfo);
 
-                char const *a[] = { datum->name.c_str() };
+                const char* a[] = { datum->name.c_str() };
                 outputValue(&a[0], 1, &sizes[0], sizeSize, OutputType::Name);
             }
             catch (const std::exception& e)
@@ -136,9 +137,9 @@ namespace op
                 if (!data.empty())
                 {
                     auto sizeVector = data.getSize();
-                    int sizeSize = sizeVector.size();
-                    int * sizes = &sizeVector[0];
-                    float * val = data.getPtr();
+                    const int sizeSize = (int)sizeVector.size();
+                    int* sizes = &sizeVector[0];
+                    float* val = data.getPtr();
                     outputValue(&val, 1, sizes, sizeSize, OutputType::PoseKeypoints);
                 }
             }
@@ -156,9 +157,9 @@ namespace op
                 if (!data.empty())
                 {
                     auto sizeVector = data.getSize();
-                    int sizeSize = sizeVector.size();
-                    int * sizes = &sizeVector[0];
-                    long long * val = data.getPtr();
+                    const int sizeSize = (int)sizeVector.size();
+                    int* sizes = &sizeVector[0];
+                    long long* val = data.getPtr();
                     outputValue(&val, 1, sizes, sizeSize, OutputType::PoseIds);
                 }
             }
@@ -176,9 +177,9 @@ namespace op
                 if (!data.empty())
                 {
                     auto sizeVector = data.getSize();
-                    int sizeSize = sizeVector.size();
-                    int * sizes = &sizeVector[0];
-                    float * val = data.getPtr();
+                    const int sizeSize = (int)sizeVector.size();
+                    int* sizes = &sizeVector[0];
+                    float* val = data.getPtr();
                     outputValue(&val, 1, sizes, sizeSize, OutputType::PoseScores);
                 }
             }
@@ -196,9 +197,9 @@ namespace op
                 if (!data.empty())
                 {
                     auto sizeVector = data.getSize();
-                    int sizeSize = sizeVector.size();
-                    int * sizes = &sizeVector[0];
-                    float * val = data.getPtr();
+                    const int sizeSize = (int)sizeVector.size();
+                    int* sizes = &sizeVector[0];
+                    float* val = data.getPtr();
                     outputValue(&val, 1, sizes, sizeSize, OutputType::PoseHeatMaps);
                 }
             }
@@ -264,7 +265,7 @@ namespace op
                 if (!data.empty())
                 {
                     auto sizeVector = data.getSize();
-                    int sizeSize = sizeVector.size();
+                    int sizeSize = (int)sizeVector.size();
                     int * sizes = &sizeVector[0];
                     float * val = data.getPtr();
                     outputValue(&val, 1, sizes, sizeSize, OutputType::FaceKeypoints);
@@ -284,7 +285,7 @@ namespace op
                 if (!data.empty())
                 {
                     auto sizeVector = data.getSize();
-                    int sizeSize = sizeVector.size();
+                    int sizeSize = (int)sizeVector.size();
                     int * sizes = &sizeVector[0];
                     float * val = data.getPtr();
                     outputValue(&val, 1, sizes, sizeSize, OutputType::FaceHeatMaps);
@@ -317,8 +318,8 @@ namespace op
                         valPtrs.push_back(vals);
                     }
                     int sizes[] = {2, 4};
-                    int sizeSize = 2;
-                    outputValue(valPtrs.data(), valPtrs.size(), sizes, sizeSize, OutputType::HandRectangles);
+                    const int sizeSize = 2;
+                    outputValue(valPtrs.data(), (int)valPtrs.size(), sizes, sizeSize, OutputType::HandRectangles);
                 }
             }
             catch (const std::exception& e)
@@ -335,9 +336,9 @@ namespace op
                 if (data.size() == 2 && !data[0].empty())
                 {
                     auto sizeVector = data[0].getSize();
-                    int sizeSize = sizeVector.size();
-                    int * sizes = &sizeVector[0];
-                    float * ptrs[] = { data[0].getPtr(), data[1].getPtr() };
+                    const int sizeSize = (int)sizeVector.size();
+                    int* sizes = &sizeVector[0];
+                    float* ptrs[] = { data[0].getPtr(), data[1].getPtr() };
                     outputValue(ptrs, 2, sizes, sizeSize, OutputType::HandKeypoints);
                 }
             }
@@ -355,9 +356,9 @@ namespace op
                 if (data.size() == 2 && !data[0].empty())
                 {
                     auto sizeVector = data[0].getSize();
-                    int sizeSize = sizeVector.size();
-                    int * sizes = &sizeVector[0];
-                    float * ptrs[] = { data[0].getPtr(), data[1].getPtr() };
+                    const int sizeSize = (int)sizeVector.size();
+                    int* sizes = &sizeVector[0];
+                    float* ptrs[] = { data[0].getPtr(), data[1].getPtr() };
                     outputValue(ptrs, 2, sizes, sizeSize, OutputType::HandHeightMaps);
                 }
             }
@@ -374,9 +375,9 @@ namespace op
                 auto& data = datumsPtr->at(0)->cvInputData; // cv::Mat
                 if (!data.empty())
                 {
-                    int sizeVector[] = { data.rows, data.cols, 3 };
-                    int sizeSize = 3;
-                    auto valPtr = data.data;
+                    int sizeVector[] = { data.rows(), data.cols(), 3 };
+                    const int sizeSize = 3;
+                    auto valPtr = data.data();
                     outputValue(&valPtr, 1, sizeVector, sizeSize, OutputType::Image);
                 }
             }
@@ -417,7 +418,7 @@ namespace op
         try
         {
             // Starting
-            log("Starting OpenPose...");
+            opLog("Starting OpenPose...");
 
             // OpenPose wrapper
             auto spWrapper = std::make_shared<Wrapper>();
@@ -446,7 +447,7 @@ namespace op
             spWrapper->exec();
 
             // Ending
-            log("OpenPose finished");
+            opLog("OpenPose finished");
         }
         catch (const std::exception& e)
         {
@@ -476,7 +477,7 @@ namespace op
             {
                 if (ptrUserOutput != nullptr)
                 {
-                    log("Stopping...");
+                    opLog("Stopping...");
                     ptrUserOutput->stop();
                 }
             }
@@ -529,27 +530,28 @@ namespace op
 
         // Configs
         OP_API void _OPConfigurePose(
-            uchar poseMode,
+            unsigned char poseMode,
             int netInputSizeX, int netInputSizeY, // Point
+            double netInputSizeDynamicBehavior,
             int outputSizeX, int outputSizeY, // Point
-            uchar keypointScaleMode, // ScaleMode
+            unsigned char keypointScaleMode, // ScaleMode
             int gpuNumber, int gpuNumberStart, int scalesNumber, float scaleGap,
-            uchar renderMode, // RenderMode
-            uchar poseModel, // PoseModel
+            unsigned char renderMode, // RenderMode
+            unsigned char poseModel, // PoseModel
             bool blendOriginalFrame, float alphaKeypoint, float alphaHeatMap, int defaultPartToRender,
             char* modelFolder, bool heatMapAddParts, bool heatMapAddBkg,
-            bool heatMapAddPAFs, // HeatMapType // uchar heatmap_type,
-            uchar heatMapScaleMode, // ScaleMode
+            bool heatMapAddPAFs, // HeatMapType // unsigned char heatmap_type,
+            unsigned char heatMapScaleMode, // ScaleMode
             bool addPartCandidates, float renderThreshold, int numberPeopleMax,
             bool maximizePositives, double fpsMax, char* protoTxtPath, char* caffeModelPath, float upsamplingRatio)
         {
             try
             {
                 spWrapperStructPose = std::make_shared<WrapperStructPose>(
-                    (PoseMode)poseMode, Point<int>{netInputSizeX, netInputSizeY}, Point<int>{outputSizeX, outputSizeY},
-                    (ScaleMode) keypointScaleMode, gpuNumber, gpuNumberStart, scalesNumber, scaleGap,
-                    (RenderMode) renderMode, (PoseModel) poseModel, blendOriginalFrame, alphaKeypoint, alphaHeatMap,
-                    defaultPartToRender, modelFolder,
+                    (PoseMode)poseMode, Point<int>{netInputSizeX, netInputSizeY}, netInputSizeDynamicBehavior,
+                    Point<int>{outputSizeX, outputSizeY}, (ScaleMode) keypointScaleMode, gpuNumber, gpuNumberStart,
+                    scalesNumber, scaleGap, (RenderMode) renderMode, (PoseModel) poseModel, blendOriginalFrame,
+                    alphaKeypoint, alphaHeatMap, defaultPartToRender, modelFolder,
                     // HeatMapType // (HeatMapType) heatmap_type,
                     flagsToHeatMaps(heatMapAddParts, heatMapAddBkg, heatMapAddPAFs),
                     (ScaleMode) heatMapScaleMode, addPartCandidates, renderThreshold, numberPeopleMax,
@@ -563,9 +565,9 @@ namespace op
         }
 
         OP_API void _OPConfigureHand(
-            bool enable, uchar detector, int netInputSizeX, int netInputSizeY, // Point
+            bool enable, unsigned char detector, int netInputSizeX, int netInputSizeY, // Point
             int scalesNumber, float scaleRange,
-            uchar renderMode, // RenderMode
+            unsigned char renderMode, // RenderMode
             float alphaKeypoint, float alphaHeatMap, float renderThreshold)
         {
             try
@@ -581,8 +583,8 @@ namespace op
         }
 
         OP_API void _OPConfigureFace(
-            bool enable, uchar detector, int netInputSizeX, int netInputSizeY, // Point
-            uchar renderMode, // RenderMode
+            bool enable, unsigned char detector, int netInputSizeX, int netInputSizeY, // Point
+            unsigned char renderMode, // RenderMode
             float alphaKeypoint, float alphaHeatMap, float renderThreshold)
         {
             try
@@ -614,7 +616,7 @@ namespace op
         }
 
         OP_API void _OPConfigureInput(
-            uchar producerType, char* producerString, // ProducerType
+            unsigned char producerType, char* producerString, // ProducerType
             unsigned long long frameFirst, unsigned long long frameStep, unsigned long long frameLast,
             bool realTimeProcessing, bool frameFlip, int frameRotate, bool framesRepeat,
             int cameraResolutionX, int cameraResolutionY, // Point
@@ -635,7 +637,7 @@ namespace op
         }
 
         OP_API void _OPConfigureOutput(
-            double verbose, char* writeKeypoint, uchar writeKeypointFormat, // DataFormat
+            double verbose, char* writeKeypoint, unsigned char writeKeypointFormat, // DataFormat
             char* writeJson, char* writeCocoJson, int writeCocoJsonVariants, int writeCocoJsonVariant, char* writeImages,
             char* writeImagesFormat, char* writeVideo, double writeVideoFps, bool writeVideoWithAudio,
             char* writeHeatMaps, char* writeHeatMapsFormat, char* writeVideo3D, char* writeVideoAdam, char* writeBvh,
@@ -656,7 +658,7 @@ namespace op
         }
 
         OP_API void _OPConfigureGui(
-            ushort displayMode, // DisplayMode
+            unsigned short displayMode, // DisplayMode
             bool guiVerbose, bool fullScreen)
         {
             try
@@ -670,22 +672,22 @@ namespace op
             }
         }
 
-		OP_API void _OPConfigureDebugging(
-			uchar loggingLevel, // Priority
-			bool disableMultiThread, 
-			unsigned long long profileSpeed)
-		{
-			try
-			{
-				ConfigureLog::setPriorityThreshold((Priority)loggingLevel);
-				sMultiThreadDisabled = disableMultiThread;
-				Profiler::setDefaultX(profileSpeed);
-			}
-			catch (const std::exception& e)
-			{
-				errorDestructor(e.what(), __LINE__, __FUNCTION__, __FILE__);
-			}
-		}
+        OP_API void _OPConfigureDebugging(
+            unsigned char loggingLevel, // Priority
+            bool disableMultiThread,
+            unsigned long long profileSpeed)
+        {
+            try
+            {
+                ConfigureLog::setPriorityThreshold((Priority)loggingLevel);
+                sMultiThreadDisabled = disableMultiThread;
+                Profiler::setDefaultX(profileSpeed);
+            }
+            catch (const std::exception& e)
+            {
+                errorDestructor(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            }
+        }
     }
 }
 #endif
